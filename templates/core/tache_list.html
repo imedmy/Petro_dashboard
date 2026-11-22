@@ -1,0 +1,111 @@
+<!-- templates/core/tache_list.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Liste des Tâches</h2>
+        <a href="{% url 'core:tache_create' %}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Nouvelle Tâche
+        </a>
+    </div>
+
+    <!-- نموذج البحث -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <input type="text" name="q" class="form-control" placeholder="Recherche globale" value="{{ q }}">
+                    </div>
+                    <div class="col-md-3">
+                        <select name="etat" class="form-select">
+                            <option value="">Tous les états</option>
+                            {% for value, label in etat_choices %}
+                            <option value="{{ value }}" {% if etat == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="date" name="date_min" class="form-control" value="{{ date_min }}">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="date" name="date_max" class="form-control" value="{{ date_max }}">
+                    </div>
+                    <div class="col-md-1">
+                        <button type="submit" class="btn btn-primary">Filtrer</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- الجدول -->
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Intitulé</th>
+                    <th>Date prévue</th>
+                    <th>État</th>
+                    <th>Planning</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in taches %}
+                <tr>
+                    <td>{{ t.libelle }}</td>
+                    <td>{{ t.date_prevue|date:"d/m/Y" }}</td>
+                    <td>
+                        {% if t.etat == 'a_faire' %}<span class="badge bg-warning">À faire</span>
+                        {% elif t.etat == 'en_cours' %}<span class="badge bg-info">En cours</span>
+                        {% elif t.etat == 'faite' %}<span class="badge bg-success">Faite</span>
+                        {% else %}<span class="badge bg-danger">Retardée</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if t.planning %}
+                            {% if t.planning.nature == 'repetitive' %}
+                                <span class="badge bg-primary">Répétitive ({{ t.planning.delai_repetition }} j)</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Ponctuelle</span>
+                            {% endif %}
+                            {% if t.planning.libelle %}
+                                <br><small>{{ t.planning.libelle }}</small>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge bg-light text-dark">Aucun</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'core:tache_detail' t.pk %}" class="btn btn-sm btn-info">Voir</a>
+                        <a href="{% url 'core:tache_update' t.pk %}" class="btn btn-sm btn-warning">Modifier</a>
+                        <a href="{% url 'core:tache_delete' t.pk %}" class="btn btn-sm btn-danger">Supprimer</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center">Aucune tâche</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if taches.has_other_pages %}
+    <nav aria-label="Pagination">
+        <ul class="pagination justify-content-center">
+            {% if taches.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page=1{% for k,v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">Premier</a></li>
+            {% endif %}
+            {% for num in taches.paginator.page_range %}
+                {% if taches.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% else %}
+                    <li class="page-item"><a class="page-link" href="?page={{ num }}{% for k,v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">{{ num }}</a></li>
+                {% endif %}
+            {% endfor %}
+            {% if taches.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ taches.paginator.num_pages }}{% for k,v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">Dernier</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

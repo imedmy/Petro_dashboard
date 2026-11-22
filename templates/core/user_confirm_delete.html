@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="text-center mt-5">
+    <h3>{% trans "تأكيد الحذف" %}</h3>
+    <p>
+        {% blocktrans with username=user.username %}هل أنت متأكد من رغبتك في حذف المستخدم "<strong>{{ username }}</strong>"؟{% endblocktrans %}
+    </p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">{% trans "نعم، احذف" %}</button>
+        <a href="{% url 'core:user_list' %}" class="btn btn-secondary">{% trans "إلغاء" %}</a>
+    </form>
+</div>
+{% endblock %}

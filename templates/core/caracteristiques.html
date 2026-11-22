@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="p-4">
+    <h2><i class="bi bi-tags"></i> Gestion des Caractéristiques Techniques</h2>
+
+    <!-- Recherche -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-8">
+                    <input type="text" name="q" class="form-control" value="{{ query }}" placeholder="Rechercher par nom...">
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">Rechercher</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Ajouter/Modifier une Caractéristique -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h5>{% if form.instance.pk %}Modifier{% else %}Ajouter{% endif %} une Caractéristique</h5>
+            <form method="post" class="row g-3" id="caracForm">
+                {% csrf_token %}
+                {{ form.non_field_errors }}
+
+                <div class="col-md-6">
+                    {{ form.nom.label_tag }}
+                    {{ form.nom }}
+                    {{ form.nom.errors }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.type_valeur.label_tag }}
+                    {{ form.type_valeur }}
+                    {{ form.type_valeur.errors }}
+                </div>
+
+                <div class="col-md-6">
+                    {{ form.unite.label_tag }}
+                    {{ form.unite }}
+                    {{ form.unite.errors }}
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check mt-4">
+                        {{ form.utilisable_dans_recherche }}
+                        {{ form.utilisable_dans_recherche.label }}
+                        {{ form.utilisable_dans_recherche.errors }}
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    {{ form.parent_name.label_tag }}
+                    {{ form.parent_name }}
+                    <button type="button" class="btn btn-outline-secondary mt-1" onclick="openLookupPanel()">
+                        <i class="bi bi-search"></i> Choisir une caractéristique parente
+                    </button>
+                    {{ form.parent_id }}
+                </div>
+
+                <div class="col-12">
+                    <button type="submit" class="btn btn-success">
+                        {% if form.instance.pk %}Modifier{% else %}Ajouter{% endif %}
+                    </button>
+                    {% if form.instance.pk %}
+                        <a href="{% url 'core:gestion_caracteristiques' %}" class="btn btn-secondary">Annuler</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Arborescence des Caractéristiques -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h5>Hiérarchie des Caractéristiques</h5>
+            <ul class="list-group">
+                {% for root in roots %}
+                    {% include 'core/caracteristique_tree_item.html' with item=root %}
+                {% empty %}
+                    <li class="list-group-item text-muted">Aucune caractéristique trouvée.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة اختيار (Modal) -->
+<div class="modal fade" id="lookupModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Choisir une Caractéristique Parente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" id="lookup-search" class="form-control" placeholder="Rechercher une caractéristique...">
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Type</th>
+                                <th>Unité</th>
+                                <th>Choisir</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lookup-results">
+                            <tr><td colspan="4" class="text-center text-muted">Recherchez pour afficher les résultats</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" onclick="confirmSelection()">Confirmer</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedCaracId = null;
+let selectedCaracName = null;
+
+// فتح نافذة الاختيار
+function openLookupPanel() {
+    selectedCaracId = null;
+    selectedCaracName = null;
+    document.getElementById('lookup-search').value = '';
+    document.getElementById('lookup-results').innerHTML = '<tr><td colspan="4" class="text-center text-muted">Chargement...</td></tr>';
+    fetchCaracteristiques();
+    new bootstrap.Modal(document.getElementById('lookupModal')).show();
+}
+
+// جلب البيانات
+function fetchCaracteristiques() {
+    const query = document.getElementById('lookup-search').value;
+    fetch(`{% url 'core:api_caracteristiques' %}?q=${encodeURIComponent(query)}`)
+        .then(r => r.json())
+        .then(data => {
+            const tbody = document.getElementById('lookup-results');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Aucune caractéristique trouvée</td></tr>';
+                return;
+            }
+
+            // بناء الشجرة
+            const map = new Map();
+            const roots = [];
+            data.forEach(c => map.set(c.id, { ...c, children: [] }));
+            data.forEach(c => {
+                if (c.parent && map.has(c.parent.id)) {
+                    map.get(c.parent.id).children.push(map.get(c.id));
+                } else {
+                    roots.push(map.get(c.id));
+                }
+            });
+
+            function addRow(node, level = 0) {
+                const row = document.createElement('tr');
+                const indent = '&nbsp;'.repeat(level * 6) + (level > 0 ? '|— ' : '');
+                row.innerHTML = `
+                    <td>
+                        <div class="clickable-row d-flex align-items-center" role="button"
+                             data-bs-toggle="collapse"
+                             data-bs-target="#modal-children-${node.id}">
+                            <i class="bi bi-plus-square me-2"></i>
+                            <span>${indent}${node.nom}</span>
+                        </div>
+                    </td>
+                    <td>${node.type_valeur}</td>
+                    <td class="text-muted">${node.unite || '-'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary"
+                                data-id="${node.id}"
+                                data-name="${escapeHtml(node.nom)}"
+                                onclick="selectCarac(this)">
+                            Choisir
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+
+                if (node.children.length > 0) {
+                    const collapseRow = document.createElement('tr');
+                    collapseRow.innerHTML = `
+                        <td colspan="4" class="p-0 border-0">
+                            <div class="collapse" id="modal-children-${node.id}">
+                                <table class="table table-sm mb-0 ms-4">
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(collapseRow);
+                    const body = collapseRow.querySelector('tbody');
+                    node.children.forEach(child => addRow(child, level + 1));
+                }
+            }
+
+            roots.forEach(root => addRow(root));
+            updateCollapseIcons();
+        })
+        .catch(err => {
+            console.error('Erreur:', err);
+            document.getElementById('lookup-results').innerHTML = '<tr><td colspan="4" class="text-danger">Erreur de chargement</td></tr>';
+        });
+}
+
+// اختيار خاصية
+function selectCarac(button) {
+    const btn = button.closest('button');
+    selectedCaracId = parseInt(btn.dataset.id);
+    selectedCaracName = btn.dataset.name;
+
+    // إزالة التحديد من الجميع
+    document.querySelectorAll('#lookup-results .btn-primary').forEach(b => {
+        b.classList.remove('btn-primary');
+        b.classList.add('btn-outline-primary');
+    });
+
+    // تطبيق التحديد
+    btn.classList.remove('btn-outline-primary');
+    btn.classList.add('btn-primary');
+}
+
+// تأكيد الاختيار
+function confirmSelection() {
+    if (!selectedCaracId) {
+        alert('Veuillez choisir une caractéristique.');
+        return;
+    }
+
+    const nameField = document.getElementById('id_parent_name');
+    const idField = document.getElementById('id_parent_id');
+
+    if (!nameField || !idField) {
+        console.error("❌ الحقول غير موجودة");
+        return;
+    }
+
+    idField.value = selectedCaracId;
+    nameField.value = selectedCaracName;
+    bootstrap.Modal.getInstance(document.getElementById('lookupModal')).hide();
+}
+
+// تجنب مشاكل الترميز
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// البحث الفوري
+document.getElementById('lookup-search').addEventListener('input', function () {
+    clearTimeout(this.searchTimeout);
+    this.searchTimeout = setTimeout(fetchCaracteristiques, 300);
+});
+
+// تحميل القائمة عند فتح النافذة
+document.getElementById('lookupModal').addEventListener('shown.bs.modal', fetchCaracteristiques);
+
+// تحديث أيقونات التوسيع/الطي
+function updateCollapseIcons() {
+    document.querySelectorAll('#lookupModal .clickable-row').forEach(row => {
+        const icon = row.querySelector('i');
+        const target = document.querySelector(row.getAttribute('data-bs-target'));
+
+        if (!icon || !target) return;
+
+        function updateIcon() {
+            if (target.classList.contains('show')) {
+                icon.classList.replace('bi-plus-square', 'bi-dash-square');
+            } else {
+                icon.classList.replace('bi-dash-square', 'bi-plus-square');
+            }
+        }
+
+        target.addEventListener('shown.bs.collapse', updateIcon);
+        target.addEventListener('hidden.bs.collapse', updateIcon);
+        updateIcon();
+    });
+}
+</script>
+{% endblock %}

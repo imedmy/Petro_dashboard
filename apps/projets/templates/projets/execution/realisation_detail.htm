@@ -1,0 +1,1063 @@
+{% extends 'base.html' %}
+{% load static i18n %}
+
+{% block title %}{{ realisation.nom }} - Suivi Exécution{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ======================================== */
+    /* ✅ Header gradient (بنفسجي → أزرق) */
+    /* ======================================== */
+    .realisation-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1);
+    }
+    .realisation-header h2 {
+        color: white;
+        margin-bottom: 0.5rem;
+    }
+    .realisation-header .meta-info {
+        opacity: 0.9;
+        font-size: 0.9rem;
+    }
+    .realisation-header .meta-info i {
+        margin-right: 0.25rem;
+    }
+
+    /* ======================================== */
+    /* ✅ Stat Cards */
+    /* ======================================== */
+    .stat-card {
+        border: none;
+        border-radius: 0.75rem;
+        box-shadow: 0 0.125rem 0.5rem rgba(0,0,0,.08);
+        transition: transform 0.2s, box-shadow 0.2s;
+        border-left: 4px solid;
+        height: 100%;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,.12);
+    }
+    .stat-card.cout      { border-left-color: #198754; }
+    .stat-card.details   { border-left-color: #0d6efd; }
+    .stat-card.evenements{ border-left-color: #fd7e14; }
+    .stat-card.impact    { border-left-color: #dc3545; }
+    .stat-card.conso     { border-left-color: #6f42c1; }
+    .stat-card.resultats { border-left-color: #20c997; }
+
+    .stat-card .stat-icon {
+        font-size: 2rem;
+        opacity: 0.3;
+    }
+    .stat-card .stat-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    .stat-card .stat-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: #6c757d;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    /* ======================================== */
+    /* ✅ Tabs */
+    /* ======================================== */
+    .detail-tabs {
+        background: #fff;
+        border-radius: 0.75rem;
+        padding: 0.5rem;
+        box-shadow: 0 0.125rem 0.5rem rgba(0,0,0,.06);
+        margin-bottom: 1.5rem;
+    }
+    .detail-tabs .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.25rem;
+        margin: 0 0.25rem;
+        border-radius: 0.5rem;
+        color: #6c757d;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        border: none;
+        background: transparent;
+    }
+    .detail-tabs .nav-link:hover {
+        background: #f8f9fa;
+        color: #667eea;
+    }
+    .detail-tabs .nav-link.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        box-shadow: 0 0.25rem 0.5rem rgba(102, 126, 234, 0.3);
+    }
+    .detail-tabs .nav-link .badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+    }
+
+    /* ======================================== */
+    /* ✅ Action Buttons */
+    /* ======================================== */
+    .action-buttons .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    .action-buttons .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,.1);
+    }
+
+    /* ======================================== */
+    /* ✅ Info Panel (à gauche) */
+    /* ======================================== */
+    .info-panel {
+        background: #fff;
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        box-shadow: 0 0.125rem 0.5rem rgba(0,0,0,.06);
+        margin-bottom: 1rem;
+    }
+    .info-panel .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px dashed #e9ecef;
+    }
+    .info-panel .info-row:last-child {
+        border-bottom: none;
+    }
+    .info-panel .info-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+    .info-panel .info-value {
+        font-weight: 600;
+        color: #212529;
+    }
+
+    /* ======================================== */
+    /* ✅ Type badges */
+    /* ======================================== */
+    .type-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .type-badge.travaux   { background: #cfe2ff; color: #084298; }
+    .type-badge.achat     { background: #d1e7dd; color: #0f5132; }
+    .type-badge.location  { background: #fff3cd; color: #664d03; }
+    .type-badge.logistique{ background: #f8d7da; color: #842029; }
+    .type-badge.rh        { background: #e2d9f3; color: #432874; }
+    .type-badge.resultat  { background: #d2f4ea; color: #13795b; }
+
+    /* ======================================== */
+    /* ✅ Impact badges */
+    /* ======================================== */
+    .impact-positive { color: #dc3545; font-weight: 700; }
+    .impact-negative { color: #198754; font-weight: 700; }
+    .impact-neutral  { color: #6c757d; }
+
+    /* ======================================== */
+    /* ✅ Conformité */
+    /* ======================================== */
+    .conforme-yes {
+        background: #d1e7dd;
+        color: #0f5132;
+        padding: 0.25rem 0.6rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .conforme-no {
+        background: #f8d7da;
+        color: #842029;
+        padding: 0.25rem 0.6rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    /* ======================================== */
+    /* ✅ Progress bar custom */
+    /* ======================================== */
+    .progress-custom {
+        height: 25px;
+        border-radius: 0.5rem;
+        background: #e9ecef;
+    }
+    .progress-custom .progress-bar {
+        border-radius: 0.5rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    /* ======================================== */
+    /* ✅ Empty state */
+    /* ======================================== */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #6c757d;
+    }
+    .empty-state i {
+        font-size: 3rem;
+        opacity: 0.3;
+        margin-bottom: 1rem;
+    }
+    .empty-state h5 {
+        color: #495057;
+        margin-bottom: 0.5rem;
+    }
+
+    /* ======================================== */
+    /* ✅ Timeline des événements */
+    /* ======================================== */
+    .timeline-item {
+        position: relative;
+        padding-left: 2rem;
+        padding-bottom: 1rem;
+        border-left: 2px solid #e9ecef;
+        margin-left: 0.5rem;
+    }
+    .timeline-item:last-child {
+        border-left: 2px solid transparent;
+    }
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -0.5rem;
+        top: 0;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 50%;
+        background: #667eea;
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 2px #667eea;
+    }
+    .timeline-item.negative::before { background: #dc3545; box-shadow: 0 0 0 2px #dc3545; }
+    .timeline-item.positive::before { background: #198754; box-shadow: 0 0 0 2px #198754; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- ============================================ -->
+    <!-- Breadcrumb -->
+    <!-- ============================================ -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_list' %}">
+                    <i class="bi bi-kanban"></i> Projets
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_detail' realisation.projet.pk %}">
+                    {{ realisation.projet.reference }}
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:realisation_list' realisation.projet.pk %}">
+                    <i class="bi bi-play-circle"></i> Réalisations
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+                {{ realisation.nom|truncatechars:40 }}
+            </li>
+        </ol>
+    </nav>
+
+    <!-- ============================================ -->
+    <!-- Header -->
+    <!-- ============================================ -->
+    <div class="realisation-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="meta-info mb-2">
+                    <i class="bi bi-folder2-open"></i> {{ realisation.projet.reference }}
+                    {% if realisation.lot %}
+                        <span class="mx-2">•</span>
+                        <i class="bi bi-box-seam"></i> Lot {{ realisation.lot.numero }}
+                    {% endif %}
+                    {% if realisation.ouvrage %}
+                        <span class="mx-2">•</span>
+                        <i class="bi bi-building"></i> {{ realisation.ouvrage.code }}
+                    {% endif %}
+                    {% if realisation.tache %}
+                        <span class="mx-2">•</span>
+                        <i class="bi bi-check2-square"></i> {{ realisation.tache.code }}
+                    {% endif %}
+                </div>
+                <h2><i class="bi bi-play-circle me-2"></i>{{ realisation.nom }}</h2>
+                {% if realisation.description %}
+                    <p class="mb-0 opacity-90">{{ realisation.description|truncatechars:150 }}</p>
+                {% endif %}
+            </div>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <a href="{% url 'projets:realisation_list' realisation.projet.pk %}" 
+                   class="btn btn-light btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i> Retour
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- Statistiques rapides -->
+    <!-- ============================================ -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-2 col-sm-6">
+            <div class="card stat-card cout">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-label">Coût Total</div>
+                            <div class="stat-value text-success">{{ stats.cout_total|floatformat:3 }}</div>
+                            <small class="text-muted">TND</small>
+                        </div>
+                        <i class="bi bi-cash-stack stat-icon text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-6">
+            <div class="card stat-card details">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-label">Détails</div>
+                            <div class="stat-value text-primary">{{ stats.nb_details }}</div>
+                            <small class="text-muted">éléments</small>
+                        </div>
+                        <i class="bi bi-list-check stat-icon text-primary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-6">
+            <div class="card stat-card evenements">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-label">Événements</div>
+                            <div class="stat-value" style="color:#fd7e14;">{{ stats.nb_evenements }}</div>
+                            <small class="text-muted">logistiques</small>
+                        </div>
+                        <i class="bi bi-truck stat-icon" style="color:#fd7e14;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-6">
+            <div class="card stat-card impact">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-label">Impact Délai</div>
+                            <div class="stat-value {% if stats.impact_delai_total > 0 %}text-danger{% elif stats.impact_delai_total < 0 %}text-success{% else %}text-muted{% endif %}">
+                                {{ stats.impact_delai_total|floatformat:1 }}
+                            </div>
+                            <small class="text-muted">jours</small>
+                        </div>
+                        <i class="bi bi-clock-history stat-icon text-danger"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-6">
+            <div class="card stat-card conso">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-label">Consommation</div>
+                            <div class="stat-value" style="color:#6f42c1;">{{ stats.consommation_total|floatformat:3 }}</div>
+                            <small class="text-muted">TND</small>
+                        </div>
+                        <i class="bi bi-fuel-pump stat-icon" style="color:#6f42c1;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-6">
+            <div class="card stat-card resultats">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-label">Résultats</div>
+                            <div class="stat-value text-info">{{ stats.nb_resultats }}</div>
+                            <small class="text-muted">{{ stats.nb_non_conformes }} non conforme(s)</small>
+                        </div>
+                        <i class="bi bi-clipboard-check stat-icon text-info"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- Layout principal (2 colonnes) -->
+    <!-- ============================================ -->
+    <div class="row">
+        
+        <!-- ============================================ -->
+        <!-- Colonne gauche : Infos + Actions -->
+        <!-- ============================================ -->
+        <div class="col-lg-3">
+            
+            <!-- Info Panel -->
+            <div class="info-panel">
+                <h6 class="mb-3">
+                    <i class="bi bi-info-circle text-primary me-1"></i>
+                    Informations
+                </h6>
+                <div class="info-row">
+                    <span class="info-label">Statut</span>
+                    <span class="info-value">
+                        {% if realisation.statut == 'EN_COURS' %}
+                            <span class="badge bg-primary">En cours</span>
+                        {% elif realisation.statut == 'TERMINE' %}
+                            <span class="badge bg-success">Terminé</span>
+                        {% elif realisation.statut == 'SUSPENDU' %}
+                            <span class="badge bg-warning text-dark">Suspendu</span>
+                        {% elif realisation.statut == 'ANNULE' %}
+                            <span class="badge bg-danger">Annulé</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ realisation.get_statut_display }}</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Avancement</span>
+                    <span class="info-value">{{ realisation.pourcentage_avancement }}%</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Début</span>
+                    <span class="info-value">
+                        {{ realisation.date_debut_reelle|date:"d/m/Y"|default:"-" }}
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Fin</span>
+                    <span class="info-value">
+                        {{ realisation.date_fin_reelle|date:"d/m/Y"|default:"-" }}
+                    </span>
+                </div>
+                {% if realisation.duree_reelle_jours is not None %}
+                <div class="info-row">
+                    <span class="info-label">Durée</span>
+                    <span class="info-value">{{ realisation.duree_reelle_jours }} j</span>
+                </div>
+                {% endif %}
+                {% if realisation.responsable %}
+                <div class="info-row">
+                    <span class="info-label">Responsable</span>
+                    <span class="info-value">
+                        <i class="bi bi-person-circle text-primary"></i>
+                        {{ realisation.responsable.get_full_name|default:realisation.responsable.username }}
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Progression -->
+            <div class="info-panel">
+                <h6 class="mb-3">
+                    <i class="bi bi-graph-up text-primary me-1"></i>
+                    Progression
+                </h6>
+                <div class="progress progress-custom mb-2">
+                    <div class="progress-bar" role="progressbar" 
+                         style="width: {{ realisation.pourcentage_avancement }}%"
+                         aria-valuenow="{{ realisation.pourcentage_avancement }}" 
+                         aria-valuemin="0" aria-valuemax="100">
+                        {{ realisation.pourcentage_avancement }}%
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions rapides -->
+            <div class="info-panel">
+                <h6 class="mb-3">
+                    <i class="bi bi-lightning-charge text-warning me-1"></i>
+                    Actions rapides
+                </h6>
+                <div class="d-grid gap-2">
+                    <a href="{% url 'projets:detail_realisation_create' realisation.pk %}" 
+                       class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus-circle"></i> Ajouter Détail
+                    </a>
+                    <a href="{% url 'projets:evenement_create' realisation.pk %}" 
+                       class="btn btn-warning btn-sm">
+                        <i class="bi bi-truck"></i> Événement Logistique
+                    </a>
+                    <a href="{% url 'projets:consommation_create' realisation.pk %}" 
+                       class="btn btn-info btn-sm text-white">
+                        <i class="bi bi-fuel-pump"></i> Consommation
+                    </a>
+                    <a href="{% url 'projets:resultat_create' realisation.pk %}" 
+                       class="btn btn-success btn-sm">
+                        <i class="bi bi-clipboard-check"></i> Résultat / Contrôle
+                    </a>
+                    <a href="{% url 'projets:lien_achat_create' realisation.pk %}" 
+                       class="btn btn-secondary btn-sm">
+                        <i class="bi bi-cart"></i> Lien Achat (BC)
+                    </a>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ============================================ -->
+        <!-- Colonne droite : Tabs avec détails -->
+        <!-- ============================================ -->
+        <div class="col-lg-9">
+
+            <!-- Tabs -->
+            <div class="detail-tabs">
+                <ul class="nav nav-pills" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" data-bs-toggle="pill" 
+                                data-bs-target="#tab-details" type="button">
+                            <i class="bi bi-list-check"></i>
+                            Détails
+                            <span class="badge bg-primary">{{ stats.nb_details }}</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="pill" 
+                                data-bs-target="#tab-evenements" type="button">
+                            <i class="bi bi-truck"></i>
+                            Événements
+                            <span class="badge bg-warning text-dark">{{ stats.nb_evenements }}</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="pill" 
+                                data-bs-target="#tab-consommations" type="button">
+                            <i class="bi bi-fuel-pump"></i>
+                            Consommations
+                            <span class="badge bg-info">{{ consommations.count }}</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="pill" 
+                                data-bs-target="#tab-resultats" type="button">
+                            <i class="bi bi-clipboard-check"></i>
+                            Résultats
+                            <span class="badge bg-success">{{ stats.nb_resultats }}</span>
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="pill" 
+                                data-bs-target="#tab-achats" type="button">
+                            <i class="bi bi-cart"></i>
+                            Achats (BC)
+                            <span class="badge bg-secondary">{{ liens_achat.count }}</span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="tab-content">
+
+                <!-- ======================================== -->
+                <!-- TAB 1: Détails de Réalisation -->
+                <!-- ======================================== -->
+                <div class="tab-pane fade show active" id="tab-details">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-list-check text-primary me-2"></i>
+                                Détails de l'exécution
+                            </h5>
+                            <a href="{% url 'projets:detail_realisation_create' realisation.pk %}" 
+                               class="btn btn-sm btn-primary">
+                                <i class="bi bi-plus-circle me-1"></i> Ajouter
+                            </a>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if details %}
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width:130px;">Type</th>
+                                            <th>Description</th>
+                                            <th style="width:150px;">Référence</th>
+                                            <th style="width:100px;" class="text-end">Qté</th>
+                                            <th style="width:100px;" class="text-end">PU</th>
+                                            <th style="width:130px;" class="text-end">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for d in details %}
+                                        <tr>
+                                            <td>
+                                                <span class="type-badge {{ d.type_detail|lower }}">
+                                                    {% if d.type_detail == 'TRAVAUX' %}🔨
+                                                    {% elif d.type_detail == 'ACHAT' %}🛒
+                                                    {% elif d.type_detail == 'LOCATION' %}🚜
+                                                    {% elif d.type_detail == 'LOGISTIQUE' %}🚚
+                                                    {% elif d.type_detail == 'RH' %}👥
+                                                    {% elif d.type_detail == 'RESULTAT' %}📊
+                                                    {% else %}📝{% endif %}
+                                                    {{ d.get_type_detail_display }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="fw-semibold">{{ d.description }}</div>
+                                                {% if d.fournisseur %}
+                                                    <small class="text-muted">
+                                                        <i class="bi bi-building me-1"></i>{{ d.fournisseur }}
+                                                    </small>
+                                                {% endif %}
+                                                {% if d.observation %}
+                                                    <div class="small text-muted mt-1">
+                                                        <i class="bi bi-chat-left-text me-1"></i>
+                                                        {{ d.observation|truncatechars:60 }}
+                                                    </div>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if d.reference_procedure %}
+                                                    <span class="badge bg-light text-dark border">
+                                                        <i class="bi bi-bookmark me-1"></i>
+                                                        {{ d.reference_procedure.code }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-end">
+                                                {{ d.quantite|floatformat:2 }}
+                                                {% if d.unite %}
+                                                    <small class="text-muted">{{ d.unite }}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-end">{{ d.prix_unitaire|floatformat:3 }}</td>
+                                            <td class="text-end">
+                                                <strong class="text-success">{{ d.cout_total|floatformat:3 }}</strong>
+                                                <small class="text-muted">TND</small>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <td colspan="5" class="text-end fw-bold">TOTAL</td>
+                                            <td class="text-end">
+                                                <strong class="text-success fs-5">{{ stats.cout_total|floatformat:3 }} TND</strong>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="empty-state">
+                                <i class="bi bi-list-check d-block"></i>
+                                <h5>Aucun détail enregistré</h5>
+                                <p class="text-muted">
+                                    Commencez par ajouter les détails de cette réalisation
+                                    (travaux, achats, locations, etc.)
+                                </p>
+                                <a href="{% url 'projets:detail_realisation_create' realisation.pk %}" 
+                                   class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-1"></i> Ajouter un détail
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ======================================== -->
+                <!-- TAB 2: Événements Logistiques -->
+                <!-- ======================================== -->
+                <div class="tab-pane fade" id="tab-evenements">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-truck text-warning me-2"></i>
+                                Événements Logistiques
+                            </h5>
+                            <a href="{% url 'projets:evenement_create' realisation.pk %}" 
+                               class="btn btn-sm btn-warning">
+                                <i class="bi bi-plus-circle me-1"></i> Enregistrer
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            {% if evenements %}
+                            <div class="timeline">
+                                {% for e in evenements %}
+                                <div class="timeline-item {% if e.impact_delai_jours > 0 %}negative{% elif e.impact_delai_jours < 0 %}positive{% endif %}">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <strong>
+                                                {% if e.type_evenement == 'ENTREE_CAMION' %}🚚
+                                                {% elif e.type_evenement == 'SORTIE_CAMION' %}🚛
+                                                {% elif e.type_evenement == 'MOBILISATION_ENGIN' %}🚜
+                                                {% elif e.type_evenement == 'LIVRAISON_MATERIEL' %}📦
+                                                {% elif e.type_evenement == 'INCIDENT' %}🚨
+                                                {% elif e.type_evenement == 'INTEMPERIES' %}🌧️
+                                                {% else %}📝{% endif %}
+                                                {{ e.get_type_evenement_display }}
+                                            </strong>
+                                            <small class="text-muted d-block">
+                                                <i class="bi bi-calendar me-1"></i>
+                                                {{ e.date_evenement|date:"d/m/Y H:i" }}
+                                                {% if e.declare_par %}
+                                                    <span class="mx-1">•</span>
+                                                    <i class="bi bi-person me-1"></i>
+                                                    {{ e.declare_par.get_full_name|default:e.declare_par.username }}
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                        {% if e.impact_delai_jours != 0 %}
+                                        <span class="badge {% if e.impact_delai_jours > 0 %}bg-danger{% else %}bg-success{% endif %}">
+                                            {% if e.impact_delai_jours > 0 %}+{% endif %}{{ e.impact_delai_jours }} j
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    <p class="mb-1 small">{{ e.description }}</p>
+                                    {% if e.engin %}
+                                        <small class="text-muted">
+                                            <i class="bi bi-gear me-1"></i> {{ e.engin }}
+                                        </small>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="empty-state">
+                                <i class="bi bi-truck d-block"></i>
+                                <h5>Aucun événement enregistré</h5>
+                                <p class="text-muted">
+                                    Enregistrez les événements logistiques qui impactent cette réalisation
+                                </p>
+                                <a href="{% url 'projets:evenement_create' realisation.pk %}" 
+                                   class="btn btn-warning">
+                                    <i class="bi bi-plus-circle me-1"></i> Enregistrer un événement
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ======================================== -->
+                <!-- TAB 3: Consommations -->
+                <!-- ======================================== -->
+                <div class="tab-pane fade" id="tab-consommations">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-fuel-pump text-info me-2"></i>
+                                Consommations
+                            </h5>
+                            <a href="{% url 'projets:consommation_create' realisation.pk %}" 
+                               class="btn btn-sm btn-info text-white">
+                                <i class="bi bi-plus-circle me-1"></i> Enregistrer
+                            </a>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if consommations %}
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width:130px;">Type</th>
+                                            <th>Désignation</th>
+                                            <th style="width:100px;">Date</th>
+                                            <th style="width:100px;" class="text-end">Qté</th>
+                                            <th style="width:100px;" class="text-end">PU</th>
+                                            <th style="width:120px;" class="text-end">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for c in consommations %}
+                                        <tr>
+                                            <td>
+                                                <span class="type-badge">
+                                                    {% if c.type_consommation == 'MATERIAU' %}🧱
+                                                    {% elif c.type_consommation == 'CARBURANT' %}⛽
+                                                    {% elif c.type_consommation == 'EAU' %}💧
+                                                    {% elif c.type_consommation == 'ELECTRICITE' %}⚡
+                                                    {% elif c.type_consommation == 'MAIN_OEUVRE' %}👷
+                                                    {% elif c.type_consommation == 'LOCATION_ENGIN' %}🚜
+                                                    {% else %}📝{% endif %}
+                                                    {{ c.get_type_consommation_display }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="fw-semibold">{{ c.designation }}</div>
+                                                {% if c.cod_art %}
+                                                    <small class="text-muted">
+                                                        <i class="bi bi-box-seam me-1"></i>{{ c.cod_art }}
+                                                    </small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <small>{{ c.date_consommation|date:"d/m/Y" }}</small>
+                                            </td>
+                                            <td class="text-end">
+                                                {{ c.quantite|floatformat:2 }}
+                                                {% if c.unite %}<small class="text-muted">{{ c.unite }}</small>{% endif %}
+                                            </td>
+                                            <td class="text-end">{{ c.cout_unitaire|floatformat:3 }}</td>
+                                            <td class="text-end">
+                                                <strong class="text-success">{{ c.cout_total|floatformat:3 }}</strong>
+                                                <small class="text-muted">TND</small>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot class="table-light">
+                                        <tr>
+                                            <td colspan="5" class="text-end fw-bold">TOTAL</td>
+                                            <td class="text-end">
+                                                <strong class="text-success fs-5">{{ stats.consommation_total|floatformat:3 }} TND</strong>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="empty-state">
+                                <i class="bi bi-fuel-pump d-block"></i>
+                                <h5>Aucune consommation enregistrée</h5>
+                                <a href="{% url 'projets:consommation_create' realisation.pk %}" 
+                                   class="btn btn-info text-white">
+                                    <i class="bi bi-plus-circle me-1"></i> Enregistrer une consommation
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ======================================== -->
+                <!-- TAB 4: Résultats / Contrôles -->
+                <!-- ======================================== -->
+                <div class="tab-pane fade" id="tab-resultats">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-clipboard-check text-success me-2"></i>
+                                Résultats & Contrôles
+                            </h5>
+                            <a href="{% url 'projets:resultat_create' realisation.pk %}" 
+                               class="btn btn-sm btn-success">
+                                <i class="bi bi-plus-circle me-1"></i> Enregistrer
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            {% if resultats %}
+                            <div class="row g-3">
+                                {% for r in resultats %}
+                                <div class="col-md-6">
+                                    <div class="card border {% if r.conforme %}border-success{% else %}border-danger{% endif %} h-100">
+                                        <div class="card-header bg-white">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <strong>
+                                                    {% if r.type_resultat == 'ESSAI_BETON' %}🧪
+                                                    {% elif r.type_resultat == 'ESSAI_SOL' %}🏔️
+                                                    {% elif r.type_resultat == 'CONTROLE_QUALITE' %}✅
+                                                    {% elif r.type_resultat == 'PV_RECEPTION' %}📋
+                                                    {% elif r.type_resultat == 'RAPPORT_TECHNIQUE' %}📄
+                                                    {% else %}📝{% endif %}
+                                                    {{ r.titre }}
+                                                </strong>
+                                                {% if r.conforme %}
+                                                    <span class="conforme-yes">
+                                                        <i class="bi bi-check-circle"></i> Conforme
+                                                    </span>
+                                                {% else %}
+                                                    <span class="conforme-no">
+                                                        <i class="bi bi-x-circle"></i> Non conforme
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <small class="text-muted d-block mb-2">
+                                                <i class="bi bi-calendar me-1"></i>
+                                                {{ r.date_resultat|date:"d/m/Y" }}
+                                                {% if r.laboratoire %}
+                                                    <span class="mx-1">•</span>
+                                                    <i class="bi bi-building me-1"></i>{{ r.laboratoire }}
+                                                {% endif %}
+                                            </small>
+                                            {% if r.description %}
+                                                <p class="small mb-2">{{ r.description|truncatechars:100 }}</p>
+                                            {% endif %}
+                                            {% if r.valeurs_mesurees %}
+                                                <div class="small">
+                                                    <strong>Valeurs mesurées :</strong>
+                                                    <ul class="mb-0 mt-1">
+                                                        {% for key, value in r.valeurs_mesurees.items %}
+                                                            <li><code>{{ key }}</code> : {{ value }}</li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                </div>
+                                            {% endif %}
+                                            {% if not r.conforme and r.ecart_constate %}
+                                                <div class="alert alert-danger small mt-2 mb-0 py-1 px-2">
+                                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                                    {{ r.ecart_constate|truncatechars:80 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        {% if r.document_joint %}
+                                        <div class="card-footer bg-white">
+                                            <a href="{{ r.document_joint.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-download me-1"></i> Document
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="empty-state">
+                                <i class="bi bi-clipboard-check d-block"></i>
+                                <h5>Aucun résultat enregistré</h5>
+                                <a href="{% url 'projets:resultat_create' realisation.pk %}" 
+                                   class="btn btn-success">
+                                    <i class="bi bi-plus-circle me-1"></i> Enregistrer un résultat
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ======================================== -->
+                <!-- TAB 5: Liens Achat (BC) -->
+                <!-- ======================================== -->
+                <div class="tab-pane fade" id="tab-achats">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-cart text-secondary me-2"></i>
+                                Liens Achats (Bons de Commande)
+                            </h5>
+                            <a href="{% url 'projets:lien_achat_create' realisation.pk %}" 
+                               class="btn btn-sm btn-secondary">
+                                <i class="bi bi-plus-circle me-1"></i> Ajouter
+                            </a>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if liens_achat %}
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>N° BC</th>
+                                            <th>Fournisseur</th>
+                                            <th style="width:100px;">Date</th>
+                                            <th style="width:120px;" class="text-end">Montant prévu</th>
+                                            <th style="width:120px;" class="text-end">Montant réel</th>
+                                            <th style="width:130px;">Statut</th>
+                                            <th style="width:100px;">Livraison</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for l in liens_achat %}
+                                        <tr>
+                                            <td>
+                                                <strong class="text-primary">
+                                                    <i class="bi bi-receipt me-1"></i>{{ l.numero_bc }}
+                                                </strong>
+                                            </td>
+                                            <td>
+                                                {% if l.fournisseur %}
+                                                    <i class="bi bi-building text-muted me-1"></i>
+                                                    {{ l.fournisseur }}
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <small>{{ l.date_bc|date:"d/m/Y"|default:"-" }}</small>
+                                            </td>
+                                            <td class="text-end">{{ l.montant_prevu|floatformat:3 }}</td>
+                                            <td class="text-end">
+                                                <strong>{{ l.montant_reel|floatformat:3 }}</strong>
+                                            </td>
+                                            <td>
+                                                {% if l.statut_livraison == 'COMMANDE' %}
+                                                    <span class="badge bg-secondary">📋 Commandé</span>
+                                                {% elif l.statut_livraison == 'EN_LIVRAISON' %}
+                                                    <span class="badge bg-info">🚚 En livraison</span>
+                                                {% elif l.statut_livraison == 'LIVRE' %}
+                                                    <span class="badge bg-success">✅ Livré</span>
+                                                {% elif l.statut_livraison == 'RETARD' %}
+                                                    <span class="badge bg-warning text-dark">⚠️ Retard</span>
+                                                {% elif l.statut_livraison == 'ANNULE' %}
+                                                    <span class="badge bg-danger">❌ Annulé</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if l.ecart_livraison_jours is not None %}
+                                                    {% if l.ecart_livraison_jours > 0 %}
+                                                        <span class="impact-positive">
+                                                            +{{ l.ecart_livraison_jours }} j
+                                                        </span>
+                                                    {% elif l.ecart_livraison_jours < 0 %}
+                                                        <span class="impact-negative">
+                                                            {{ l.ecart_livraison_jours }} j
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="impact-neutral">À temps</span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">-</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="empty-state">
+                                <i class="bi bi-cart d-block"></i>
+                                <h5>Aucun lien achat enregistré</h5>
+                                <a href="{% url 'projets:lien_achat_create' realisation.pk %}" 
+                                   class="btn btn-secondary">
+                                    <i class="bi bi-plus-circle me-1"></i> Ajouter un lien achat
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

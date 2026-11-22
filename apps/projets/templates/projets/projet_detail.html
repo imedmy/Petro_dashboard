@@ -1,0 +1,945 @@
+{% extends 'base.html' %}
+{% load static i18n projet_extras %}
+
+{% block title %}{{ projet.reference }} - {{ projet.nom }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .info-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border-left: 4px solid;
+    }
+    .info-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,.08);
+    }
+    .info-card.statut    { border-left-color: #198754; }
+    .info-card.montant   { border-left-color: #0d6efd; }
+    .info-card.avancement{ border-left-color: #ffc107; }
+    .info-card.chef      { border-left-color: #6f42c1; }
+    
+    .nav-tabs .nav-link {
+        color: #495057;
+        font-weight: 500;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 0.75rem 1.25rem;
+    }
+    .nav-tabs .nav-link:hover {
+        border-bottom-color: #dee2e6;
+        color: #0d6efd;
+    }
+    .nav-tabs .nav-link.active {
+        color: #0d6efd;
+        border-bottom-color: #0d6efd;
+        background: transparent;
+    }
+    
+    .mini-stat {
+        text-align: center;
+        padding: 1rem 0.5rem;
+        background: #f8f9fa;
+        border-radius: 0.5rem;
+        transition: background 0.2s;
+    }
+    .mini-stat:hover {
+        background: #e9ecef;
+    }
+    .mini-stat .value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    .mini-stat .label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        margin-top: 0.5rem;
+    }
+    
+    .project-header {
+        background: linear-gradient(135deg, #0d6efd 0%, #0dcaf0 100%);
+        color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .project-header h2 {
+        color: white;
+        margin-bottom: 0.25rem;
+    }
+    .project-header .reference {
+        opacity: 0.9;
+        font-size: 0.9rem;
+    }
+    
+    .activity-item {
+        padding: 0.75rem;
+        border-left: 3px solid #0d6efd;
+        background: #f8f9fa;
+        border-radius: 0 0.25rem 0.25rem 0;
+        margin-bottom: 0.5rem;
+        transition: background 0.2s;
+    }
+    .activity-item:hover {
+        background: #e9ecef;
+    }
+    
+    .retard-badge {
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.6; }
+        100% { opacity: 1; }
+    }
+
+    /* ✅ تنسيقات جديدة لتبويب التنفيذ */
+    .execution-action-btn {
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+    .execution-action-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_list' %}">
+                    <i class="bi bi-kanban"></i> Projets
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+                {{ projet.reference }}
+            </li>
+        </ol>
+    </nav>
+
+    <!-- Project Header -->
+    <div class="project-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="reference mb-1">
+                    <i class="bi bi-hash"></i> {{ projet.reference }}
+                    <span class="mx-2">•</span>
+                    <i class="bi bi-tag"></i> {{ projet.type_projet.libelle }}
+                    {% if projet.lieu %}
+                        <span class="mx-2">•</span>
+                        <i class="bi bi-geo-alt"></i> {{ projet.lieu }}
+                    {% endif %}
+                </div>
+                <h2>{{ projet.nom }}</h2>
+                {% if projet.description %}
+                    <p class="mb-0 opacity-75">
+                        {{ projet.description|truncatechars:150 }}
+                    </p>
+                {% endif %}
+            </div>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <a href="{% url 'projets:projet_update' projet.pk %}" 
+                   class="btn btn-light">
+                    <i class="bi bi-pencil me-1"></i> Modifier
+                </a>
+                <a href="{% url 'projets:projet_delete' projet.pk %}" 
+                   class="btn btn-outline-light ms-1">
+                    <i class="bi bi-trash me-1"></i> Désactiver
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card info-card statut shadow-sm h-100">
+                <div class="card-body">
+                    <small class="text-muted text-uppercase d-block">Statut</small>
+                    <div class="mt-2">
+                        {% if projet.statut == 'EN_COURS' %}
+                            <span class="badge bg-success fs-6">
+                                <i class="bi bi-play-circle-fill me-1"></i>En cours
+                            </span>
+                        {% elif projet.statut == 'PLANIFIE' %}
+                            <span class="badge bg-secondary fs-6">
+                                <i class="bi bi-clock-fill me-1"></i>Planifié
+                            </span>
+                        {% elif projet.statut == 'SUSPENDU' %}
+                            <span class="badge bg-warning text-dark fs-6">
+                                <i class="bi bi-pause-circle-fill me-1"></i>Suspendu
+                            </span>
+                        {% elif projet.statut == 'ACHEVE' %}
+                            <span class="badge bg-info fs-6">
+                                <i class="bi bi-check-circle-fill me-1"></i>Achevé
+                            </span>
+                        {% elif projet.statut == 'RESILIE' %}
+                            <span class="badge bg-danger fs-6">
+                                <i class="bi bi-x-circle-fill me-1"></i>Résilié
+                            </span>
+                        {% endif %}
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        Priorité: 
+                        <span class="badge bg-{{ projet.priorite|priorite_badge }}">
+                            {{ projet.get_priorite_display }}
+                        </span>
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card info-card montant shadow-sm h-100">
+                <div class="card-body">
+                    <small class="text-muted text-uppercase d-block">Montant final</small>
+                    <div class="h4 mb-0 mt-1 fw-bold text-primary">
+                        {{ projet.montant_final|floatformat:3 }}
+                        <small class="text-muted">{{ projet.devise }}</small>
+                    </div>
+                    <div class="small text-muted mt-2">
+                        <div class="d-flex justify-content-between">
+                            <span>Initial:</span>
+                            <span>{{ projet.montant_initial|floatformat:3 }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Avenants:</span>
+                            <span class="text-success">+{{ projet.montant_avenants|floatformat:3 }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card info-card avancement shadow-sm h-100">
+                <div class="card-body">
+                    <small class="text-muted text-uppercase d-block">Avancement global</small>
+                    <div class="d-flex align-items-center mt-2">
+                        <div class="progress flex-grow-1 me-2" style="height: 14px;">
+                            <div class="progress-bar 
+                                {% if projet.pourcentage_avancement >= 100 %}bg-success
+                                {% elif projet.pourcentage_avancement >= 75 %}bg-primary
+                                {% elif projet.pourcentage_avancement >= 50 %}bg-info
+                                {% elif projet.pourcentage_avancement >= 25 %}bg-warning
+                                {% else %}bg-danger{% endif %}"
+                                style="width: {{ projet.pourcentage_avancement }}%">
+                            </div>
+                        </div>
+                        <strong class="fs-5">{{ projet.pourcentage_avancement|floatformat:0 }}%</strong>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        <i class="bi bi-calendar-event"></i>
+                        {{ projet.date_debut_prevue|date:"d/m/Y"|default:"-" }}
+                        <i class="bi bi-arrow-right mx-1"></i>
+                        {% if projet.date_fin_prevue|is_retarde %}
+                            <span class="text-danger retard-badge">
+                                {{ projet.date_fin_prevue|date:"d/m/Y" }}
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                            </span>
+                        {% else %}
+                            {{ projet.date_fin_prevue|date:"d/m/Y"|default:"-" }}
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card info-card chef shadow-sm h-100">
+                <div class="card-body">
+                    <small class="text-muted text-uppercase d-block">Chef de projet</small>
+                    <div class="mt-1 fw-bold">
+                        {% if projet.chef_projet %}
+                            <i class="bi bi-person-circle text-primary"></i>
+                            {{ projet.chef_projet.get_full_name|default:projet.chef_projet.username }}
+                        {% else %}
+                            <span class="text-muted">
+                                <i class="bi bi-person-x"></i> Non assigné
+                            </span>
+                        {% endif %}
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        <i class="bi bi-building"></i>
+                        MO: {{ projet.maitre_ouvrage.raison_sociale|truncatechars:25 }}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-3" id="projetTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="structure-tab" data-bs-toggle="tab" 
+                    data-bs-target="#tab-structure" type="button" role="tab">
+                <i class="bi bi-diagram-3 me-1"></i> Structure
+                <span class="badge bg-secondary ms-1">{{ stats.lots_count }}</span>
+            </button>
+        </li>
+        <!-- ✅ تبويب جديد: Exécution -->
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="execution-tab" data-bs-toggle="tab" 
+                    data-bs-target="#tab-execution" type="button" role="tab">
+                <i class="bi bi-play-circle me-1"></i> Exécution
+                <span class="badge bg-info ms-1">{{ stats.realisations_count|default:0 }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="finances-tab" data-bs-toggle="tab" 
+                    data-bs-target="#tab-finances" type="button" role="tab">
+                <i class="bi bi-cash-stack me-1"></i> Finances
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="admin-tab" data-bs-toggle="tab" 
+                    data-bs-target="#tab-admin" type="button" role="tab">
+                <i class="bi bi-journal-text me-1"></i> Administratif
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="docs-tab" data-bs-toggle="tab" 
+                    data-bs-target="#tab-docs" type="button" role="tab">
+                <i class="bi bi-folder me-1"></i> Documents
+                <span class="badge bg-secondary ms-1">{{ stats.documents_count }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="ressources-tab" data-bs-toggle="tab" 
+                    data-bs-target="#tab-ressources" type="button" role="tab">
+                <i class="bi bi-people me-1"></i> Ressources
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="projetTabsContent">
+        
+        <!-- Tab: Structure -->
+        <div class="tab-pane fade show active" id="tab-structure" role="tabpanel">
+            <!-- Mini Stats -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="mini-stat">
+                        <div class="value text-primary">{{ stats.lots_count }}</div>
+                        <div class="label">Lots</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mini-stat">
+                        <div class="value text-info">{{ stats.ouvrages_count }}</div>
+                        <div class="label">Ouvrages</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mini-stat">
+                        <div class="value text-warning">{{ stats.taches_count }}</div>
+                        <div class="label">Tâches</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mini-stat">
+                        <div class="value text-success">{{ stats.taches_terminees }}</div>
+                        <div class="label">Terminées</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lots Table -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-box-seam me-2 text-primary"></i>
+                        Lots du projet
+                    </h5>
+                    <a href="{% url 'projets:lot_create' projet.pk %}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i> Ajouter un lot
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 80px;">N°</th>
+                                    <th>Désignation</th>
+                                    <th style="width: 150px;">Montant</th>
+                                    <th style="width: 200px;">Avancement</th>
+                                    <th style="width: 120px;">Statut</th>
+                                    <th style="width: 100px;" class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lot in lots %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-primary">
+                                            Lot {{ lot.numero }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'projets:lot_detail' lot.pk %}" 
+                                           class="text-decoration-none fw-semibold">
+                                            {{ lot.designation }}
+                                        </a>
+                                        {% if lot.description %}
+                                            <div class="small text-muted">
+                                                {{ lot.description|truncatechars:60 }}
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="fw-semibold">
+                                        {{ lot.montant|floatformat:3 }}
+                                        <small class="text-muted">TND</small>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress flex-grow-1 me-2" style="height: 8px;">
+                                                <div class="progress-bar 
+                                                    {% if lot.pourcentage_avancement >= 100 %}bg-success
+                                                    {% elif lot.pourcentage_avancement >= 50 %}bg-primary
+                                                    {% else %}bg-warning{% endif %}"
+                                                    style="width: {{ lot.pourcentage_avancement }}%"></div>
+                                            </div>
+                                            <small class="fw-bold">{{ lot.pourcentage_avancement|floatformat:0 }}%</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ lot.statut|stat_badge }}">
+                                            {{ lot.get_statut_display }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{% url 'projets:lot_detail' lot.pk %}" 
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="Voir" data-bs-toggle="tooltip">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted">
+                                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                        Aucun lot défini
+                                        <div class="mt-2">
+                                            <a href="{% url 'projets:lot_create' projet.pk %}" class="btn btn-sm btn-primary">
+                                                <i class="bi bi-plus-circle me-1"></i> Créer le premier lot
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ✅ Tab: Exécution (جديد) -->
+        <div class="tab-pane fade" id="tab-execution" role="tabpanel">
+            <!-- Mini Stats -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="mini-stat">
+                        <div class="value text-primary">{{ stats.realisations_count|default:0 }}</div>
+                        <div class="label">Réalisations</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mini-stat">
+                        <div class="value text-info">{{ stats.realisations_en_cours|default:0 }}</div>
+                        <div class="label">En cours</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mini-stat">
+                        <div class="value text-success">{{ stats.realisations_terminees|default:0 }}</div>
+                        <div class="label">Terminées</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mini-stat">
+                        <div class="value text-warning">{{ stats.realisations_cout_total|default:0|floatformat:3 }}</div>
+                        <div class="label">Coût total (TND)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions principales -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <a href="{% url 'projets:realisation_list' projet.pk %}" class="btn btn-outline-primary w-100 py-3 d-flex flex-column align-items-center justify-content-center execution-action-btn">
+                        <i class="bi bi-list-check fs-2 mb-2"></i>
+                        <span class="fw-bold">Voir toutes les réalisations</span>
+                        <small class="text-muted">Détails, Consommations, Résultats</small>
+                    </a>
+                </div>
+                <div class="col-md-6">
+                    <a href="{% url 'projets:realisation_create' projet.pk %}" class="btn btn-primary w-100 py-3 d-flex flex-column align-items-center justify-content-center execution-action-btn">
+                        <i class="bi bi-plus-circle fs-2 mb-2"></i>
+                        <span class="fw-bold">Nouvelle réalisation</span>
+                        <small class="text-white-50">Ajouter un suivi d'exécution</small>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Catégories de suivi -->
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm text-center p-3 execution-action-btn">
+                        <i class="bi bi-check2-square text-primary fs-3 mb-2"></i>
+                        <h6 class="mb-1">Détails techniques</h6>
+                        <small class="text-muted">Achats, Travaux, Locations</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm text-center p-3 execution-action-btn">
+                        <i class="bi bi-truck text-warning fs-3 mb-2"></i>
+                        <h6 class="mb-1">Logistique</h6>
+                        <small class="text-muted">Événements, Retards, Engins</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm text-center p-3 execution-action-btn">
+                        <i class="bi bi-fuel-pump text-danger fs-3 mb-2"></i>
+                        <h6 class="mb-1">Consommations</h6>
+                        <small class="text-muted">Matériaux, Carburant, Main d'oeuvre</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm text-center p-3 execution-action-btn">
+                        <i class="bi bi-clipboard-check text-success fs-3 mb-2"></i>
+                        <h6 class="mb-1">Résultats</h6>
+                        <small class="text-muted">Contrôles qualité, PV, Essais</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Finances -->
+        <div class="tab-pane fade" id="tab-finances" role="tabpanel">
+            <div class="row g-3">
+                <!-- Contrat -->
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white d-flex justify-content-between">
+                            <h5 class="mb-0">
+                                <i class="bi bi-file-earmark-text me-2 text-primary"></i>
+                                Contrat
+                            </h5>
+                            <a href="{% url 'projets:contrat_create' projet.pk %}" 
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil me-1"></i>
+                                {% if projet.contrat %}Modifier{% else %}Créer{% endif %}
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            {% if projet.contrat %}
+                                <table class="table table-sm table-borderless mb-0">
+                                    <tr>
+                                        <td class="text-muted">Numéro:</td>
+                                        <td class="fw-semibold">{{ projet.contrat.numero }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Type:</td>
+                                        <td>{{ projet.contrat.get_type_contrat_display }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Date signature:</td>
+                                        <td>{{ projet.contrat.date_signature|date:"d/m/Y" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Montant:</td>
+                                        <td class="fw-bold text-primary">
+                                            {{ projet.contrat.montant_initial|floatformat:3 }} TND
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Délai:</td>
+                                        <td>{{ projet.contrat.delai_jours }} jours</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">Retenue garantie:</td>
+                                        <td>{{ projet.contrat.retenue_garantie_pourcentage }}%</td>
+                                    </tr>
+                                </table>
+                            {% else %}
+                                <div class="text-center py-4 text-muted">
+                                    <i class="bi bi-file-earmark-x fs-1 d-block mb-2"></i>
+                                    <p class="mb-2">Aucun contrat associé</p>
+                                    <a href="{% url 'projets:contrat_create' projet.pk %}" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-plus-circle me-1"></i> Créer un contrat
+                                    </a>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Décomptes & Avenants -->
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-cash-stack me-2 text-success"></i>
+                                Suivi financier
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <div class="mini-stat">
+                                        <div class="value text-info">{{ stats.decomptes_count }}</div>
+                                        <div class="label">Décomptes</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="mini-stat">
+                                        <div class="value text-warning">{{ stats.avenants_count }}</div>
+                                        <div class="label">Avenants</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="mini-stat">
+                                        <div class="value text-danger">{{ stats.garanties_count }}</div>
+                                        <div class="label">Garanties</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="mini-stat">
+                                        <div class="value text-success">{{ projet.factures_extra.count }}</div>
+                                        <div class="label">Fact. Extra</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-grid gap-2 mt-3">
+                                <a href="{% url 'projets:decompte_list' projet.pk %}" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-list-ul me-1"></i> Voir les décomptes
+                                </a>
+                                <a href="{% url 'projets:decompte_create' projet.pk %}" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-plus-circle me-1"></i> Nouveau décompte
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Administratif -->
+        <div class="tab-pane fade" id="tab-admin" role="tabpanel">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm h-100 text-center">
+                        <div class="card-body">
+                            <i class="bi bi-people-fill fs-1 text-primary"></i>
+                            <h5 class="mt-2">Réunions</h5>
+                            <div class="h3">{{ stats.reunions_count }}</div>
+                            <a href="{% url 'projets:reunion_create' projet.pk %}" 
+                               class="btn btn-sm btn-outline-primary mt-2">
+                                <i class="bi bi-plus-circle me-1"></i> Nouvelle
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm h-100 text-center">
+                        <div class="card-body">
+                            <i class="bi bi-envelope-fill fs-1 text-success"></i>
+                            <h5 class="mt-2">Correspondances</h5>
+                            <div class="h3">{{ stats.correspondances_count }}</div>
+                            <a href="{% url 'projets:correspondance_create' projet.pk %}" 
+                               class="btn btn-sm btn-outline-success mt-2">
+                                <i class="bi bi-plus-circle me-1"></i> Nouvelle
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm h-100 text-center">
+                        <div class="card-body">
+                            <i class="bi bi-file-earmark-text fs-1 text-info"></i>
+                            <h5 class="mt-2">Comptes rendus</h5>
+                            <div class="h3">{{ projet.comptes_rendus.count }}</div>
+                            <a href="{% url 'projets:compte_rendu_create' projet.pk %}" 
+                               class="btn btn-sm btn-outline-info mt-2">
+                                <i class="bi bi-plus-circle me-1"></i> Nouveau
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm h-100 text-center">
+                        <div class="card-body">
+                            <i class="bi bi-box-seam-fill fs-1 text-warning"></i>
+                            <h5 class="mt-2">Livrables</h5>
+                            <div class="h3">{{ projet.livrables.count }}</div>
+                            <a href="{% url 'projets:livrable_create' projet.pk %}" 
+                               class="btn btn-sm btn-outline-warning mt-2">
+                                <i class="bi bi-plus-circle me-1"></i> Nouveau
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions supplémentaires -->
+            <div class="row g-3 mt-2">
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body">
+                            <h6 class="text-muted mb-3">
+                                <i class="bi bi-gear-fill me-1"></i> Actions administratives
+                            </h6>
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'projets:suspension_create' projet.pk %}" 
+                                   class="btn btn-outline-warning">
+                                    <i class="bi bi-pause-circle me-1"></i> Suspendre le projet
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body">
+                            <h6 class="text-muted mb-3">
+                                <i class="bi bi-shield-fill me-1"></i> Garanties
+                            </h6>
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'projets:garantie_create' projet.pk %}" 
+                                   class="btn btn-outline-danger">
+                                    <i class="bi bi-shield-plus me-1"></i> Nouvelle garantie
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Documents -->
+        <div class="tab-pane fade" id="tab-docs" role="tabpanel">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between">
+                    <h5 class="mb-0">
+                        <i class="bi bi-folder-fill me-2 text-info"></i>
+                        Documents GED
+                    </h5>
+                    <a href="{% url 'projets:ged_upload' projet.pk %}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-upload me-1"></i> Upload document
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if activites_recentes %}
+                        <div class="list-group">
+                            {% for doc in activites_recentes %}
+                            <div class="activity-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <i class="bi {{ doc.fichier.name|file_icon }} me-2 text-primary fs-5"></i>
+                                            <strong>{{ doc.titre }}</strong>
+                                            <span class="badge bg-secondary ms-2">
+                                                {{ doc.get_categorie_display }}
+                                            </span>
+                                            <span class="badge bg-light text-dark ms-1">
+                                                v{{ doc.version_courante }}
+                                            </span>
+                                        </div>
+                                        {% if doc.description %}
+                                            <small class="text-muted d-block">
+                                                {{ doc.description|truncatechars:100 }}
+                                            </small>
+                                        {% endif %}
+                                        <small class="text-muted">
+                                            <i class="bi bi-person"></i> 
+                                            {{ doc.uploaded_by.get_full_name|default:doc.uploaded_by.username }}
+                                            <span class="mx-1">•</span>
+                                            <i class="bi bi-clock"></i>
+                                            {{ doc.created_at|date:"d/m/Y H:i" }}
+                                            <span class="mx-1">•</span>
+                                            <i class="bi bi-file-earmark"></i>
+                                            {{ doc.taille|file_size }}
+                                        </small>
+                                    </div>
+                                    <a href="{{ doc.fichier.url }}" target="_blank" 
+                                       class="btn btn-sm btn-outline-primary"
+                                       title="Télécharger">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% if stats.documents_count > 5 %}
+                            <div class="text-center mt-3">
+                                <a href="{% url 'projets:ged_list' projet.pk %}" class="btn btn-outline-secondary">
+                                    Voir tous les documents ({{ stats.documents_count }})
+                                    <i class="bi bi-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-folder-x fs-1 d-block mb-2"></i>
+                            <p class="mb-2">Aucun document uploadé</p>
+                            <a href="{% url 'projets:ged_upload' projet.pk %}" class="btn btn-primary">
+                                <i class="bi bi-upload me-1"></i> Upload le premier document
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Ressources -->
+        <div class="tab-pane fade" id="tab-ressources" role="tabpanel">
+            <div class="row g-3">
+                <!-- RH -->
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white d-flex justify-content-between">
+                            <h5 class="mb-0">
+                                <i class="bi bi-people-fill me-2 text-primary"></i>
+                                Ressources Humaines
+                            </h5>
+                            <a href="{% url 'projets:affectation_rh_create' projet.pk %}" 
+                               class="btn btn-sm btn-primary">
+                                <i class="bi bi-person-plus me-1"></i> Affecter
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            {% with affectations=projet.affectations_rh.all %}
+                                {% if affectations %}
+                                    <div class="mb-3">
+                                        <small class="text-muted">
+                                            <strong>{{ affectations.count }}</strong> affectation(s)
+                                            • <strong>{{ projet.affectations_rh.values.personnel.distinct.count }}</strong> personne(s)
+                                        </small>
+                                    </div>
+                                    <div class="list-group list-group-flush">
+                                        {% for aff in affectations|slice:":5" %}
+                                        <div class="list-group-item px-0">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <i class="bi bi-person-circle text-primary me-1"></i>
+                                                    <strong>{{ aff.personnel.nom }} {{ aff.personnel.prenom }}</strong>
+                                                    {% if aff.role %}
+                                                        <span class="badge bg-light text-dark ms-1">{{ aff.role }}</span>
+                                                    {% endif %}
+                                                </div>
+                                                <small class="text-muted">
+                                                    {{ aff.pourcentage_temps }}%
+                                                </small>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <div class="text-center py-4 text-muted">
+                                        <i class="bi bi-people fs-1 d-block mb-2"></i>
+                                        <p class="mb-0">Aucune affectation RH</p>
+                                    </div>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Matériel -->
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-white d-flex justify-content-between">
+                            <h5 class="mb-0">
+                                <i class="bi bi-truck me-2 text-success"></i>
+                                Matériel mobilisé
+                            </h5>
+                            <a href="{% url 'projets:mobilisation_materiel_create' projet.pk %}" 
+                               class="btn btn-sm btn-primary">
+                                <i class="bi bi-plus-circle me-1"></i> Mobiliser
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            {% with mobilisations=projet.mobilisations_materiel.all %}
+                                {% if mobilisations %}
+                                    <div class="mb-3">
+                                        <small class="text-muted">
+                                            <strong>{{ mobilisations.count }}</strong> mobilisation(s)
+                                        </small>
+                                    </div>
+                                    <div class="list-group list-group-flush">
+                                        {% for mob in mobilisations|slice:":5" %}
+                                        <div class="list-group-item px-0">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    {% if mob.engin %}
+                                                        <i class="bi bi-truck text-primary me-1"></i>
+                                                        {{ mob.engin.libelle }}
+                                                    {% elif mob.equipement %}
+                                                        <i class="bi bi-gear text-success me-1"></i>
+                                                        {{ mob.equipement.libelle }}
+                                                    {% endif %}
+                                                    <span class="badge bg-{{ mob.type_mobilisation|yesno:'primary,warning' }} ms-1">
+                                                        {{ mob.get_type_mobilisation_display }}
+                                                    </span>
+                                                </div>
+                                                <small class="text-muted">
+                                                    {{ mob.heures_utilisees }}h
+                                                </small>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <div class="text-center py-4 text-muted">
+                                        <i class="bi bi-truck fs-1 d-block mb-2"></i>
+                                        <p class="mb-0">Aucun matériel mobilisé</p>
+                                    </div>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Activation des tooltips Bootstrap
+        var tooltipTriggerList = [].slice.call(
+            document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        );
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // Persistance de l'onglet actif dans l'URL
+        const hash = window.location.hash;
+        if (hash) {
+            const tabTrigger = new bootstrap.Tab(
+                document.querySelector(`button[data-bs-target="${hash}"]`)
+            );
+            if (tabTrigger) tabTrigger.show();
+        }
+
+        // Mise à jour de l'URL lors du changement d'onglet
+        document.querySelectorAll('#projetTabs button').forEach(tab => {
+            tab.addEventListener('shown.bs.tab', (e) => {
+                window.location.hash = e.target.getAttribute('data-bs-target');
+            });
+        });
+    });
+</script>
+{% endblock %}

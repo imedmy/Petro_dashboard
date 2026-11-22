@@ -1,0 +1,77 @@
+<!-- templates/core/engin_form.html -->
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ title }}</h2>
+
+    <form method="post" class="needs-validation" novalidate>
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">{{ form.libelle.label }}</label>
+                {{ form.libelle }}
+                {% if form.libelle.errors %}
+                    <div class="text-danger">{{ form.libelle.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.type_engin.label }}</label>
+                {{ form.type_engin }}
+                {% if form.type_engin.errors %}
+                    <div class="text-danger">{{ form.type_engin.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.numero_serie.label }}</label>
+                {{ form.numero_serie }}
+                {% if form.numero_serie.errors %}
+                    <div class="text-danger">{{ form.numero_serie.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.immatriculation.label }}</label>
+                {{ form.immatriculation }}
+                {% if form.immatriculation.errors %}
+                    <div class="text-danger">{{ form.immatriculation.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.capacite_reservoir.label }}</label>
+                {{ form.capacite_reservoir }}
+                {% if form.capacite_reservoir.errors %}
+                    <div class="text-danger">{{ form.capacite_reservoir.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.type_carburant.label }}</label>
+                {{ form.type_carburant }}
+                {% if form.type_carburant.errors %}
+                    <div class="text-danger">{{ form.type_carburant.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.index_initial.label }}</label>
+                {{ form.index_initial }}
+                {% if form.index_initial.errors %}
+                    <div class="text-danger">{{ form.index_initial.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-12">
+                <div class="form-check">
+                    {{ form.actif }}
+                    <label class="form-check-label" for="{{ form.actif.id_for_label }}">
+                        {{ form.actif.label }}
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">{{ title }}</button>
+            <a href="{% url 'core:engin_list' %}" class="btn btn-secondary">Annuler</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

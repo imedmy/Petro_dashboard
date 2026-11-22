@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="p-4">
+    <h2>{% block title %}{% endblock %}</h2>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">{% trans "اسم المستخدم" %}</label>
+                <input type="text" name="username" class="form-control" value="{{ edit_user.username }}" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">{% trans "البريد الإلكتروني" %}</label>
+                <input type="email" name="email" class="form-control" value="{{ edit_user.email }}">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">{% trans "الاسم الأول" %}</label>
+                <input type="text" name="first_name" class="form-control" value="{{ edit_user.first_name }}">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">{% trans "الاسم الأخير" %}</label>
+                <input type="text" name="last_name" class="form-control" value="{{ edit_user.last_name }}">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">{% trans "الهاتف" %}</label>
+                <input type="text" name="phone" class="form-control" value="{{ edit_user.phone }}">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">{% trans "العنوان" %}</label>
+                <input type="text" name="address" class="form-control" value="{{ edit_user.address }}">
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="form-check">
+                    <input type="checkbox" name="is_active" class="form-check-input"
+                           {% if edit_user.is_active %}checked{% endif %}>
+                    <label class="form-check-label">{% trans "مستخدم نشط" %}</label>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="form-check">
+                    <input type="checkbox" name="is_staff" class="form-check-input"
+                           {% if edit_user.is_staff %}checked{% endif %}>
+                    <label class="form-check-label">{% trans "موظف (يستطيع الدخول للوحة الإدارة)" %}</label>
+                </div>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-success">{% trans "حفظ التغييرات" %}</button>
+        <a href="{% url 'core:user_list' %}" class="btn btn-secondary">{% trans "إلغاء" %}</a>
+    </form>
+</div>
+{% endblock %}

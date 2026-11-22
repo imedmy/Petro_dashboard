@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="p-4">
+    <h2><i class="bi bi-shield-lock"></i> إدارة الصلاحيات</h2>
+
+    <div class="row mt-4">
+        <!-- Master: اختيار المستخدم -->
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">المستخدمون</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="mb-3">
+                        <div class="input-group">
+                            <input type="text" name="q" class="form-control" placeholder="بحث..." value="{{ query }}">
+                            <button class="btn btn-outline-secondary" type="submit">بحث</button>
+                        </div>
+                    </form>
+
+                    <div class="list-group">
+                        {% for u in users %}
+                        <a href="?user_id={{ u.id }}{% if query %}&q={{ query }}{% endif %}"
+                           class="list-group-item list-group-item-action {% if selected_user and selected_user.id == u.id %}active{% endif %}">
+                            {{ u.username }}<br>
+                            <small>{{ u.get_full_name|default:"-" }}</small>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Details: تفاصيل الصلاحيات -->
+        <div class="col-md-8">
+            {% if selected_user %}
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">صلاحيات: {{ selected_user.username }}</h5>
+                    <button class="btn btn-sm btn-primary" onclick="openLookupPanel()">
+                        <i class="bi bi-plus"></i> إضافة صلاحية
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-striped mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>الصفحة (FR)</th>
+                                <th>الصفحة (AR)</th>
+                                <th>العرض</th>
+                                <th>الإضافة</th>
+                                <th>التعديل</th>
+                                <th>الحذف</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="permissions-table">
+                            {% for perm in permissions %}
+                            <tr data-id="{{ perm.id }}">
+                                <td>{{ perm.page.name_fr }}</td>
+                                <td>{{ perm.page.name_ar }}</td>
+                                <td>{% if perm.can_consulte %}✅{% else %}❌{% endif %}</td>
+                                <td>{% if perm.can_insert %}✅{% else %}❌{% endif %}</td>
+                                <td>{% if perm.can_update %}✅{% else %}❌{% endif %}</td>
+                                <td>{% if perm.can_delete %}✅{% else %}❌{% endif %}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-warning" onclick="editPermission(this)">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="deletePermission({{ perm.id }})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="7" class="text-center text-muted">لا توجد صلاحيات</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center text-muted mt-5">
+                <h4>اختر مستخدمًا من القائمة لعرض صلاحياته</h4>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- نافذة اختيار الصفحة (Lookup Panel) -->
+<div class="modal fade" id="lookupModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">اختيار الصفحة</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" id="lookup-search" class="form-control" placeholder="بحث عن صفحة...">
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>الاسم (FR)</th>
+                                <th>الاسم (AR)</th>
+                                <th>اسم الرابط</th>
+                                <th>اختيار</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lookup-results">
+                            <!-- سيتم تعبئتها بالـ AJAX -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-secondary" onclick="resetLookup()">إعادة تهيئة</button>
+                <button type="button" class="btn btn-primary" onclick="confirmSelection()">موافق</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- نموذج مخفي لحفظ البيانات -->
+<input type="hidden" id="selected-page-id">
+<input type="hidden" id="editing-perm-id">
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let selectedPageId = null;
+let isEditing = false;
+
+// فتح نافذة اختيار الصفحة
+function openLookupPanel() {
+    isEditing = false;
+    selectedPageId = null;
+    document.getElementById('selected-page-id').value = '';
+    document.getElementById('lookup-search').value = '';
+    fetchPages();
+    new bootstrap.Modal(document.getElementById('lookupModal')).show();
+}
+
+// تعديل صلاحية
+function editPermission(button) {
+    const row = button.closest('tr');
+    const permId = row.dataset.id;
+    isEditing = true;
+    document.getElementById('editing-perm-id').value = permId;
+
+    // هنا يمكنك ملء النموذج بالقيم الحالية
+    // أو فتح نفس الـ Lookup مع القيم الحالية
+    openLookupPanel(); // مبسط
+}
+
+// جلب النتائج من API
+function fetchPages() {
+    const query = document.getElementById('lookup-search').value;
+    fetch(`{% url 'core:api_pages' %}?q=${query}`)
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.getElementById('lookup-results');
+            tbody.innerHTML = '';
+            data.forEach(page => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${page.name_fr}</td>
+                    <td>${page.name_ar}</td>
+                    <td>${page.url_name}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="selectPage(${page.id})">
+                            اختيار
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        });
+}
+
+// اختيار صفحة
+function selectPage(pageId) {
+    selectedPageId = pageId;
+    document.querySelectorAll('#lookup-results button').forEach(btn => {
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-outline-primary');
+    });
+    event.target.classList.remove('btn-outline-primary');
+    event.target.classList.add('btn-primary');
+}
+
+// تأكيد الاختيار
+function confirmSelection() {
+    if (!selectedPageId) {
+        alert('يجب اختيار صفحة');
+        return;
+    }
+
+    const userId = "{{ selected_user.id }}";
+    const formData = new FormData();
+    formData.append('user_id', userId);
+    formData.append('page_id', selectedPageId);
+    formData.append('can_consulte', document.querySelector(`#perm-${selectedPageId}-consulte`)?.checked || false);
+    formData.append('can_insert', document.querySelector(`#perm-${selectedPageId}-insert`)?.checked || false);
+    formData.append('can_update', document.querySelector(`#perm-${selectedPageId}-update`)?.checked || false);
+    formData.append('can_delete', document.querySelector(`#perm-${selectedPageId}-delete`)?.checked || false);
+
+    fetch('{% url "core:api_save_permission" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload(); // بسيط، يمكن تحسينه
+        }
+    });
+
+    bootstrap.Modal.getInstance(document.getElementById('lookupModal')).hide();
+}
+
+// حذف صلاحية
+function deletePermission(permId) {
+    if (confirm('هل أنت متأكد من حذف هذه الصلاحية؟')) {
+        fetch(`{% url "core:api_delete_permission" perm_id=0 %}`.replace('0', permId), {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.querySelector(`tr[data-id="${permId}"]`).remove();
+            }
+        });
+    }
+}
+
+// إعادة تهيئة البحث
+function resetLookup() {
+    document.getElementById('lookup-search').value = '';
+    fetchPages();
+}
+
+// استدعاء عند تحميل الصفحة
+document.getElementById('lookup-search').addEventListener('input', fetchPages);
+fetchPages();
+</script>
+{% endblock %}

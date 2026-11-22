@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Surveillance Base de Données{% endblock %}
+
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-server"></i> Surveillance des Sessions SQL Server</h2>
+        <button id="refreshBtn" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-repeat"></i> Actualiser
+        </button>
+    </div>
+
+    {% if queries %}
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i> 
+            {{ queries|length }} session(s) bloquante(s) détectée(s)!
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered">
+                <thead class="table-danger">
+                    <tr>
+                        <th>Session ID</th>
+                        <th>Session Bloquante</th>
+                        <th>Temps d'attente (ms)</th>
+                        <th>Type d'attente</th>
+                        <th>Requête</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for query in queries %}
+                    <tr>
+                        <td><strong>{{ query.0 }}</strong></td>
+                        <td>{{ query.1 }}</td>
+                        <td>{{ query.2 }}</td>
+                        <td><code>{{ query.3 }}</code></td>
+                        <td>
+                            <pre class="bg-light p-2 mb-0" style="max-height: 100px; overflow: auto; font-size: 0.85rem;">
+{{ query.4|default:"Requête non disponible" }}
+                            </pre>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-danger kill-btn" 
+                                    data-session-id="{{ query.0 }}"
+                                    title="Tuer la session {{ query.0 }}">
+                                <i class="bi bi-trash"></i> Tuer
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle"></i> 
+            Aucune session bloquante détectée. La base de données fonctionne normalement.
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modal de confirmation -->
+<div class="modal fade" id="killModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirmer la suppression</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Voulez-vous vraiment tuer la session <strong id="killSessionId">?</strong> ?</p>
+                <p class="text-danger">
+                    <i class="bi bi-exclamation-triangle"></i> 
+                    Cette action est irréversible et peut interrompre des opérations critiques.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" id="confirmKill">Tuer la session</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentSessionId = null;
+
+    // زر التحديث
+    document.getElementById('refreshBtn').addEventListener('click', function() {
+        location.reload();
+    });
+
+    // زر "Tuer"
+    document.querySelectorAll('.kill-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentSessionId = this.dataset.sessionId;
+            document.getElementById('killSessionId').textContent = currentSessionId;
+            const modal = new bootstrap.Modal(document.getElementById('killModal'));
+            modal.show();
+        });
+    });
+
+    // تأكيد القتل
+    document.getElementById('confirmKill').addEventListener('click', function() {
+        if (!currentSessionId) return;
+
+        fetch('{% url "core:kill_session" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+            body: JSON.stringify({ session_id: currentSessionId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // إظهار رسالة نجاح
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fixed-top m-3';
+                alertDiv.style.zIndex = '2000';
+                alertDiv.innerHTML = `
+                    Session ${currentSessionId} tuée avec succès !
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.body.appendChild(alertDiv);
+                setTimeout(() => alertDiv.remove(), 3000);
+                
+                // إعادة التحميل بعد 1 ثانية
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                alert('Erreur: ' + (data.error || 'Impossible de tuer la session'));
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur de connexion au serveur');
+        });
+    });
+});
+</script>
+{% endblock %}

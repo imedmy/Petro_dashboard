@@ -1,0 +1,36 @@
+<!-- templates/core/equipement_form.html -->
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ title }}</h2>
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                {{ form.libelle.label_tag }}
+                {{ form.libelle }}
+            </div>
+            <div class="col-md-6">
+                {{ form.type_equipement.label_tag }}
+                {{ form.type_equipement }}
+            </div>
+            <div class="col-md-6">
+                {{ form.numero_serie.label_tag }}
+                {{ form.numero_serie }}
+            </div>
+            <div class="col-md-6">
+                {{ form.numero_bp.label_tag }}
+                {{ form.numero_bp }}
+            </div>
+            <div class="col-12">
+                <div class="form-check">
+                    {{ form.actif }}
+                    <label class="form-check-label" for="{{ form.actif.id_for_label }}">{{ form.actif.label }}</label>
+                </div>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary mt-3">{{ title }}</button>
+        <a href="{% url 'core:equipement_list' %}" class="btn btn-secondary mt-3">Annuler</a>
+    </form>
+</div>
+{% endblock %}

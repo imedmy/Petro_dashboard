@@ -1,0 +1,488 @@
+<!-- templates/core/avis_arrivee_detail.html -->
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Détails Avis d'Arrivée - {{ avis.numero_avis }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .card-header.bg-primary { background-color: #0d6efd !important; }
+  .card-header.bg-success { background-color: #198754 !important; }
+  .card-header.bg-warning { background-color: #ffc107 !important; color: #000 !important; }
+  .conformite-badge.en_attente_de_l_avis { background-color: #6c757d; color: white; }
+  .conformite-badge.conforme { background-color: #28a745; color: white; }
+  .conformite-badge.non_conforme { background-color: #dc3545; color: white; }
+  .conformite-badge.en_litige { background-color: #ffc107; color: #000; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+      <i class="bi bi-file-earmark-check"></i>
+      Avis d'Arrivée: <strong>{{ avis.numero_avis }}</strong>
+      {% if avis.numero_com %}
+        <small class="text-muted">(Bon: {{ avis.numero_com }})</small>
+      {% endif %}
+    </h2>
+    <div>
+      <a href="{% url 'core:avis_arrivee_list_page' %}" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Retour à la liste
+      </a>
+      <a href="{% url 'core:avis_arrivee_update_page' avis.pk %}" class="btn btn-warning">
+        <i class="bi bi-pencil"></i> Modifier l'avis
+      </a>
+    </div>
+  </div>
+
+  <!-- معلومات الإشعار -->
+  <div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+      <i class="bi bi-info-circle"></i> Informations de l'Avis
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4">
+          <p><strong>N° Avis:</strong> {{ avis.numero_avis }}</p>
+          <p><strong>Date Avis:</strong> {{ avis.date_avis|date:"d/m/Y" }}</p>
+          <p><strong>N° Bordereau:</strong> {{ avis.numero_bordereau|default:"-" }}</p>
+          <p><strong>BCT:</strong> {{ avis.bct|default:"-" }}</p>
+        </div>
+        <div class="col-md-4">
+          <p><strong>N° Bon de Commande:</strong> {{ avis.numero_com|default:"Non lié" }}</p>
+          <p><strong>Date Bon:</strong> {{ avis.dat_com|date:"d/m/Y"|default:"-" }}</p>
+          <p><strong>N° Facture:</strong> {{ avis.numero_facture|default:"-" }}</p>
+          <p><strong>N° BL:</strong> {{ avis.numero_bl|default:"-" }}</p>
+        </div>
+        <div class="col-md-4">
+          <p><strong>Observation:</strong></p>
+          <p class="mb-0">{{ avis.observation|linebreaksbr|default:"-" }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- تفاصيل الإشعار (البضائع) -->
+  <div class="card mb-4">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+      <span><i class="bi bi-list"></i> Détails des Articles ({{ details.count }})</span>
+      <button class="btn btn-sm btn-light" id="addDetailBtn" data-avis-id="{{ avis.pk }}">
+        <i class="bi bi-plus-circle"></i> Ajouter un article
+      </button>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover" id="detailsTable">
+          <thead class="table-dark">
+            <tr>
+              <th>ITEM</th>
+              <th>COD_ART</th>
+              <th>LIB_ART</th>
+              <th>QTE Commandée</th>
+              <th>QTE Réceptionnée *</th>
+              <th>UM Cmd</th>
+              <th>UM Rec</th>
+              <th>Conformité</th>
+              <th>Observation</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="detailsBody">
+            {% for d in details %}
+            <tr data-id="{{ d.id }}">
+              <td>{{ d.item }}</td>
+              <td>{{ d.cod_art }}</td>
+              <td>{{ d.lib_art|default:"-" }}</td>
+              <td>{{ d.qte_commande|floatformat:2|default:"-" }}</td>
+              <td>
+                <input type="number" step="0.01" class="form-control form-control-sm qte-rec-input"
+                       value="{{ d.qte_receptionnee }}" data-id="{{ d.id }}" required>
+              </td>
+              <td>{{ d.um_commande|default:"-" }}</td>
+              <td>
+                <input type="text" class="form-control form-control-sm um-rec-input"
+                       value="{{ d.um_reception|default:'' }}" data-id="{{ d.id }}">
+              </td>
+              <td>
+                <select class="form-select form-select-sm conformite-select" data-id="{{ d.id }}">
+                  <option value="en_attente_de_l_avis" {% if d.conformite == 'en_attente_de_l_avis' %}selected{% endif %}>En attente de l'avis</option>
+                  <option value="conforme" {% if d.conformite == 'conforme' %}selected{% endif %}>Conforme</option>
+                  <option value="non_conforme" {% if d.conformite == 'non_conforme' %}selected{% endif %}>Non Conforme</option>
+                  <option value="en_litige" {% if d.conformite == 'en_litige' %}selected{% endif %}>En Litige</option>
+                </select>
+              </td>
+              <td>
+                <textarea class="form-control form-control-sm observation-detail-input"
+                          rows="1"
+                          placeholder="Observation">{{ d.observation|default:'' }}</textarea>
+              </td>
+              <td>
+                <button class="btn btn-sm btn-warning save-detail-btn" data-id="{{ d.id }}">
+                  <i class="bi bi-save"></i>
+                </button>
+                <button class="btn btn-sm btn-danger delete-detail-btn" data-id="{{ d.id }}">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="10" class="text-center text-muted">Aucun détail</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- المرفقات -->
+  <div class="card">
+    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+      <span><i class="bi bi-paperclip"></i> Pièces Jointes</span>
+      <button class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#uploadPieceModal">
+        <i class="bi bi-upload"></i> Ajouter un fichier
+      </button>
+    </div>
+    <div class="card-body">
+      {% if avis.pieces_jointes.exists %}
+        <div class="row">
+          {% for pj in avis.pieces_jointes.all %}
+          <div class="col-md-6 col-lg-4 mb-3" data-piece-id="{{ pj.id }}">
+            <div class="card h-100">
+              <div class="card-body">
+                <h6 class="card-title">{{ pj.nom_original }}</h6>
+                <p class="text-muted small">{{ pj.description|default:"-" }}</p>
+                <a href="{{ pj.fichier.url }}" target="_blank" class="btn btn-sm btn-outline-primary mb-2">Voir</a>
+                <button class="btn btn-sm btn-outline-danger delete-piece" data-id="{{ pj.id }}">
+                  <i class="bi bi-trash"></i> Supprimer
+                </button>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-center text-muted">Aucune pièce jointe.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Modal رفع مرفق -->
+<div class="modal fade" id="uploadPieceModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="uploadPieceForm" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="avis_id" value="{{ avis.pk }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Uploader une pièce jointe</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Fichier *</label>
+            <input type="file" class="form-control" name="fichier" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <input type="text" class="form-control" name="description">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary">Uploader</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// === وظائف المرفقات ===
+document.getElementById('uploadPieceForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    fetch('{% url "core:upload_piece_jointe_avis" avis.pk %}', {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'},
+        body: formData
+    })
+    .then(() => location.reload())
+    .catch(err => {
+        alert('Erreur lors du téléchargement');
+        console.error(err);
+    });
+});
+
+document.querySelectorAll('.delete-piece').forEach(btn => {
+    btn.addEventListener('click', function() {
+        if (!confirm('Supprimer ce fichier ?')) return;
+        const pieceId = this.dataset.id;
+        fetch('{% url "core:delete_piece_jointe_avis" avis.pk 0 %}'.replace('/0/', `/${pieceId}/`), {
+            method: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token }}'}
+        })
+        .then(() => {
+            document.querySelector(`[data-piece-id="${pieceId}"]`).remove();
+        })
+        .catch(err => {
+            alert('Erreur');
+            console.error(err);
+        });
+    });
+});
+
+// === وظائف التفاصيل ===
+function escapeHtml(text) {
+    if (typeof text !== 'string') return text;
+    return text.replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '<', '>': '>', '"': '&quot;', "'": '&#039;'}[m]));
+}
+
+// حفظ تفصيل (للحالات الموجودة)
+document.querySelectorAll('.save-detail-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const id = this.dataset.id;
+        const row = document.querySelector(`tr[data-id="${id}"]`);
+        const qte = row.querySelector('.qte-rec-input').value;
+        const um = row.querySelector('.um-rec-input').value.trim();
+        const conformite = row.querySelector('.conformite-select').value;
+        const observation = row.querySelector('.observation-detail-input').value.trim();
+
+        if (!qte) {
+            alert("La quantité réceptionnée est obligatoire.");
+            return;
+        }
+
+        fetch('{% url "core:detail_avis_update" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+                id: id,
+                qte_receptionnee: qte,
+                um_reception: um,
+                conformite: conformite,
+                observation: observation
+            })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                alert("Détail mis à jour avec succès.");
+            } else {
+                alert("Erreur: " + (result.error || "inconnue"));
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Erreur réseau.");
+        });
+    });
+});
+
+// حذف تفصيل
+document.querySelectorAll('.delete-detail-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        if (!confirm('Supprimer ce détail ?')) return;
+        const id = this.dataset.id;
+        fetch('{% url "core:detail_avis_delete" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({ id: id })
+        })
+        .then(() => {
+            document.querySelector(`tr[data-id="${id}"]`).remove();
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Erreur réseau.");
+        });
+    });
+});
+
+// === إضافة سطر جديد (يدعم الإدخال الحر + اختيار من الطلبية) ===
+document.getElementById('addDetailBtn').addEventListener('click', async function() {
+    const avisId = {{ avis.pk }};
+    const numCom = "{{ avis.numero_com|default:'' }}";
+
+    // جلب قائمة ITEMS من الطلبية (نوع M فقط)
+    let itemOptions = [];
+    if (numCom) {
+        try {
+            const response = await fetch(`{% url 'core:api_items' %}?num_com=${encodeURIComponent(numCom)}`);
+            itemOptions = await response.json();
+        } catch (err) {
+            console.warn("Impossible de charger les articles de la commande");
+        }
+    }
+
+    const itemSelectHtml = itemOptions.length
+        ? itemOptions.map(item => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join('')
+        : '<option value="">Saisie libre</option>';
+
+    const newRow = document.createElement('tr');
+    newRow.innerHTML = `
+        <td>
+            <select class="form-select form-select-sm item-select" style="width: 100%;">
+                <option value="">Saisie libre</option>
+                ${itemSelectHtml}
+            </select>
+            <input type="text" class="form-control form-control-sm item-input" 
+                   placeholder="Tapez ITEM" style="display: none;" />
+        </td>
+        <td><input type="text" class="form-control form-control-sm cod-art-input" placeholder="COD_ART"></td>
+        <td><input type="text" class="form-control form-control-sm lib-art-input" placeholder="LIB_ART"></td>
+        <td><input type="number" step="0.01" class="form-control form-control-sm qte-cmd-input" placeholder="QTE Cmd"></td>
+        <td>
+            <input type="number" step="0.01" class="form-control form-control-sm qte-rec-input" placeholder="QTE *" required>
+        </td>
+        <td><input type="text" class="form-control form-control-sm um-cmd-input" placeholder="UM Cmd"></td>
+        <td><input type="text" class="form-control form-control-sm um-rec-input" placeholder="UM Rec"></td>
+        <td>
+            <select class="form-select form-select-sm conformite-select">
+                <option value="en_attente_de_l_avis" selected>En attente de l'avis</option>
+                <option value="conforme">Conforme</option>
+                <option value="non_conforme">Non Conforme</option>
+                <option value="en_litige">En Litige</option>
+            </select>
+        </td>
+        <td>
+            <textarea class="form-control form-control-sm observation-detail-input" 
+                      placeholder="Observation sur le détail" 
+                      rows="1"></textarea>
+        </td>
+        <td>
+            <button class="btn btn-sm btn-success save-new-detail-btn">
+                <i class="bi bi-check-circle"></i>
+            </button>
+            <button class="btn btn-sm btn-secondary cancel-new-detail-btn">
+                <i class="bi bi-x-circle"></i>
+            </button>
+        </td>
+    `;
+
+    document.getElementById('detailsBody').appendChild(newRow);
+
+    // التبديل بين الإدخال اليدوي والقائمة
+    const itemSelect = newRow.querySelector('.item-select');
+    const itemInput = newRow.querySelector('.item-input');
+    itemSelect.addEventListener('change', function() {
+        if (this.value === '') {
+            // عرض الإدخال اليدوي
+            itemSelect.style.display = 'none';
+            itemInput.style.display = 'block';
+            itemInput.focus();
+            // مسح الحقول عند التبديل
+            newRow.querySelector('.cod-art-input').value = '';
+            newRow.querySelector('.lib-art-input').value = '';
+            newRow.querySelector('.qte-cmd-input').value = '';
+            newRow.querySelector('.um-cmd-input').value = '';
+        } else {
+            // استخدام القيمة من القائمة
+            itemInput.value = this.value;
+            loadItemDetails(newRow, this.value);
+        }
+    });
+
+    // عند كتابة ITEM يدويًا
+    itemInput.addEventListener('blur', function() {
+        if (this.value.trim()) {
+            loadItemDetails(newRow, this.value.trim());
+        }
+    });
+
+    // دالة جلب تفاصيل البند
+    async function loadItemDetails(row, item) {
+        if (!numCom) return;
+        try {
+            const response = await fetch(`{% url 'core:api_item_qte_um' %}?num_com=${encodeURIComponent(numCom)}&item=${encodeURIComponent(item)}`);
+            const data = await response.json();
+            if (response.ok) {
+                row.querySelector('.cod-art-input').value = data.cod_art || '';
+                row.querySelector('.lib-art-input').value = data.lib_art || '';
+                row.querySelector('.qte-cmd-input').value = data.qte || '';
+                const umCmd = data.lib_um || '';
+                row.querySelector('.um-cmd-input').value = umCmd;
+                if (!row.querySelector('.um-rec-input').value) {
+                    row.querySelector('.um-rec-input').value = umCmd;
+                }
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    // حفظ سطر جديد
+    newRow.querySelector('.save-new-detail-btn').addEventListener('click', function() {
+        let item = '';
+        if (itemSelect.value) {
+            item = itemSelect.value;
+        } else {
+            item = itemInput.value.trim();
+        }
+
+        const codArt = newRow.querySelector('.cod-art-input').value.trim();
+        const libArt = newRow.querySelector('.lib-art-input').value.trim();
+        const qteCommande = newRow.querySelector('.qte-cmd-input').value || null;
+        const qteReceptionnee = newRow.querySelector('.qte-rec-input').value;
+        const umCommande = newRow.querySelector('.um-cmd-input').value.trim();
+        const umReception = newRow.querySelector('.um-rec-input').value.trim();
+        const conformite = newRow.querySelector('.conformite-select').value;
+        const observation = newRow.querySelector('.observation-detail-input').value.trim();
+
+        if (!item || !qteReceptionnee) {
+            alert("ITEM et QTE Réceptionnée sont obligatoires.");
+            return;
+        }
+
+        const formData = new URLSearchParams();
+        formData.append('avis_id', avisId);
+        formData.append('item', item);
+        formData.append('cod_art', codArt);
+        formData.append('lib_art', libArt);
+        if (qteCommande) formData.append('qte_commande', qteCommande);
+        formData.append('qte_receptionnee', qteReceptionnee);
+        formData.append('um_commande', umCommande);
+        formData.append('um_reception', umReception);
+        formData.append('conformite', conformite);
+        formData.append('observation', observation);
+
+        fetch('{% url "core:detail_avis_create" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.id) {
+                location.reload();
+            } else {
+                alert("Erreur: " + (result.error || "inconnue"));
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Erreur réseau.");
+        });
+    });
+
+    // إلغاء إضافة
+    newRow.querySelector('.cancel-new-detail-btn').addEventListener('click', function() {
+        newRow.remove();
+    });
+});
+</script>
+{% endblock %}

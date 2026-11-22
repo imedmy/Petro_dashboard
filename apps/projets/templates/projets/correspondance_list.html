@@ -1,0 +1,563 @@
+{% extends 'base.html' %}
+{% load static i18n projet_extras %}
+
+{% block title %}Correspondances - {{ projet.reference }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .correspondance-header {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .correspondance-header h2 {
+        color: white;
+        margin-bottom: 0.25rem;
+    }
+    .correspondance-header .reference {
+        opacity: 0.9;
+        font-size: 0.9rem;
+    }
+    
+    .stat-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border-left: 4px solid;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,.1);
+    }
+    .stat-card.total    { border-left-color: #11998e; }
+    .stat-card.entrant  { border-left-color: #0dcaf0; }
+    .stat-card.sortant  { border-left-color: #fd7e14; }
+    .stat-card.recent   { border-left-color: #6f42c1; }
+    
+    .correspondance-row {
+        transition: background-color 0.2s;
+    }
+    .correspondance-row:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .reference-code {
+        font-family: 'Courier New', monospace;
+        font-weight: 700;
+        color: #11998e;
+        font-size: 0.95rem;
+    }
+    
+    .direction-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    .direction-badge.entrant {
+        background: #cff4fc;
+        color: #055160;
+    }
+    .direction-badge.sortant {
+        background: #ffe5d0;
+        color: #984c0c;
+    }
+    
+    .filter-bar {
+        background: #f8f9fa;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .filter-btn {
+        border-radius: 2rem;
+        padding: 0.35rem 1rem;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    .filter-btn.active {
+        background: #11998e;
+        color: white;
+        border-color: #11998e;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_list' %}">
+                    <i class="bi bi-kanban"></i> Projets
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_detail' projet.pk %}">
+                    {{ projet.reference }}
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+                <i class="bi bi-envelope"></i> Correspondances
+            </li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="correspondance-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="reference mb-1">
+                    <i class="bi bi-folder2-open"></i> {{ projet.reference }}
+                    <span class="mx-2">•</span>
+                    <i class="bi bi-tag"></i> {{ projet.type_projet.libelle }}
+                    <span class="mx-2">•</span>
+                    <i class="bi bi-envelope"></i> Courrier & Correspondances
+                </div>
+                <h2>{{ projet.nom }}</h2>
+                <p class="mb-0 opacity-75">
+                    <i class="bi bi-building me-1"></i> 
+                    Maître d'ouvrage : {{ projet.maitre_ouvrage.raison_sociale }}
+                </p>
+            </div>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <a href="{% url 'projets:projet_detail' projet.pk %}" 
+                   class="btn btn-light">
+                    <i class="bi bi-arrow-left me-1"></i> Retour au projet
+                </a>
+                <a href="{% url 'projets:correspondance_create' projet.pk %}" 
+                   class="btn btn-outline-light ms-1">
+                    <i class="bi bi-plus-circle me-1"></i> Nouvelle correspondance
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card total shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">Total</div>
+                            <div class="h3 mb-0 mt-1 fw-bold" style="color: #11998e;">
+                                {{ correspondances.count }}
+                            </div>
+                        </div>
+                        <i class="bi bi-envelope-fill fs-2 opacity-50" style="color: #11998e;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card entrant shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">Entrants</div>
+                            <div class="h3 mb-0 mt-1 fw-bold text-info">
+                                {{ stats_entrant|default:0 }}
+                            </div>
+                        </div>
+                        <i class="bi bi-inbox-fill fs-2 text-info opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card sortant shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">Sortants</div>
+                            <div class="h3 mb-0 mt-1 fw-bold" style="color: #fd7e14;">
+                                {{ stats_sortant|default:0 }}
+                            </div>
+                        </div>
+                        <i class="bi bi-send-fill fs-2 opacity-50" style="color: #fd7e14;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card recent shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">Ce mois</div>
+                            <div class="h3 mb-0 mt-1 fw-bold text-purple" style="color: #6f42c1;">
+                                {{ stats_mois|default:0 }}
+                            </div>
+                        </div>
+                        <i class="bi bi-calendar-check-fill fs-2 opacity-50" style="color: #6f42c1;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="{% url 'projets:correspondance_list' projet.pk %}" 
+                   class="btn btn-sm btn-outline-secondary filter-btn {% if not request.GET.direction %}active{% endif %}">
+                    <i class="bi bi-list-ul me-1"></i> Tous
+                </a>
+                <a href="{% url 'projets:correspondance_list' projet.pk %}?direction=ENTRANT" 
+                   class="btn btn-sm btn-outline-info filter-btn {% if request.GET.direction == 'ENTRANT' %}active{% endif %}">
+                    <i class="bi bi-inbox me-1"></i> Entrants
+                </a>
+                <a href="{% url 'projets:correspondance_list' projet.pk %}?direction=SORTANT" 
+                   class="btn btn-sm btn-outline-warning filter-btn {% if request.GET.direction == 'SORTANT' %}active{% endif %}">
+                    <i class="bi bi-send me-1"></i> Sortants
+                </a>
+            </div>
+            <a href="{% url 'projets:correspondance_create' projet.pk %}" class="btn btn-sm btn-success">
+                <i class="bi bi-plus-circle me-1"></i> Nouvelle correspondance
+            </a>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-envelope me-2" style="color: #11998e;"></i>
+                Liste des correspondances
+                <span class="badge bg-secondary ms-2">{{ correspondances.count }}</span>
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="correspondancesTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 130px;">Référence</th>
+                            <th style="width: 100px;">Direction</th>
+                            <th style="width: 120px;">Type</th>
+                            <th>Objet</th>
+                            <th style="width: 150px;">Expéditeur</th>
+                            <th style="width: 150px;">Destinataire</th>
+                            <th style="width: 120px;">Date doc.</th>
+                            <th style="width: 100px;" class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for corr in correspondances %}
+                        <tr class="correspondance-row">
+                            <td>
+                                <span class="reference-code">
+                                    {{ corr.reference }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if corr.direction == 'ENTRANT' %}
+                                    <span class="direction-badge entrant">
+                                        <i class="bi bi-inbox"></i>
+                                        Entrant
+                                    </span>
+                                {% else %}
+                                    <span class="direction-badge sortant">
+                                        <i class="bi bi-send"></i>
+                                        Sortant
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="badge bg-light text-dark border">
+                                    {{ corr.get_type_correspondance_display }}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="fw-semibold">{{ corr.objet|truncatechars:60 }}</div>
+                                {% if corr.contenu %}
+                                    <div class="small text-muted">
+                                        {{ corr.contenu|truncatechars:50 }}
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>
+                                    {% if corr.direction == 'ENTRANT' %}
+                                        <i class="bi bi-person-circle text-info me-1"></i>
+                                    {% else %}
+                                        <i class="bi bi-person text-muted me-1"></i>
+                                    {% endif %}
+                                    {{ corr.expediteur|truncatechars:25 }}
+                                </small>
+                            </td>
+                            <td>
+                                <small>
+                                    {% if corr.direction == 'SORTANT' %}
+                                        <i class="bi bi-person-check text-warning me-1"></i>
+                                    {% else %}
+                                        <i class="bi bi-person text-muted me-1"></i>
+                                    {% endif %}
+                                    {{ corr.destinataire|truncatechars:25 }}
+                                </small>
+                            </td>
+                            <td>
+                                <small>
+                                    <i class="bi bi-calendar-event text-muted me-1"></i>
+                                    {{ corr.date_document|date:"d/m/Y" }}
+                                </small>
+                                {% if corr.date_reception_envoi %}
+                                    <div class="small text-muted">
+                                        <i class="bi bi-clock text-muted me-1"></i>
+                                        {{ corr.date_reception_envoi|date:"d/m/Y" }}
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" 
+                                            class="btn btn-outline-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalCorr{{ corr.pk }}"
+                                            title="Voir les détails">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    {% if corr.document %}
+                                        <a href="{{ corr.document.url }}" target="_blank"
+                                           class="btn btn-outline-success"
+                                           title="Télécharger le document"
+                                           data-bs-toggle="tooltip">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Modal pour chaque correspondance -->
+                        <div class="modal fade" id="modalCorr{{ corr.pk }}" tabindex="-1">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header text-white" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                                        <h5 class="modal-title">
+                                            <i class="bi bi-envelope me-2"></i>
+                                            Correspondance {{ corr.reference }}
+                                        </h5>
+                                        <button type="button" class="btn-close btn-close-white" 
+                                                data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <!-- Info principale -->
+                                        <div class="row g-3 mb-3">
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block">Direction</small>
+                                                {% if corr.direction == 'ENTRANT' %}
+                                                    <span class="direction-badge entrant">
+                                                        <i class="bi bi-inbox"></i> Entrant
+                                                    </span>
+                                                {% else %}
+                                                    <span class="direction-badge sortant">
+                                                        <i class="bi bi-send"></i> Sortant
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block">Type</small>
+                                                <strong>{{ corr.get_type_correspondance_display }}</strong>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block">Date du document</small>
+                                                <strong>{{ corr.date_document|date:"d/m/Y" }}</strong>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block">Date réception/envoi</small>
+                                                <strong>{{ corr.date_reception_envoi|date:"d/m/Y"|default:"-" }}</strong>
+                                            </div>
+                                        </div>
+
+                                        <hr>
+
+                                        <!-- Expéditeur / Destinataire -->
+                                        <div class="row g-3 mb-3">
+                                            <div class="col-md-6">
+                                                <div class="bg-light p-3 rounded h-100">
+                                                    <small class="text-muted d-block mb-1">
+                                                        <i class="bi bi-person-circle me-1"></i>
+                                                        Expéditeur
+                                                    </small>
+                                                    <strong class="d-block">{{ corr.expediteur }}</strong>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="bg-light p-3 rounded h-100">
+                                                    <small class="text-muted d-block mb-1">
+                                                        <i class="bi bi-person-check me-1"></i>
+                                                        Destinataire
+                                                    </small>
+                                                    <strong class="d-block">{{ corr.destinataire }}</strong>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Objet -->
+                                        <h6 class="fw-bold mb-2">
+                                            <i class="bi bi-chat-left-text me-1"></i>
+                                            Objet
+                                        </h6>
+                                        <p class="text-muted">{{ corr.objet }}</p>
+
+                                        <!-- Contenu -->
+                                        {% if corr.contenu %}
+                                        <h6 class="fw-bold mb-2 mt-3">
+                                            <i class="bi bi-card-text me-1"></i>
+                                            Contenu
+                                        </h6>
+                                        <div class="bg-light p-3 rounded">
+                                            {{ corr.contenu|linebreaksbr }}
+                                        </div>
+                                        {% endif %}
+
+                                        <!-- Correspondance parente -->
+                                        {% if corr.correspondance_parente %}
+                                        <div class="alert alert-info mt-3 mb-0" role="alert">
+                                            <small>
+                                                <i class="bi bi-reply me-1"></i>
+                                                <strong>Réponse à :</strong> 
+                                                {{ corr.correspondance_parente.reference }} - 
+                                                {{ corr.correspondance_parente.objet|truncatechars:50 }}
+                                            </small>
+                                        </div>
+                                        {% endif %}
+
+                                        <!-- Réponses -->
+                                        {% if corr.reponses.exists %}
+                                        <h6 class="fw-bold mb-2 mt-3">
+                                            <i class="bi bi-reply-all me-1"></i>
+                                            Réponses ({{ corr.reponses.count }})
+                                        </h6>
+                                        <div class="list-group">
+                                            {% for rep in corr.reponses.all %}
+                                            <div class="list-group-item">
+                                                <div class="d-flex justify-content-between">
+                                                    <strong>{{ rep.reference }}</strong>
+                                                    <small class="text-muted">{{ rep.date_document|date:"d/m/Y" }}</small>
+                                                </div>
+                                                <small class="text-muted">{{ rep.objet|truncatechars:60 }}</small>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+
+                                        {% if corr.document %}
+                                        <div class="mt-3">
+                                            <a href="{{ corr.document.url }}" target="_blank" 
+                                               class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-download me-1"></i>
+                                                Télécharger le document
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                            Fermer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <i class="bi bi-envelope text-muted fs-1 d-block mb-3"></i>
+                                <h5 class="text-muted">Aucune correspondance enregistrée</h5>
+                                <p class="text-muted mb-3">
+                                    {% if request.GET.direction %}
+                                        Aucune correspondance {{ request.GET.direction|lower }} trouvée
+                                    {% else %}
+                                        Commencez par enregistrer la première correspondance de ce projet
+                                    {% endif %}
+                                </p>
+                                <a href="{% url 'projets:correspondance_create' projet.pk %}" class="btn btn-success">
+                                    <i class="bi bi-plus-circle me-1"></i> Créer la première correspondance
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="bi bi-lightning-fill me-2 text-warning"></i>
+                Actions rapides
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <a href="{% url 'projets:correspondance_create' projet.pk %}" class="btn btn-outline-success w-100">
+                        <i class="bi bi-plus-circle me-2"></i> Nouvelle correspondance
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'projets:reunion_list' projet.pk %}" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-people me-2"></i> Réunions
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'projets:compte_rendu_create' projet.pk %}" class="btn btn-outline-info w-100">
+                        <i class="bi bi-file-earmark-text me-2"></i> Compte rendu
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'projets:projet_detail' projet.pk %}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-arrow-left me-2"></i> Retour au projet
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Initialisation de DataTables
+        $('#correspondancesTable').DataTable({
+            language: {
+                url: '{% static "datatables/i18n/fr-FR.json" %}'
+            },
+            paging: false,
+            searching: true,
+            info: false,
+            order: [[6, 'desc']],
+            columnDefs: [
+                { orderable: false, targets: [7] },
+                { width: '130px', targets: [0] },
+                { width: '100px', targets: [1] },
+                { width: '120px', targets: [2, 6] },
+                { width: '150px', targets: [4, 5] },
+                { width: '100px', targets: [7] }
+            ],
+            stateSave: true,
+            stateDuration: 60 * 60 * 24
+        });
+
+        // Activation des tooltips
+        var tooltipTriggerList = [].slice.call(
+            document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        );
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}		

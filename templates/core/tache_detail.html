@@ -1,0 +1,84 @@
+<!-- templates/core/tache_detail.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid p-4">
+    <h2>Détails de la tâche: {{ tache.libelle }}</h2>
+    <div class="row">
+        <div class="col-md-6">
+            <p><strong>Date prévue:</strong> {{ tache.date_prevue|date:"d/m/Y" }}</p>
+            <p><strong>État:</strong> <span class="badge bg-{{ tache.etat }}">{{ tache.get_etat_display }}</span></p>
+            <p><strong>Planning:</strong> 
+                {% if tache.planning %}
+                    {% if tache.planning.nature == 'repetitive' %}
+                        <span class="badge bg-primary">Répétitive</span> ({{ tache.planning.delai_repetition }} jours)
+                    {% else %}
+                        <span class="badge bg-secondary">Ponctuelle</span>
+                    {% endif %}
+                    {% if tache.planning.libelle %}
+                        <br><strong>Libellé:</strong> {{ tache.planning.libelle }}
+                    {% endif %}
+                {% else %}
+                    <span class="badge bg-light text-dark">Aucun</span>
+                {% endif %}
+            </p>
+            <p><strong>Délai répétition:</strong> {{ tache.delai_repetition }} jours</p>
+        </div>
+        <div class="col-md-6">
+            <p><strong>Description:</strong> {{ tache.description|linebreaksbr|default:"-" }}</p>
+            <p><strong>Observation:</strong> {{ tache.observation|linebreaksbr|default:"-" }}</p>
+        </div>
+    </div>
+
+    <!-- المتدخلون -->
+    <h4 class="mt-4">Intervenants</h4>
+    <ul>
+        {% for i in tache.intervenants.through.all %}
+        <li>
+            {% if i.personnel %}
+                {{ i.personnel.nom }} {{ i.personnel.prenom }} ({{ i.personnel.matricule }})
+            {% else %}
+                Intervenant inconnu
+            {% endif %}
+            {% if i.role %} - {{ i.role }}{% endif %}
+        </li>
+        {% empty %}
+        <li>Aucun intervenant</li>
+        {% endfor %}
+    </ul>
+
+    <!-- المعدات -->
+    <h4 class="mt-4">Engins</h4>
+    <ul>
+        {% for e in tache.engins.all %}
+        <li>{{ e.libelle }}</li>
+        {% empty %}
+        <li>Aucun engin</li>
+        {% endfor %}
+    </ul>
+
+    <!-- المرفقات -->
+    <h4 class="mt-4">Pièces Jointes</h4>
+    {% if tache.pieces_jointes.exists %}
+        <div class="row">
+            {% for pj in tache.pieces_jointes.all %}
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h6>{{ pj.nom_original }}</h6>
+                        <p class="text-muted small">{{ pj.description|default:"-" }}</p>
+                        <a href="{{ pj.fichier.url }}" class="btn btn-sm btn-outline-primary">Voir</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>Aucune pièce jointe.</p>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="{% url 'core:tache_update' tache.pk %}" class="btn btn-warning">Modifier</a>
+        <a href="{% url 'core:tache_list' %}" class="btn btn-secondary">Retour à la liste</a>
+    </div>
+</div>
+{% endblock %}

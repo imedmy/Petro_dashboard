@@ -1,0 +1,45 @@
+<!-- templates/core/consommation_list.html -->
+{% extends 'base.html' %}
+{% block title %}Consommations de carburant{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Consommations / Ravitaillements</h2>
+        <a href="{% url 'core:consommation_create' %}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Nouveau ravitaillement
+        </a>
+    </div>
+
+    {% if consommations %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Engin</th>
+                        <th>Date</th>
+                        <th>Volume (L)</th>
+                        <th>Carburant</th>
+                        <th>Observation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in consommations %}
+                    <tr>
+                        <td>{{ c.engin.libelle }} ({{ c.engin.get_type_engin_display }})</td>
+                        <td>{{ c.date_ravitaillement|date:"d/m/Y" }}</td>
+                        <td>{{ c.volume_l }}</td>
+                        <td>{{ c.get_type_carburant_display }}</td>
+                        <td>{{ c.observation|default:"—" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Aucune opération de ravitaillement enregistrée.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

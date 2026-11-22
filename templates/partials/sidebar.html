@@ -1,0 +1,82 @@
+<!-- القائمة الجانبية (Sidebar) -->
+<div class="sidebar bg-dark text-white" style="width: 250px; min-height: 100vh; position: fixed; top: 0; left: 0; padding-top: 20px; z-index: 1000;">
+    <div class="text-center mb-4">
+        <h5><i class="bi bi-grid"></i> Menu Principal</h5>
+    </div>
+
+    <ul class="nav flex-column px-3">
+        <!-- Tableau de bord -->
+        <li class="nav-item mb-1">
+            <a class="nav-link text-white" href="{% url 'core:dashboard' %}">
+                <i class="bi bi-house-door"></i> Tableau de bord
+            </a>
+        </li>
+
+        <!-- Gestion des articles (avec Sous-menus) -->
+        <li class="nav-item mb-1">
+            <a class="nav-link text-white dropdown-toggle" data-bs-toggle="collapse" href="#articlesSubMenu" role="button" aria-expanded="false" aria-controls="articlesSubMenu">
+                <i class="bi bi-box-seam"></i> Gestion des articles
+            </a>
+            <div class="collapse" id="articlesSubMenu">
+                <div class="bg-secondary rounded p-2 mt-1">
+                    <ul class="nav flex-column">
+                        <!-- Articles en stock -->
+                        <li class="nav-item">
+                            <a class="nav-link text-white small" href="{% url 'core:articles' %}">
+                                <i class="bi bi-inbox"></i> Articles en stock
+                            </a>
+                        </li>
+
+                        <!-- Gestion des caractéristiques -->
+                        <li class="nav-item">
+                            <a class="nav-link text-white small" href="{% url 'core:gestion_caracteristiques' %}">
+                                <i class="bi bi-list-task"></i> Gestion des caractéristiques techniques
+                            </a>
+                        </li>
+
+                        <!-- Famille Codification des articles -->
+                        <li class="nav-item">
+                            <a class="nav-link text-white small" href="{% url 'core:gestion_famille_codification' %}">
+                                <i class="bi bi-upc"></i> Famille Codification des articles
+                            </a>
+                        </li>
+						<li class="nav-item">
+							<a class="nav-link text-white small" href="{% url 'core:article_caracteristiques_with_cod' '000000000A' %}">
+								<i class="bi bi-tag"></i> Assigner Caractéristiques
+							</a>
+						</li>
+                        <!-- Statistiques -->
+                        <li class="nav-item">
+                            <a class="nav-link text-white small" href="{% url 'core:statistiques_articles' %}">
+                                <i class="bi bi-bar-chart"></i> Statistiques
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </li>
+
+        <!-- يمكنك إضافة باقي القوائم لاحقًا -->
+        <!-- مثال:
+        <li class="nav-item mb-1">
+            <a class="nav-link text-white" href="#">
+                <i class="bi bi-person"></i> Gestion des utilisateurs
+            </a>
+        </li>
+        -->
+    </ul>
+</div>
+
+<!-- تعديل الهوامش لتعويض القائمة الجانبية -->
+<style>
+    body {
+        margin-left: 50px;
+    }
+    .sidebar .dropdown-toggle::after {
+        margin-left: auto;
+        transition: transform 0.2s ease;
+    }
+    .sidebar .collapse.show + .dropdown-toggle::after {
+        transform: rotate(180deg);
+    }
+</style>

@@ -1,0 +1,105 @@
+<!-- core/avis_arrivee_list.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2> Liste des Avis d'Arrivée </h2>
+        <a href="{% url 'core:avis_arrivee_create_page' %}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Nouvel Avis
+        </a>
+    </div>
+
+    <!-- نموذج البحث -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <input type="text" name="q" class="form-control" placeholder="Recherche globale" value="{{ q }}">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" name="numero_avis" class="form-control" placeholder="N° Avis" value="{{ numero_avis }}">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" name="numero_com" class="form-control" placeholder="N° Bon" value="{{ numero_com }}">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="date" name="date_avis_min" class="form-control" value="{{ date_avis_min }}">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="date" name="date_avis_max" class="form-control" value="{{ date_avis_max }}">
+                    </div>
+                    <div class="col-md-1">
+                        <button type="submit" class="btn btn-primary">Filtrer</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- الجدول -->
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>N° Avis</th>
+                    <th>Date Avis</th>
+                    <th>N° Bon</th>
+                    <th>Date Bon</th>
+                    <th>Bordereau</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for avis in avis_list %}
+                <tr>
+                    <td>{{ avis.numero_avis }}</td>
+                    <td>{{ avis.date_avis|date:"d/m/Y" }}</td>
+                    <td>{{ avis.numero_com|default:"-" }}</td>
+                    <td>{{ avis.dat_com|date:"d/m/Y"|default:"-" }}</td>
+                    <td>{{ avis.numero_bordereau|default:"-" }}</td>
+                    <td>
+                        <a href="{% url 'core:avis_arrivee_detail_page' avis.pk %}" class="btn btn-sm btn-info">Voir</a>
+                        <a href="{% url 'core:avis_arrivee_update_page' avis.pk %}" class="btn btn-sm btn-warning">Modifier</a>
+                        <button class="btn btn-sm btn-danger delete-avis" data-id="{{ avis.pk }}">Supprimer</button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center">Aucun avis trouvé</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- التنقل -->
+    {% if avis_list.has_other_pages %}
+    <nav aria-label="Pagination">
+        <ul class="pagination justify-content-center">
+            {% if avis_list.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page=1{% for k,v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">Premier</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ avis_list.previous_page_number }}{% for k,v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">Précédent</a></li>
+            {% endif %}
+            <li class="page-item disabled"><span class="page-link">Page {{ avis_list.number }} / {{ avis_list.paginator.num_pages }}</span></li>
+            {% if avis_list.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ avis_list.next_page_number }}{% for k,v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">Suivant</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ avis_list.paginator.num_pages }}{% for k,v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v }}{% endif %}{% endfor %}">Dernier</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<script>
+document.querySelectorAll('.delete-avis').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const id = this.dataset.id;
+        if (confirm("Supprimer cet avis ?")) {
+            fetch(`{% url 'core:avis_arrivee_delete_page' 0 %}`.replace('/0/', `/${id}/`), {
+                method: 'POST',
+                headers: {'X-CSRFToken': '{{ csrf_token }}'}
+            }).then(() => location.reload());
+        }
+    });
+});
+</script>
+{% endblock %}

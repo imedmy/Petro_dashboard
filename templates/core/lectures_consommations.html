@@ -1,0 +1,249 @@
+<!-- templates/core/lectures_consommations.html -->
+{% extends 'base.html' %}
+{% block title %}Lectures & Consommations{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Lectures & Consommations - Station Service</h2>
+
+    <!-- علامات التبويب للنماذج -->
+    <ul class="nav nav-tabs mb-4" id="formsTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="jauge-tab" data-bs-toggle="tab" data-bs-target="#jauge" type="button" role="tab">Lecture Jauge</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="pompe-tab" data-bs-toggle="tab" data-bs-target="#pompe" type="button" role="tab">Lecture Pompe</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="index-tab" data-bs-toggle="tab" data-bs-target="#index" type="button" role="tab">Lecture Index</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="consommation-tab" data-bs-toggle="tab" data-bs-target="#consommation" type="button" role="tab">Consommation</button>
+        </li>
+    </ul>
+    <div class="tab-content mb-5" id="formsTabContent">
+        <!-- Lecture Jauge Form -->
+        <div class="tab-pane fade show active" id="jauge" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="jauge">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                {{ jauge_form.citerne.label_tag }}
+                                {{ jauge_form.citerne }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ jauge_form.hauteur_cm.label_tag }}
+                                {{ jauge_form.hauteur_cm }}
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Enregistrer la lecture de jauge</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- Lecture Pompe Form -->
+        <div class="tab-pane fade" id="pompe" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="pompe">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                {{ pompe_form.pompe.label_tag }}
+                                {{ pompe_form.pompe }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ pompe_form.index_courant.label_tag }}
+                                {{ pompe_form.index_courant }}
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Enregistrer la lecture de pompe</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- Lecture Index Form -->
+        <div class="tab-pane fade" id="index" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="index">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                {{ index_form.engin.label_tag }}
+                                {{ index_form.engin }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ index_form.index_courant.label_tag }}
+                                {{ index_form.index_courant }}
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Enregistrer la lecture d'index</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- Consommation Form -->
+        <div class="tab-pane fade" id="consommation" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="consommation">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                {{ consommation_form.engin.label_tag }}
+                                {{ consommation_form.engin }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ consommation_form.date_ravitaillement.label_tag }}
+                                {{ consommation_form.date_ravitaillement }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ consommation_form.volume_l.label_tag }}
+                                {{ consommation_form.volume_l }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ consommation_form.type_carburant.label_tag }}
+                                {{ consommation_form.type_carburant }}
+                            </div>
+                            <div class="col-12">
+                                {{ consommation_form.observation.label_tag }}
+                                {{ consommation_form.observation }}
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Enregistrer la consommation</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- علامات التبويب للقوائم -->
+    <ul class="nav nav-tabs mb-4" id="listsTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="list-jauge-tab" data-bs-toggle="tab" data-bs-target="#list-jauge" type="button" role="tab">Lectures Jauge</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="list-pompe-tab" data-bs-toggle="tab" data-bs-target="#list-pompe" type="button" role="tab">Lectures Pompe</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="list-index-tab" data-bs-toggle="tab" data-bs-target="#list-index" type="button" role="tab">Lectures Index</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="list-consommation-tab" data-bs-toggle="tab" data-bs-target="#list-consommation" type="button" role="tab">Consommations</button>
+        </li>
+    </ul>
+    <div class="tab-content" id="listsTabContent">
+        <!-- Lectures Jauge List -->
+        <div class="tab-pane fade show active" id="list-jauge" role="tabpanel">
+            {% if lectures_jauge %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Citerne</th><th>Date</th><th>Hauteur (cm)</th><th>Volume (L)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for l in lectures_jauge %}
+                            <tr>
+                                <td>{{ l.citerne.code_citerne }}</td>
+                                <td>{{ l.date_lecture|date:"d/m/Y" }}</td>
+                                <td>{{ l.hauteur_cm }}</td>
+                                <td>{{ l.volume_litres|floatformat:1 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">Aucune lecture de jauge.</div>
+            {% endif %}
+        </div>
+        <!-- Lectures Pompe List -->
+        <div class="tab-pane fade" id="list-pompe" role="tabpanel">
+            {% if lectures_pompe %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Pompe</th><th>Date</th><th>Index</th><th>Consommation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for l in lectures_pompe %}
+                            <tr>
+                                <td>{{ l.pompe.libelle }}</td>
+                                <td>{{ l.date_lecture|date:"d/m/Y" }}</td>
+                                <td>{{ l.index_courant }}</td>
+                                <td>{{ l.consommation_depuis_derniere|floatformat:1 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">Aucune lecture de pompe.</div>
+            {% endif %}
+        </div>
+        <!-- Lectures Index List -->
+        <div class="tab-pane fade" id="list-index" role="tabpanel">
+            {% if lectures_index %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Engin</th><th>Date</th><th>Index</th><th>Consommation</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for l in lectures_index %}
+                            <tr>
+                                <td>{{ l.engin.immatriculation|default:l.engin.libelle }}</td>
+                                <td>{{ l.date_lecture|date:"d/m/Y" }}</td>
+                                <td>{{ l.index_courant }}</td>
+                                <td>{{ l.consommation_depuis_derniere_lecture|floatformat:1 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">Aucune lecture d'index.</div>
+            {% endif %}
+        </div>
+        <!-- Consommations List -->
+        <div class="tab-pane fade" id="list-consommation" role="tabpanel">
+            {% if consommations %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Engin</th><th>Date</th><th>Volume (L)</th><th>Carburant</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in consommations %}
+                            <tr>
+                                <td>{{ c.engin.immatriculation|default:c.engin.libelle }}</td>
+                                <td>{{ c.date_ravitaillement|date:"d/m/Y" }}</td>
+                                <td>{{ c.volume_l }}</td>
+                                <td>{{ c.get_type_carburant_display }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">Aucune consommation enregistrée.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

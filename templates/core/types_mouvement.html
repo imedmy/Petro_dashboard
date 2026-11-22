@@ -1,0 +1,236 @@
+<!-- templates/core/types_mouvement.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="p-4">
+    <h2><i class="bi bi-gear"></i> Paramétrage des Types de Mouvements</h2>
+
+    <!-- نموذج الإضافة -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h5><i class="bi bi-plus-circle"></i> Ajouter un Type de Mouvement</h5>
+            <form id="createForm" class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label">Code</label>
+                    <input type="text" id="code" class="form-control" required maxlength="10">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Libellé</label>
+                    <input type="text" id="libelle" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Sens</label>
+                    <select id="sens" class="form-select" required>
+                        <option value="entree">Entrée (+)</option>
+                        <option value="sortie">Sortie (-)</option>
+                        <option value="neutre">Neutre</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">État</label>
+                    <select id="actif" class="form-select">
+                        <option value="1">Actif</option>
+                        <option value="0">Inactif</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Description (optionnelle)</label>
+                    <input type="text" id="description" class="form-control">
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <button type="submit" class="btn btn-success">Ajouter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- جدول العرض -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h5><i class="bi bi-list"></i> Liste des Types de Mouvement</h5>
+            <div class="table-responsive mt-3">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Code</th>
+                            <th>Libellé</th>
+                            <th>Sens</th>
+                            <th>Description</th>
+                            <th>État</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="typesTableBody">
+                        {% for type in types %}
+                        <tr data-id="{{ type.id }}">
+                            <td><code>{{ type.code }}</code></td>
+                            <td>{{ type.libelle }}</td>
+                            <td>
+                                <span class="badge bg-{% if type.sens == 'entree' %}success{% elif type.sens == 'sortie' %}danger{% else %}secondary{% endif %}">
+                                    {{ type.get_sens_display }}
+                                </span>
+                            </td>
+                            <td>{{ type.description|default:"-" }}</td>
+                            <td>
+                                <span class="badge bg-{% if type.actif %}success{% else %}secondary{% endif %}">
+                                    {% if type.actif %}Actif{% else %}Inactif{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditModal(this)">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteType({{ type.id }})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة التعديل -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Modifier le Type de Mouvement</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId">
+                <div class="mb-3">
+                    <label>Code</label>
+                    <input type="text" id="editCode" class="form-control" readonly>
+                </div>
+                <div class="mb-3">
+                    <label>Libellé</label>
+                    <input type="text" id="editLibelle" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label>Sens</label>
+                    <select id="editSens" class="form-select">
+                        <option value="entree">Entrée (+)</option>
+                        <option value="sortie">Sortie (-)</option>
+                        <option value="neutre">Neutre</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label>Description</label>
+                    <input type="text" id="editDescription" class="form-control">
+                </div>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" id="editActif" class="form-check-input">
+                    <label class="form-check-label">Actif</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-primary" onclick="saveEdit()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+// === إضافة نوع جديد ===
+document.getElementById('createForm').onsubmit = function(e) {
+    e.preventDefault();
+    const data = {
+        code: document.getElementById('code').value,
+        libelle: document.getElementById('libelle').value,
+        description: document.getElementById('description').value,
+        sens: document.getElementById('sens').value,
+        actif: document.getElementById('actif').value === '1'
+    };
+
+    fetch('{% url "core:api_create_type_mouvement" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.status === 'ok') {
+            location.reload(); // تحديث بسيط - يمكن تحسينه بإضافة السطر ديناميكيًا
+        } else {
+            alert("Erreur : " + res.message);
+        }
+    });
+};
+
+// === فتح نافذة التعديل ===
+function openEditModal(btn) {
+    const tr = btn.closest('tr');
+    document.getElementById('editId').value = tr.dataset.id;
+    document.getElementById('editCode').value = tr.cells[0].textContent.trim();
+    document.getElementById('editLibelle').value = tr.cells[1].textContent.trim();
+    document.getElementById('editSens').value = tr.querySelector('[data-sens]').dataset.sens || 'neutre';
+    const desc = tr.cells[3].textContent.trim();
+    document.getElementById('editDescription').value = desc !== '-' ? desc : '';
+    document.getElementById('editActif').checked = tr.querySelector('.badge-success') !== null;
+    new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+
+// === حفظ التعديل ===
+function saveEdit() {
+    const id = document.getElementById('editId').value;
+    const data = {
+        code: document.getElementById('editCode').value,
+        libelle: document.getElementById('editLibelle').value,
+        description: document.getElementById('editDescription').value,
+        sens: document.getElementById('editSens').value,
+        actif: document.getElementById('editActif').checked
+    };
+
+    fetch(`{% url "core:api_update_type_mouvement" 0 %}`.replace('/0/', '/' + id + '/'), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.status === 'ok') {
+            location.reload();
+        } else {
+            alert("Erreur : " + res.message);
+        }
+    });
+}
+
+// === حذف النوع ===
+function deleteType(id) {
+    if (!confirm("Supprimer ce type de mouvement ?")) return;
+    fetch(`{% url "core:api_delete_type_mouvement" 0 %}`.replace('/0/', '/' + id + '/'), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken
+        }
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.status === 'ok') {
+            document.querySelector(`tr[data-id="${id}"]`).remove();
+        } else {
+            alert("Échec de suppression.");
+        }
+    });
+}
+</script>
+{% endblock %}

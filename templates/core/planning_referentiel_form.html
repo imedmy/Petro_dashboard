@@ -1,0 +1,38 @@
+<!-- templates/core/planning_referentiel_form.html -->
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <h2>{{ title }}</h2>
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label>Libellé</label>
+                <input type="text" name="libelle" class="form-control" 
+                       value="{{ planning.libelle|default:'' }}" maxlength="255">
+            </div>
+            <div class="col-md-6">
+                <label>Nature *</label>
+                <select name="nature" class="form-select" required>
+                    <option value="ponctuelle" {% if not planning or planning.nature == 'ponctuelle' %}selected{% endif %}>Ponctuelle</option>
+                    <option value="repetitive" {% if planning and planning.nature == 'repetitive' %}selected{% endif %}>Répétitive</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label>Délai de répétition (jours)</label>
+                <input type="number" name="delai_repetition" class="form-control" value="{{ planning.delai_repetition|default:'0' }}">
+            </div>
+            <div class="col-12">
+                <label>Observation</label>
+                <textarea name="observation" class="form-control" rows="3">{{ planning.observation|default:'' }}</textarea>
+            </div>
+        </div>
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <a href="{% url 'core:planning_referentiel_list' %}" class="btn btn-secondary">Annuler</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

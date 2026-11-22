@@ -1,0 +1,45 @@
+{# apps/projets/templates/projets/partials/_progress_bar.html #}
+{# Progress bar component réutilisable #}
+{# Usage: {% progress_bar pourcentage show_label size %} #}
+{# Exemple: {% progress_bar 75 True 'md' %} #}
+
+{% load projet_extras %}
+
+{% with width=pourcentage|progress_width color=pourcentage|progress_color %}
+<div class="progress 
+    {% if size == 'sm' %}progress-sm{% endif %}
+    {% if size == 'lg' %}progress-lg{% endif %}"
+    {% if size == 'xs' %}style="height: 4px;"
+    {% elif size == 'sm' %}style="height: 6px;"
+    {% elif size == 'lg' %}style="height: 20px;"
+    {% elif size == 'xl' %}style="height: 30px;"
+    {% else %}style="height: 10px;"{% endif %}
+    role="progressbar"
+    aria-valuenow="{{ width }}"
+    aria-valuemin="0"
+    aria-valuemax="100"
+    title="{{ width|floatformat:1 }}%">
+    
+    <div class="progress-bar 
+        {% if width >= 100 %}bg-success
+        {% elif width >= 75 %}bg-primary
+        {% elif width >= 50 %}bg-info
+        {% elif width >= 25 %}bg-warning
+        {% else %}bg-danger{% endif %}
+        {% if width == 100 %}progress-bar-striped progress-bar-animated{% endif %}"
+        style="width: {{ width }}%; transition: width 0.6s ease;">
+        
+        {% if show_label and size != 'xs' and size != 'sm' %}
+            {% if width >= 15 %}
+                <span class="fw-bold text-white">
+                    {{ width|floatformat:0 }}%
+                </span>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+{% if show_label and size == 'sm' %}
+    <small class="text-muted ms-2">{{ width|floatformat:0 }}%</small>
+{% endif %}
+{% endwith %}

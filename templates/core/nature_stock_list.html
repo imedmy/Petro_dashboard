@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Gestion des Natures de Stock{% endblock %}
+
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-archive"></i> Gestion des Natures de Stock</h2>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#natureModal">
+            <i class="bi bi-plus-circle"></i> Ajouter une nature
+        </button>
+    </div>
+
+    <!-- Barre de recherche -->
+    <div class="mb-4">
+        <form method="get" class="row g-3">
+            <div class="col-md-6">
+                <input type="text" name="q" class="form-control" 
+                       placeholder="Rechercher par libellé..." 
+                       value="{{ query }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-search"></i> Rechercher
+                </button>
+            </div>
+            {% if query %}
+            <div class="col-md-4">
+                <a href="{% url 'core:nature_stock_list' %}" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-x-circle"></i> Annuler la recherche
+                </a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Tableau des données -->
+    {% if natures %}
+    <div class="table-responsive">
+        <table class="table table-hover table-bordered" id="natureTable">
+            <thead class="table-light">
+                <tr>
+                    <th>Code Nature</th>
+                    <th>Libellé de la Nature</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for nature in natures %}
+                <tr data-id="{{ nature.pk }}">
+                    <td>{{ nature.code_nature }}</td>
+                    <td>{{ nature.libelle_nature }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning edit-btn"
+                                data-bs-toggle="modal" 
+                                data-bs-target="#natureModal"
+                                data-id="{{ nature.pk }}"
+                                data-code="{{ nature.code_nature }}"
+                                data-libelle="{{ nature.libelle_nature }}">
+                            <i class="bi bi-pencil"></i> Modifier
+                        </button>
+                        <button class="btn btn-sm btn-danger delete-btn"
+                                data-id="{{ nature.pk }}"
+                                data-libelle="{{ nature.libelle_nature }}">
+                            <i class="bi bi-trash"></i> Supprimer
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        {% if query %}
+            Aucune nature de stock trouvée pour "{{ query }}".
+        {% else %}
+            Aucune nature de stock enregistrée.
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal pour Ajouter/Modifier -->
+<div class="modal fade" id="natureModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="natureForm" method="post">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Ajouter une nature de stock</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="natureId" name="id">
+                    <div class="mb-3">
+                        <label for="code_nature" class="form-label">Code Nature *</label>
+                        <input type="number" class="form-control" id="code_nature" name="code_nature" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="libelle_nature" class="form-label">Libellé de la Nature *</label>
+                        <input type="text" class="form-control" id="libelle_nature" name="libelle_nature" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmation de suppression -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmer la suppression</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Voulez-vous vraiment supprimer la nature de stock : 
+                   <strong id="deleteLibelle"></strong> ?
+                </p>
+                <p class="text-danger">Cette action est irréversible.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">Supprimer</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const natureForm = document.getElementById('natureForm');
+    const deleteBtns = document.querySelectorAll('.delete-btn');
+    const editBtns = document.querySelectorAll('.edit-btn');
+    const confirmDeleteBtn = document.getElementById('confirmDelete');
+    let currentDeleteId = null;
+
+    // Réinitialiser le formulaire à l'ouverture du modal
+    document.getElementById('natureModal').addEventListener('show.bs.modal', function () {
+        natureForm.reset();
+        document.getElementById('modalTitle').textContent = 'Ajouter une nature de stock';
+        document.getElementById('natureId').value = '';
+    });
+
+    // Remplir le formulaire pour la modification
+    editBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            const code = this.dataset.code;
+            const libelle = this.dataset.libelle;
+            
+            document.getElementById('modalTitle').textContent = 'Modifier la nature de stock';
+            document.getElementById('natureId').value = id;
+            document.getElementById('code_nature').value = code;
+            document.getElementById('libelle_nature').value = libelle;
+        });
+    });
+
+    // Soumission du formulaire (AJAX)
+    natureForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const isUpdate = formData.get('id') !== '';
+        const url = isUpdate ? 
+            `{% url 'core:nature_stock_update' 0 %}`.replace('/0/', `/${formData.get('id')}/`) :
+            '{% url "core:nature_stock_create" %}';
+        
+        fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            }
+            return response.json().then(err => { throw err; });
+        })
+        .then(data => {
+            if (data.success) {
+                // إغلاق الـ modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('natureModal'));
+                if (modal) modal.hide();
+                
+                // إظهار رسالة نجاح مؤقتة
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fade show fixed-top m-3';
+                alertDiv.style.zIndex = '2000';
+                alertDiv.innerHTML = `
+                    Opération réussie ! 
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.body.appendChild(alertDiv);
+                setTimeout(() => {
+                    if (alertDiv.parentNode) {
+                        alertDiv.parentNode.removeChild(alertDiv);
+                    }
+                }, 3000);
+                
+                // إعادة تحميل الصفحة بعد 500ms لضمان ظهور الرسالة
+                setTimeout(() => {
+                    location.reload();
+                }, 500);
+            } else {
+                let errorMsg = 'Erreur lors de la sauvegarde.';
+                if (data.errors) {
+                    errorMsg = '';
+                    for (const [field, errors] of Object.entries(data.errors)) {
+                        errorMsg += `${field}: ${errors.join(', ')}\n`;
+                    }
+                }
+                alert(errorMsg || data.error || 'Erreur inconnue.');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur détaillée:', error);
+            let msg = 'Erreur de connexion au serveur.';
+            if (error && error.message) {
+                msg += '\n' + error.message;
+            }
+            alert(msg);
+        });
+    });
+
+    // Préparer la suppression
+    deleteBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentDeleteId = this.dataset.id;
+            document.getElementById('deleteLibelle').textContent = this.dataset.libelle;
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            deleteModal.show();
+        });
+    });
+
+    // Confirmer la suppression
+    confirmDeleteBtn.addEventListener('click', function() {
+        fetch(`{% url 'core:nature_stock_delete' 0 %}`.replace('/0/', `/${currentDeleteId}/`), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+                if (deleteModal) deleteModal.hide();
+                
+                // رسالة نجاح
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fade show fixed-top m-3';
+                alertDiv.style.zIndex = '2000';
+                alertDiv.innerHTML = `
+                    Supprimé avec succès ! 
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.body.appendChild(alertDiv);
+                setTimeout(() => {
+                    if (alertDiv.parentNode) {
+                        alertDiv.parentNode.removeChild(alertDiv);
+                    }
+                }, 3000);
+                
+                setTimeout(() => {
+                    location.reload();
+                }, 500);
+            } else {
+                alert('Erreur lors de la suppression.');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur suppression:', error);
+            alert('Erreur de connexion au serveur.');
+        });
+    });
+});
+</script>
+{% endblock %}

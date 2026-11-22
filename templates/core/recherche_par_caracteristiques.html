@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+{% load static %}
+{% load extra_filters %}
+
+{% block content %}
+<div class="p-4">
+    <h2><i class="bi bi-search"></i> Recherche d'articles par caractéristiques</h2>
+    <p class="text-muted">Sélectionnez une ou plusieurs caractéristiques pour filtrer les articles.</p>
+
+    <!-- نموذج إضافة الخصائص -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form id="searchForm" class="row g-3">
+                <div class="col-md-12">
+                    <label class="form-label"><i class="bi bi-list-task"></i> Ajouter une caractéristique</label>
+                    <div class="input-group">
+                        <input type="text" id="caractInput" class="form-control"
+                               placeholder="Rechercher une caractéristique..."
+                               readonly>
+                        <input type="hidden" id="caractId">
+                        <button type="button" class="btn btn-outline-secondary"
+                                onclick="openLookupPanel('caract')">
+                            <i class="bi bi-search"></i> Choisir
+                        </button>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Valeur (optionnelle)</label>
+                    <input type="text" id="caractValue" class="form-control"
+                           placeholder="Ex: Rouge, 10mm, etc." />
+                </div>
+
+                <div class="col-md-6 d-flex align-items-end">
+                    <button type="button" class="btn btn-primary w-100"
+                            onclick="addFilter()">
+                        <i class="bi bi-plus"></i> Ajouter au filtre
+                    </button>
+                </div>
+            </form>
+
+            <!-- قائمة الخصائص المضافة كفلتر -->
+            <div class="mt-4">
+                <h6>Filtres actuels :</h6>
+                <ul id="filtersList" class="list-group">
+                    <li class="list-group-item text-center text-muted" id="emptyFilters">
+                        Aucun filtre ajouté.
+                    </li>
+                </ul>
+            </div>
+
+            <div class="mt-3">
+                <button type="button" class="btn btn-success" onclick="performSearch()" id="searchButton">
+                    <i class="bi bi-binoculars"></i> Rechercher
+                </button>
+                <button type="button" class="btn btn-secondary ms-2" onclick="clearFilters()">
+                    Réinitialiser
+                </button>
+            </div>
+
+            <!-- مؤشر التقدم -->
+            <div id="loadingIndicator" class="progress mt-3 d-none">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%;">
+                    Recherche en cours...
+                </div>
+            </div>
+            <div id="loadingText" class="text-center text-muted d-none my-3">
+                <i class="bi bi-hourglass-split"></i> Veuillez patienter, recherche en cours...
+            </div>
+        </div>
+    </div>
+
+    <!-- نتائج البحث -->
+    <div id="resultsSection" class="d-none">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5><i class="bi bi-inbox"></i> Articles trouvés</h5>
+                <div class="table-responsive mt-3">
+                    <table class="table table-hover align-middle" id="resultsTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 10%">Code</th>
+                                <th style="width: 50%">Libellé</th>
+                                <th style="width: 25%">Correspondance</th>
+                                <th style="width: 15%">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- سيتم ملؤه ديناميكيًا -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة بحث الخصائص -->
+<div class="modal fade" id="lookupModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="lookupTitle">Choisir une caractéristique</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="lookupSearch" class="form-control mb-3" placeholder="Rechercher...">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nom</th>
+                                <th>Unité</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lookupResults">
+                            <tr><td colspan="4">Recherchez une caractéristique...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// متغير لحفظ الفلاتر
+let filters = [];
+
+// === فتح نافذة البحث ===
+function openLookupPanel(type) {
+    if (type !== 'caract') return;
+
+    const titleElement = document.getElementById('lookupTitle');
+    if (!titleElement) {
+        console.error("L'élément #lookupTitle est introuvable.");
+        return;
+    }
+
+    titleElement.textContent = "Choisir une caractéristique";
+    document.getElementById('lookupSearch').value = '';
+    document.getElementById('lookupResults').innerHTML = '<tr><td colspan="4">Recherche en cours...</td></tr>';
+
+    new bootstrap.Modal(document.getElementById('lookupModal')).show();
+
+    // بدء البحث عند الكتابة
+    document.getElementById('lookupSearch').oninput = debounce(() => {
+        const query = document.getElementById('lookupSearch').value.trim();
+        searchCaracteristiques(query);
+    }, 300);
+}
+
+// === بحث في الخصائص ===
+function searchCaracteristiques(query) {
+    const url = `/core/api/caracteristiques/?q=${encodeURIComponent(query)}`;
+    console.log("Fetching:", url);
+
+    fetch(url)
+        .then(r => {
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return r.json();
+        })
+        .then(data => {
+            console.log("Data received:", data);
+            const tbody = document.getElementById('lookupResults');
+            tbody.innerHTML = '';
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4">Aucune caractéristique trouvée.</td></tr>';
+                return;
+            }
+            data.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${c.id}</td>
+                    <td>${escapeHtml(c.nom)}</td>
+                    <td>${c.unite || '-'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary"
+                                onclick="selectCaract(${c.id}, '${escapeHtml(c.nom)}')">
+                            Choisir
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        })
+        .catch(err => {
+            console.error("Erreur de recherche:", err);
+            document.getElementById('lookupResults').innerHTML = `<tr><td colspan="4">Erreur: ${err.message}</td></tr>`;
+        });
+}
+
+// === اختيار الخاصية ===
+function selectCaract(id, nom) {
+    document.getElementById('caractId').value = id;
+    document.getElementById('caractInput').value = nom;
+    bootstrap.Modal.getInstance(document.getElementById('lookupModal')).hide();
+}
+
+// === إضافة فلتر جديد ===
+function addFilter() {
+    const caractId = document.getElementById('caractId').value;
+    const caractNom = document.getElementById('caractInput').value;
+    const valeur = document.getElementById('caractValue').value.trim();
+
+    if (!caractId || !caractNom) {
+        alert("Veuillez choisir une caractéristique.");
+        return;
+    }
+
+    if (filters.some(f => f.id == caractId && f.value === valeur)) {
+        alert("Ce filtre existe déjà.");
+        return;
+    }
+
+    filters.push({ id: parseInt(caractId), nom: caractNom, value: valeur });
+    updateFiltersList();
+    clearSelection();
+}
+
+// === تحديث قائمة الفلاتر ===
+function updateFiltersList() {
+    const list = document.getElementById('filtersList');
+    const empty = document.getElementById('emptyFilters');
+
+    if (filters.length === 0) {
+        empty.classList.remove('d-none');
+        list.innerHTML = '';
+        list.appendChild(empty);
+        return;
+    }
+
+    empty.classList.add('d-none');
+    list.innerHTML = '';
+
+    filters.forEach((f, index) => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+        li.innerHTML = `
+            <span>
+                <strong>${f.nom}</strong>
+                ${f.value ? `: "${f.value}"` : '(valeur quelconque)'}
+            </span>
+            <button class="btn btn-danger btn-sm"
+                    onclick="removeFilter(${index})">
+                <i class="bi bi-trash"></i>
+            </button>
+        `;
+        list.appendChild(li);
+    });
+}
+
+// === حذف فلتر ===
+function removeFilter(index) {
+    filters.splice(index, 1);
+    updateFiltersList();
+}
+
+// === مسح الحقول بعد الإضافة ===
+function clearSelection() {
+    document.getElementById('caractId').value = '';
+    document.getElementById('caractInput').value = '';
+    document.getElementById('caractValue').value = '';
+}
+
+// === تنفيذ البحث ===
+function performSearch() {
+    if (filters.length === 0) {
+        alert("Veuillez ajouter au moins un filtre.");
+        return;
+    }
+
+    const button = document.getElementById('searchButton');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const loadingText = document.getElementById('loadingText');
+
+    // تعطيل الزر وعرض المؤشر
+    button.disabled = true;
+    button.innerHTML = '<i class="bi bi-search"></i> Recherche...';
+    loadingIndicator.classList.remove('d-none');
+    loadingText.classList.remove('d-none');
+    document.getElementById('resultsSection').classList.add('d-none');
+
+    fetch('/core/api/search-articles-by-caracts/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({ filters: filters })
+    })
+    .then(r => {
+        if (!r.ok) throw new Error('Réponse réseau non valide');
+        return r.json();
+    })
+    .then(data => {
+        displayResults(data.results);
+    })
+    .catch(err => {
+        console.error("Erreur:", err);
+        alert("Erreur lors de la recherche. Vérifiez la console.");
+    })
+    .finally(() => {
+        // إعادة الزر والمؤشر
+        button.disabled = false;
+        button.innerHTML = '<i class="bi bi-binoculars"></i> Rechercher';
+        loadingIndicator.classList.add('d-none');
+        loadingText.classList.add('d-none');
+    });
+}
+
+// === عرض النتائج ===
+function displayResults(results) {
+    const tbody = document.querySelector('#resultsTable tbody');
+    tbody.innerHTML = '';
+
+    if (results.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Aucun article trouvé.</td></tr>';
+        document.getElementById('resultsSection').classList.remove('d-none');
+        return;
+    }
+
+    results.forEach(art => {
+        const codArt = art.cod_art ? encodeURIComponent(art.cod_art.trim()) : 'inconnu';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><code>${art.cod_art}</code></td>
+            <td>${escapeHtml(art.libelle)}</td>
+            <td>${art.match_count} / ${art.total_caracts}</td>
+            <td>
+                <a href="/core/article-caracteristiques/${codArt}/"
+                   class="btn btn-sm btn-success">
+                    <i class="bi bi-eye"></i> Voir
+                </a>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById('resultsSection').classList.remove('d-none');
+}
+
+// === إعادة تعيين الفلاتر ===
+function clearFilters() {
+    filters = [];
+    updateFiltersList();
+    document.getElementById('resultsSection').classList.add('d-none');
+}
+
+// === أدوات مساعدة ===
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+</script>
+{% endblock %}

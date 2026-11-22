@@ -1,0 +1,612 @@
+{% extends 'base.html' %}
+{% load static i18n projet_extras %}
+
+{% block title %}Décomptes - {{ projet.reference }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .decompte-header {
+        background: linear-gradient(135deg, #0d6efd 0%, #0dcaf0 100%);
+        color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .decompte-header h2 {
+        color: white;
+        margin-bottom: 0.25rem;
+    }
+    .decompte-header .reference {
+        opacity: 0.9;
+        font-size: 0.9rem;
+    }
+    
+    .stat-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border-left: 4px solid;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,.1);
+    }
+    .stat-card.total    { border-left-color: #0d6efd; }
+    .stat-card.paye     { border-left-color: #198754; }
+    .stat-card.attente  { border-left-color: #ffc107; }
+    .stat-card.montant  { border-left-color: #0dcaf0; }
+    
+    .decompte-row {
+        transition: background-color 0.2s;
+    }
+    .decompte-row:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .decompte-number {
+        font-family: 'Courier New', monospace;
+        font-weight: 700;
+        color: #0d6efd;
+        font-size: 1.1rem;
+    }
+    
+    .montant-cell {
+        font-weight: 600;
+        font-family: 'Courier New', monospace;
+    }
+    .montant-cell.positive { color: #198754; }
+    .montant-cell.negative { color: #dc3545; }
+    
+    .progress-summary {
+        background: linear-gradient(135deg, #e7f1ff 0%, #cff4fc 100%);
+        border: 2px dashed #0dcaf0;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .progress-summary .value {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+    
+    .mini-stat {
+        text-align: center;
+        padding: 0.75rem 0.5rem;
+        background: #f8f9fa;
+        border-radius: 0.5rem;
+    }
+    .mini-stat .value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    .mini-stat .label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        margin-top: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_list' %}">
+                    <i class="bi bi-kanban"></i> Projets
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_detail' projet.pk %}">
+                    {{ projet.reference }}
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+                <i class="bi bi-cash-stack"></i> Décomptes
+            </li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="decompte-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="reference mb-1">
+                    <i class="bi bi-folder2-open"></i> {{ projet.reference }}
+                    <span class="mx-2">•</span>
+                    <i class="bi bi-tag"></i> {{ projet.type_projet.libelle }}
+                    <span class="mx-2">•</span>
+                    <i class="bi bi-cash-stack"></i> Suivi financier
+                </div>
+                <h2>{{ projet.nom }}</h2>
+                <p class="mb-0 opacity-75">
+                    <i class="bi bi-building me-1"></i> 
+                    Maître d'ouvrage : {{ projet.maitre_ouvrage.raison_sociale }}
+                </p>
+            </div>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <a href="{% url 'projets:projet_detail' projet.pk %}" 
+                   class="btn btn-light">
+                    <i class="bi bi-arrow-left me-1"></i> Retour au projet
+                </a>
+                <a href="{% url 'projets:decompte_create' projet.pk %}" 
+                   class="btn btn-outline-light ms-1">
+                    <i class="bi bi-plus-circle me-1"></i> Nouveau décompte
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card total shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">Total décomptes</div>
+                            <div class="h3 mb-0 mt-1 fw-bold text-primary">{{ stats.total }}</div>
+                        </div>
+                        <i class="bi bi-file-earmark-text fs-2 text-primary opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card paye shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">Payés</div>
+                            <div class="h3 mb-0 mt-1 fw-bold text-success">{{ stats.paye }}</div>
+                        </div>
+                        <i class="bi bi-check-circle-fill fs-2 text-success opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card attente shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">En attente</div>
+                            <div class="h3 mb-0 mt-1 fw-bold text-warning">{{ stats.en_cours }}</div>
+                        </div>
+                        <i class="bi bi-hourglass-split fs-2 text-warning opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card montant shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase">Montant total net</div>
+                    <div class="h4 mb-0 mt-1 fw-bold text-info">
+                        {{ stats.montant_total|floatformat:3 }}
+                        <small class="text-muted">{{ projet.devise }}</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Summary -->
+    {% if projet.montant_final > 0 %}
+    <div class="progress-summary">
+        <div class="row align-items-center">
+            <div class="col-md-3">
+                <small class="text-muted d-block">Montant du projet</small>
+                <div class="value text-primary">
+                    {{ projet.montant_final|floatformat:3 }}
+                    <small class="text-muted">{{ projet.devise }}</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted d-block">Total décompté</small>
+                <div class="value text-success">
+                    {{ stats.montant_total|floatformat:3 }}
+                    <small class="text-muted">{{ projet.devise }}</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted d-block">Reste à décompter</small>
+                {% with reste=projet.montant_final|add:stats.montant_total|floatformat:3 %}
+                <div class="value text-warning">
+                    {{ reste }}
+                    <small class="text-muted">{{ projet.devise }}</small>
+                </div>
+                {% endwith %}
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted d-block">Taux de facturation</small>
+                {% widthratio stats.montant_total projet.montant_final 100 as taux_facturation %}
+                <div class="d-flex align-items-center mt-2">
+                    <div class="progress flex-grow-1 me-2" style="height: 14px;">
+                        <div class="progress-bar 
+                            {% if taux_facturation >= 100 %}bg-success
+                            {% elif taux_facturation >= 75 %}bg-primary
+                            {% elif taux_facturation >= 50 %}bg-info
+                            {% else %}bg-warning{% endif %}"
+                            style="width: {% if taux_facturation > 100 %}100{% else %}{{ taux_facturation }}{% endif %}%">
+                        </div>
+                    </div>
+                    <strong class="fs-5">{{ taux_facturation|floatformat:1 }}%</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-cash-stack me-2 text-primary"></i>
+                Liste des décomptes
+                <span class="badge bg-secondary ms-2">{{ stats.total }}</span>
+            </h5>
+            <a href="{% url 'projets:decompte_create' projet.pk %}" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Nouveau décompte
+            </a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="decomptesTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 80px;">N°</th>
+                            <th style="width: 140px;">Type</th>
+                            <th style="width: 120px;">Date</th>
+                            <th style="width: 140px;" class="text-end">Montant brut</th>
+                            <th style="width: 120px;" class="text-end">Retenue</th>
+                            <th style="width: 120px;" class="text-end">Pénalités</th>
+                            <th style="width: 120px;" class="text-end">TVA</th>
+                            <th style="width: 150px;" class="text-end">Montant net</th>
+                            <th style="width: 120px;">Statut</th>
+                            <th style="width: 100px;" class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for decompte in decomptes %}
+                        <tr class="decompte-row">
+                            <td>
+                                <span class="decompte-number">
+                                    N°{{ decompte.numero }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if decompte.type_decompte == 'PROVISOIRE' %}
+                                    <span class="badge bg-primary">
+                                        <i class="bi bi-file-earmark me-1"></i>
+                                        Provisoire
+                                    </span>
+                                {% elif decompte.type_decompte == 'DEFINITIF' %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-file-check me-1"></i>
+                                        Définitif
+                                    </span>
+                                {% elif decompte.type_decompte == 'REVISION_PRIX' %}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="bi bi-graph-up me-1"></i>
+                                        Révision
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>
+                                    <i class="bi bi-calendar-event text-muted me-1"></i>
+                                    {{ decompte.date_decompte|date:"d/m/Y" }}
+                                </small>
+                            </td>
+                            <td class="text-end montant-cell">
+                                {{ decompte.montant_brut|floatformat:3 }}
+                            </td>
+                            <td class="text-end montant-cell negative">
+                                {% if decompte.retenue_garantie > 0 %}
+                                    -{{ decompte.retenue_garantie|floatformat:3 }}
+                                {% else %}
+                                    <span class="text-muted">0,000</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end montant-cell negative">
+                                {% if decompte.penalites > 0 %}
+                                    -{{ decompte.penalites|floatformat:3 }}
+                                {% else %}
+                                    <span class="text-muted">0,000</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end montant-cell positive">
+                                +{{ decompte.tva_montant|floatformat:3 }}
+                            </td>
+                            <td class="text-end">
+                                <span class="decompte-number">
+                                    {{ decompte.montant_net|floatformat:3 }}
+                                </span>
+                                <small class="text-muted d-block">{{ projet.devise }}</small>
+                            </td>
+                            <td>
+                                {% if decompte.statut == 'PAYE' %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle-fill me-1"></i>Payé
+                                    </span>
+                                {% elif decompte.statut == 'VALIDE' %}
+                                    <span class="badge bg-info">
+                                        <i class="bi bi-check2-circle me-1"></i>Validé
+                                    </span>
+                                {% elif decompte.statut == 'SOUMIS' %}
+                                    <span class="badge bg-primary">
+                                        <i class="bi bi-send me-1"></i>Soumis
+                                    </span>
+                                {% elif decompte.statut == 'PREPARE' %}
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-clock-fill me-1"></i>Préparé
+                                    </span>
+                                {% elif decompte.statut == 'REJETE' %}
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-x-circle-fill me-1"></i>Rejeté
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" 
+                                            class="btn btn-outline-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalDecompte{{ decompte.pk }}"
+                                            title="Voir les détails">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Modal pour chaque décompte -->
+                        <div class="modal fade" id="modalDecompte{{ decompte.pk }}" tabindex="-1">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-primary text-white">
+                                        <h5 class="modal-title">
+                                            <i class="bi bi-file-earmark-text me-2"></i>
+                                            Décompte N°{{ decompte.numero }}
+                                        </h5>
+                                        <button type="button" class="btn-close btn-close-white" 
+                                                data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block">Type</small>
+                                                <strong>{{ decompte.get_type_decompte_display }}</strong>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block">Date</small>
+                                                <strong>{{ decompte.date_decompte|date:"d/m/Y" }}</strong>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block">Statut</small>
+                                                <strong>{{ decompte.get_statut_display }}</strong>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block">Taux TVA</small>
+                                                <strong>{{ decompte.tva_taux }}%</strong>
+                                            </div>
+                                        </div>
+                                        <hr>
+                                        <h6 class="fw-bold mb-3">
+                                            <i class="bi bi-calculator me-1"></i>
+                                            Détail du calcul
+                                        </h6>
+                                        <table class="table table-sm">
+                                            <tr>
+                                                <td>Montant brut</td>
+                                                <td class="text-end fw-bold">
+                                                    {{ decompte.montant_brut|floatformat:3 }} {{ projet.devise }}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-danger">- Retenue de garantie</td>
+                                                <td class="text-end text-danger">
+                                                    -{{ decompte.retenue_garantie|floatformat:3 }} {{ projet.devise }}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-danger">- Pénalités</td>
+                                                <td class="text-end text-danger">
+                                                    -{{ decompte.penalites|floatformat:3 }} {{ projet.devise }}
+                                                </td>
+                                            </tr>
+                                            <tr class="table-light">
+                                                <td class="fw-bold">Base HT</td>
+                                                <td class="text-end fw-bold">
+                                                    {{ decompte.montant_brut|add:decompte.retenue_garantie|add:decompte.penalites|floatformat:3 }} {{ projet.devise }}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-success">+ TVA ({{ decompte.tva_taux }}%)</td>
+                                                <td class="text-end text-success">
+                                                    +{{ decompte.tva_montant|floatformat:3 }} {{ projet.devise }}
+                                                </td>
+                                            </tr>
+                                            <tr class="table-primary">
+                                                <td class="fw-bold fs-5">MONTANT NET</td>
+                                                <td class="text-end fw-bold fs-5 text-primary">
+                                                    {{ decompte.montant_net|floatformat:3 }} {{ projet.devise }}
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                        {% if decompte.observations %}
+                                        <div class="alert alert-light mt-3 mb-0" role="alert">
+                                            <strong>
+                                                <i class="bi bi-chat-left-text me-1"></i>
+                                                Observations :
+                                            </strong>
+                                            <p class="mb-0 mt-2">{{ decompte.observations|linebreaksbr }}</p>
+                                        </div>
+                                        {% endif %}
+
+                                        {% if decompte.document %}
+                                        <div class="mt-3">
+                                            <a href="{{ decompte.document.url }}" target="_blank" 
+                                               class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-download me-1"></i>
+                                                Télécharger le document
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                            Fermer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <tr>
+                            <td colspan="10" class="text-center py-5">
+                                <i class="bi bi-cash-stack text-muted fs-1 d-block mb-3"></i>
+                                <h5 class="text-muted">Aucun décompte enregistré</h5>
+                                <p class="text-muted mb-3">
+                                    Commencez par créer le premier décompte de ce projet
+                                </p>
+                                <a href="{% url 'projets:decompte_create' projet.pk %}" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-1"></i> Créer le premier décompte
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    {% if decomptes %}
+                    <tfoot class="table-light">
+                        <tr class="fw-bold">
+                            <td colspan="3" class="text-end">TOTAL GÉNÉRAL :</td>
+                            <td class="text-end montant-cell">
+                                {% with total_brut=0 %}
+                                    {% for d in decomptes %}
+                                        {% if forloop.first %}
+                                            {{ d.montant_brut|floatformat:3 }}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endwith %}
+                            </td>
+                            <td class="text-end montant-cell negative">
+                                {% with total_ret=0 %}
+                                    {% for d in decomptes %}
+                                        {% if forloop.first %}
+                                            -{{ d.retenue_garantie|floatformat:3 }}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endwith %}
+                            </td>
+                            <td class="text-end montant-cell negative">
+                                {% with total_pen=0 %}
+                                    {% for d in decomptes %}
+                                        {% if forloop.first %}
+                                            -{{ d.penalites|floatformat:3 }}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endwith %}
+                            </td>
+                            <td class="text-end montant-cell positive">
+                                {% with total_tva=0 %}
+                                    {% for d in decomptes %}
+                                        {% if forloop.first %}
+                                            +{{ d.tva_montant|floatformat:3 }}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endwith %}
+                            </td>
+                            <td class="text-end">
+                                <span class="decompte-number fs-5">
+                                    {% with total_net=0 %}
+                                        {% for d in decomptes %}
+                                            {% if forloop.first %}
+                                                {{ d.montant_net|floatformat:3 }}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endwith %}
+                                </span>
+                                <small class="text-muted d-block">{{ projet.devise }}</small>
+                            </td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="bi bi-lightning-fill me-2 text-warning"></i>
+                Actions rapides
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <a href="{% url 'projets:decompte_create' projet.pk %}" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-plus-circle me-2"></i> Nouveau décompte
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'projets:avenant_create' projet.pk %}" class="btn btn-outline-success w-100">
+                        <i class="bi bi-file-plus me-2"></i> Nouvel avenant
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'projets:facture_extra_create' projet.pk %}" class="btn btn-outline-warning w-100">
+                        <i class="bi bi-receipt me-2"></i> Facture extra
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'projets:projet_detail' projet.pk %}" class="btn btn-outline-info w-100">
+                        <i class="bi bi-arrow-left me-2"></i> Retour au projet
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Initialisation de DataTables
+        $('#decomptesTable').DataTable({
+            language: {
+                url: '{% static "datatables/i18n/fr-FR.json" %}'
+            },
+            paging: false,
+            searching: true,
+            info: false,
+            order: [[0, 'desc']],
+            columnDefs: [
+                { orderable: false, targets: [9] },
+                { width: '80px', targets: [0] },
+                { width: '140px', targets: [1, 6, 7] },
+                { width: '120px', targets: [2, 4, 5, 8] },
+                { className: 'text-end', targets: [3, 4, 5, 6, 7] }
+            ],
+            stateSave: true,
+            stateDuration: 60 * 60 * 24
+        });
+
+        // Activation des tooltips
+        var tooltipTriggerList = [].slice.call(
+            document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        );
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}		

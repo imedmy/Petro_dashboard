@@ -1,0 +1,445 @@
+{% extends 'base.html' %}
+{% load static i18n projet_extras %}
+
+{% block title %}Dashboard Projets{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border-left: 4px solid;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,.1);
+    }
+    .stat-card.primary { border-left-color: #0d6efd; }
+    .stat-card.success { border-left-color: #198754; }
+    .stat-card.warning { border-left-color: #ffc107; }
+    .stat-card.info    { border-left-color: #0dcaf0; }
+    .stat-card.danger  { border-left-color: #dc3545; }
+    .stat-card.dark    { border-left-color: #343a40; }
+    
+    .chart-container {
+        position: relative;
+        height: 280px;
+    }
+    
+    .project-item {
+        transition: background-color 0.2s;
+    }
+    .project-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .retard-badge {
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.6; }
+        100% { opacity: 1; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="bi bi-speedometer2 me-2 text-primary"></i>
+                Tableau de Bord - Projets
+            </h2>
+            <p class="text-muted mb-0">
+                Vue d'ensemble de tous les projets et marchés
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'projets:projet_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Nouveau projet
+            </a>
+            <a href="{% url 'projets:projet_list' %}" class="btn btn-outline-secondary ms-1">
+                <i class="bi bi-list-ul me-1"></i> Liste complète
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-2">
+            <div class="card stat-card primary shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">Total</div>
+                            <div class="h3 mb-0 mt-1 fw-bold">{{ stats.total }}</div>
+                        </div>
+                        <i class="bi bi-folder2-open fs-2 text-primary opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card stat-card success shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">En cours</div>
+                            <div class="h3 mb-0 mt-1 fw-bold text-success">{{ stats.en_cours }}</div>
+                        </div>
+                        <i class="bi bi-play-circle-fill fs-2 text-success opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card stat-card info shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">Planifiés</div>
+                            <div class="h3 mb-0 mt-1 fw-bold">{{ stats.planifie }}</div>
+                        </div>
+                        <i class="bi bi-calendar-check fs-2 text-info opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card stat-card warning shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">Suspendus</div>
+                            <div class="h3 mb-0 mt-1 fw-bold text-warning">{{ stats.suspendus }}</div>
+                        </div>
+                        <i class="bi bi-pause-circle-fill fs-2 text-warning opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card stat-card dark shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">Terminés</div>
+                            <div class="h3 mb-0 mt-1 fw-bold">{{ stats.termines }}</div>
+                        </div>
+                        <i class="bi bi-check-circle-fill fs-2 text-dark opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card stat-card danger shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">Avanc. moyen</div>
+                            <div class="h3 mb-0 mt-1 fw-bold">{{ stats.avancement_moyen|floatformat:0 }}%</div>
+                        </div>
+                        <i class="bi bi-graph-up-arrow fs-2 text-danger opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Montant Total -->
+    <div class="card border-0 shadow-sm mb-4 bg-primary bg-gradient text-white">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h5 class="mb-1 text-white">
+                        <i class="bi bi-cash-stack me-2"></i>
+                        Montant total des projets
+                    </h5>
+                    <small class="opacity-75">
+                        Somme de tous les montants finaux (initial + avenants)
+                    </small>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="h2 mb-0 fw-bold">
+                        {{ stats.montant_total|floatformat:3 }} <small>TND</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- Projets en cours -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-play-circle text-success me-2"></i>
+                        Projets en cours (Top 10)
+                    </h5>
+                    <a href="{% url 'projets:projet_list' %}?statut=EN_COURS" class="btn btn-sm btn-outline-success">
+                        Voir tout <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Référence</th>
+                                    <th>Nom du projet</th>
+                                    <th>Type</th>
+                                    <th style="width: 200px;">Avancement</th>
+                                    <th>Fin prévue</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for projet in projets_en_cours %}
+                                <tr class="project-item">
+                                    <td>
+                                        <a href="{% url 'projets:projet_detail' projet.pk %}" class="fw-bold text-decoration-none">
+                                            {{ projet.reference }}
+                                        </a>
+                                    </td>
+                                    <td>{{ projet.nom|truncatechars:40 }}</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">
+                                            {{ projet.type_projet.libelle }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress flex-grow-1 me-2" style="height: 8px;">
+                                                <div class="progress-bar 
+                                                    {% if projet.pourcentage_avancement >= 75 %}bg-success
+                                                    {% elif projet.pourcentage_avancement >= 50 %}bg-primary
+                                                    {% elif projet.pourcentage_avancement >= 25 %}bg-info
+                                                    {% else %}bg-warning{% endif %}"
+                                                    style="width: {{ projet.pourcentage_avancement }}%"></div>
+                                            </div>
+                                            <small class="fw-bold">{{ projet.pourcentage_avancement|floatformat:0 }}%</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if projet.date_fin_prevue %}
+                                            {% if projet.date_fin_prevue|is_retarde %}
+                                                <span class="text-danger retard-badge">
+                                                    <i class="bi bi-exclamation-triangle-fill"></i>
+                                                    {{ projet.date_fin_prevue|date:"d/m/Y" }}
+                                                </span>
+                                            {% else %}
+                                                {{ projet.date_fin_prevue|date:"d/m/Y" }}
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                        Aucun projet en cours
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Projets en retard -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm border-start border-4 border-danger h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0 text-danger">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Projets en retard
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for projet in projets_en_retard %}
+                        <a href="{% url 'projets:projet_detail' projet.pk %}" 
+                           class="list-group-item list-group-item-action project-item">
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <strong class="text-danger">{{ projet.reference }}</strong>
+                                <small class="text-danger retard-badge">
+                                    <i class="bi bi-clock-history"></i>
+                                    {{ projet.date_fin_prevue|jours_restants }} j
+                                </small>
+                            </div>
+                            <div class="small text-muted mb-2">
+                                {{ projet.nom|truncatechars:60 }}
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <i class="bi bi-person"></i>
+                                    {{ projet.chef_projet.get_full_name|default:"Non assigné" }}
+                                </small>
+                                <span class="badge bg-danger">
+                                    {{ projet.pourcentage_avancement|floatformat:0 }}%
+                                </span>
+                            </div>
+                        </a>
+                        {% empty %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-check-circle-fill text-success fs-1"></i>
+                            <p class="mb-0 mt-2 text-muted">Aucun projet en retard</p>
+                            <small class="text-success">🎉 Excellent travail !</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row g-3 mt-2">
+        <!-- Répartition par statut -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-pie-chart-fill me-2 text-primary"></i>
+                        Répartition par statut
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="chartStatut"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Répartition par type -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-bar-chart-fill me-2 text-success"></i>
+                        Répartition par type de projet
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="chartType"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'vendor/chart.js/chart.umd.min.js' %}"></script>
+<script>
+    // Données des charts depuis le contexte Django
+    const repartitionStatut = {{ repartition_par_statut|safe }};
+    const repartitionType = {{ repartition_par_type|safe }};
+
+    // Mapping des couleurs pour les statuts
+    const statutColors = {
+        'PLANIFIE': '#6c757d',
+        'EN_COURS': '#198754',
+        'SUSPENDU': '#ffc107',
+        'ACHEVE': '#0dcaf0',
+        'RESILIE': '#dc3545'
+    };
+
+    const statutLabels = {
+        'PLANIFIE': 'Planifié',
+        'EN_COURS': 'En cours',
+        'SUSPENDU': 'Suspendu',
+        'ACHEVE': 'Achevé',
+        'RESILIE': 'Résilié'
+    };
+
+    // Chart 1: Répartition par statut (Pie Chart)
+    const ctxStatut = document.getElementById('chartStatut').getContext('2d');
+    new Chart(ctxStatut, {
+        type: 'doughnut',
+        data: {
+            labels: repartitionStatut.map(item => statutLabels[item.statut] || item.statut),
+            datasets: [{
+                data: repartitionStatut.map(item => item.total),
+                backgroundColor: repartitionStatut.map(item => statutColors[item.statut] || '#6c757d'),
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        padding: 15,
+                        font: { size: 12 }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.raw / total) * 100).toFixed(1);
+                            return `${context.label}: ${context.raw} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Chart 2: Répartition par type (Bar Chart)
+    const ctxType = document.getElementById('chartType').getContext('2d');
+    new Chart(ctxType, {
+        type: 'bar',
+        data: {
+            labels: repartitionType.map(item => item.type_projet__libelle),
+            datasets: [{
+                label: 'Nombre de projets',
+                data: repartitionType.map(item => item.total),
+                backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                borderColor: 'rgba(13, 110, 253, 1)',
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1,
+                        precision: 0
+                    },
+                    title: {
+                        display: true,
+                        text: 'Nombre de projets'
+                    }
+                },
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}					

@@ -1,0 +1,21 @@
+<!-- templates/core/planning_referentiel_confirm_delete.html -->
+{% extends "base.html" %}
+{% block title %}Supprimer le planning{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="card">
+        <div class="card-header bg-danger text-white">
+            <h4>Confirmation de suppression</h4>
+        </div>
+        <div class="card-body">
+            <p>Voulez-vous vraiment supprimer ce planning référentiel ?</p>
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Oui, supprimer</button>
+                <a href="{% url 'core:planning_referentiel_list' %}" class="btn btn-secondary">Annuler</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

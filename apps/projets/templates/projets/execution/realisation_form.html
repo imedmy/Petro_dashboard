@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% load static i18n %}
+
+{% block title %}Nouvelle Réalisation - {{ projet.reference }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'projets:projet_list' %}">Projets</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'projets:projet_detail' projet.pk %}">{{ projet.reference }}</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'projets:realisation_list' projet.pk %}">Réalisations</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Nouvelle</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary text-white py-3">
+                    <h4 class="mb-0"><i class="bi bi-plus-circle me-2"></i>{{ title }}</h4>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" action="{% url 'projets:realisation_create' projet.pk %}">
+                        {% csrf_token %}
+
+                        <!-- Messages d'erreur -->
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        <div class="row g-4">
+                            <!-- Colonne Gauche : Informations principales -->
+                            <div class="col-md-8">
+                                <h6 class="text-uppercase text-muted small fw-bold mb-3">Informations générales</h6>
+                                
+                                <div class="mb-3">
+                                    <label for="nom" class="form-label fw-semibold">Nom de la réalisation <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control form-control-lg" id="nom" name="nom" required 
+                                           placeholder="Ex: Coulage de la dalle Zone A">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="description" class="form-label fw-semibold">Description</label>
+                                    <textarea class="form-control" id="description" name="description" rows="3" 
+                                              placeholder="Détails techniques ou notes sur cette réalisation..."></textarea>
+                                </div>
+
+                                <hr class="my-4">
+                                <h6 class="text-uppercase text-muted small fw-bold mb-3">Lien avec la structure du projet</h6>
+
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label for="lot" class="form-label fw-semibold">Lot</label>
+                                        <select class="form-select" id="lot" name="lot">
+                                            <option value="">-- Sélectionner --</option>
+                                            {% for lot in lots %}
+                                                <option value="{{ lot.pk }}">Lot {{ lot.numero }} - {{ lot.designation|truncatechars:25 }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="ouvrage" class="form-label fw-semibold">Ouvrage</label>
+                                        <select class="form-select" id="ouvrage" name="ouvrage">
+                                            <option value="">-- Sélectionner --</option>
+                                            {% for ouvrage in ouvrages %}
+                                                <option value="{{ ouvrage.pk }}">{{ ouvrage.code }} - {{ ouvrage.designation|truncatechars:25 }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="tache" class="form-label fw-semibold">Tâche</label>
+                                        <select class="form-select" id="tache" name="tache">
+                                            <option value="">-- Sélectionner --</option>
+                                            {% for tache in taches %}
+                                                <option value="{{ tache.pk }}">{{ tache.code }} - {{ tache.designation|truncatechars:25 }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Colonne Droite : Planification et Responsable -->
+                            <div class="col-md-4">
+                                <div class="bg-light p-3 rounded-3">
+                                    <h6 class="text-uppercase text-muted small fw-bold mb-3">Planification & Suivi</h6>
+                                    
+                                    <div class="mb-3">
+                                        <label for="statut" class="form-label fw-semibold">Statut initial</label>
+                                        <select class="form-select" id="statut" name="statut">
+                                            <option value="PLANIFIE" selected>Planifié</option>
+                                            <option value="EN_COURS">En cours</option>
+                                            <option value="SUSPENDU">Suspendu</option>
+                                            <option value="TERMINE">Terminé</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="date_debut_reelle" class="form-label fw-semibold">Date de début</label>
+                                        <input type="date" class="form-control" id="date_debut_reelle" name="date_debut_reelle">
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="date_fin_reelle" class="form-label fw-semibold">Date de fin prévue</label>
+                                        <input type="date" class="form-control" id="date_fin_reelle" name="date_fin_reelle">
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="responsable" class="form-label fw-semibold">Responsable</label>
+                                        <select class="form-select" id="responsable" name="responsable">
+                                            <option value="">-- Non assigné --</option>
+                                            <!-- Note: Adaptez cette liste selon votre modèle d'utilisateurs -->
+                                            <option value="{{ request.user.pk }}" selected>{{ request.user.get_full_name|default:request.user.username }} (Moi)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Boutons d'action -->
+                        <div class="d-flex justify-content-between align-items-center mt-5 pt-3 border-top">
+                            <a href="{% url 'projets:realisation_list' projet.pk %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i> Annuler
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg px-4">
+                                <i class="bi bi-check-circle me-1"></i> Créer la réalisation
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script simple pour lier les sélecteurs (Optionnel mais recommandé pour l'UX) -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Ici, vous pouvez ajouter du JS pour filtrer les ouvrages quand on choisit un lot, etc.
+    // Pour l'instant, tous les ouvrages/tâches du projet sont affichés.
+});
+</script>
+{% endblock %}

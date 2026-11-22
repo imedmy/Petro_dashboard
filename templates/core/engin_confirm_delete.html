@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Supprimer un Engin{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-danger text-white">
+            <h4>Confirmation de suppression</h4>
+        </div>
+        <div class="card-body">
+            <p>Êtes-vous sûr de vouloir supprimer cet engin ?</p>
+            <ul class="list-group mb-3">
+                <li class="list-group-item"><strong>Désignation:</strong> {{ engin.libelle }}</li>
+                <li class="list-group-item"><strong>Type:</strong> {{ engin.get_type_engin_display }}</li>
+                <li class="list-group-item"><strong>Immatriculation:</strong> {{ engin.immatriculation|default:"—" }}</li>
+            </ul>
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Oui, supprimer</button>
+                <a href="{% url 'core:engin_list' %}" class="btn btn-secondary">Annuler</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

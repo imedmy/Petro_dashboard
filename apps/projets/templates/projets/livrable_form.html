@@ -1,0 +1,720 @@
+{% extends 'base.html' %}
+{% load static i18n projet_extras %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #fff;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #e9ecef;
+    }
+    .form-section-title {
+        color: #0d9488;
+        font-weight: 600;
+        font-size: 1.1rem;
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.25rem;
+        border-bottom: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+    }
+    .form-section-title i {
+        margin-right: 0.5rem;
+        font-size: 1.25rem;
+    }
+    .required-star {
+        color: #dc3545;
+        font-weight: bold;
+    }
+    .form-help {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+    .form-card {
+        border: none;
+        border-radius: 0.75rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
+    }
+    .form-header {
+        background: linear-gradient(135deg, #0d9488 0%, #06b6d4 100%);
+        color: white;
+        border-radius: 0.75rem 0.75rem 0 0;
+        padding: 1.25rem 1.5rem;
+    }
+    .form-header h4 {
+        color: white;
+        margin: 0;
+    }
+    .form-header .subtitle {
+        opacity: 0.9;
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+    }
+    .projet-context {
+        background: #f0fdfa;
+        border-left: 4px solid #0d9488;
+        padding: 1rem 1.25rem;
+        border-radius: 0 0.5rem 0.5rem 0;
+        margin-bottom: 1.5rem;
+    }
+    .projet-context .label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+    }
+    .projet-context .value {
+        font-weight: 600;
+        color: #212529;
+    }
+    .type-livrable-card {
+        border: 2px solid #dee2e6;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-align: center;
+        height: 100%;
+    }
+    .type-livrable-card:hover {
+        border-color: #0d9488;
+        background: #f0fdfa;
+    }
+    .type-livrable-card.selected {
+        border-color: #0d9488;
+        background: #ccfbf1;
+        box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
+    }
+    .type-livrable-card i {
+        font-size: 1.75rem;
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #0d9488;
+    }
+    .type-livrable-card .title {
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    .type-livrable-card .desc {
+        font-size: 0.7rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+    .deadline-preview {
+        background: linear-gradient(135deg, #ccfbf1 0%, #cffafe 100%);
+        border: 2px dashed #0d9488;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        text-align: center;
+        margin-top: 1rem;
+    }
+    .deadline-preview .value {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+    .deadline-preview .value.safe { color: #0d9488; }
+    .deadline-preview .value.warning { color: #f59e0b; }
+    .deadline-preview .value.danger { color: #dc3545; }
+    .warning-deadline {
+        background: linear-gradient(135deg, #fef3c7 0%, #fee2e2 100%);
+        border: 1px solid #f59e0b;
+        border-left: 4px solid #dc3545;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        margin-top: 1rem;
+    }
+    .warning-deadline i {
+        color: #dc3545;
+    }
+    .success-deadline {
+        background: linear-gradient(135deg, #d1fae5 0%, #ccfbf1 100%);
+        border: 1px solid #10b981;
+        border-left: 4px solid #10b981;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        margin-top: 1rem;
+    }
+    .success-deadline i {
+        color: #10b981;
+    }
+    .version-badge {
+        display: inline-block;
+        background: #0d9488;
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_list' %}">
+                    <i class="bi bi-kanban"></i> Projets
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_detail' projet.pk %}">
+                    {{ projet.reference }}
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+                <i class="bi bi-box-seam"></i> Nouveau livrable
+            </li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Projet Context -->
+            <div class="projet-context">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="label">Projet</div>
+                        <div class="value">
+                            <i class="bi bi-folder2-open text-primary"></i>
+                            {{ projet.reference }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="label">Livrables existants</div>
+                        <div class="value">
+                            <span class="badge bg-success">{{ projet.livrables.count }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="label">Date fin projet</div>
+                        <div class="value text-primary">
+                            {{ projet.date_fin_prevue|date:"d/m/Y"|default:"-" }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="label">Avancement</div>
+                        <div class="value text-success">
+                            {{ projet.pourcentage_avancement|floatformat:0 }}%
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Card -->
+            <div class="card form-card shadow-sm">
+                <div class="form-header">
+                    <h4>
+                        <i class="bi bi-box-seam me-2"></i>
+                        {{ title }}
+                    </h4>
+                    <div class="subtitle">
+                        Enregistrez un nouveau livrable à remettre au client ou aux parties prenantes
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    <form method="post" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+
+                        <!-- Erreurs globales -->
+                        {% if form.errors %}
+                        <div class="alert alert-danger d-flex align-items-start mb-4" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
+                            <div class="flex-grow-1">
+                                <strong>Erreur de validation !</strong>
+                                Veuillez corriger les erreurs ci-dessous.
+                                <ul class="mb-0 mt-2 small">
+                                    {% for field, errors in form.errors.items %}
+                                        {% for error in errors %}
+                                            <li><strong>{{ field }}:</strong> {{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 1: TYPE DE LIVRABLE -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-tag-fill"></i>
+                                Type de livrable
+                            </div>
+                            <div class="row g-2" id="typeLivrableCards">
+                                <div class="col-6 col-md">
+                                    <div class="type-livrable-card" data-value="RAPPORT">
+                                        <i class="bi bi-file-earmark-text"></i>
+                                        <div class="title">Rapport</div>
+                                        <div class="desc">Rapport/Compte rendu</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md">
+                                    <div class="type-livrable-card" data-value="DOCUMENT_TECHNIQUE">
+                                        <i class="bi bi-file-earmark-richtext"></i>
+                                        <div class="title">Doc. technique</div>
+                                        <div class="desc">Spécifications, notices</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md">
+                                    <div class="type-livrable-card" data-value="PLAN">
+                                        <i class="bi bi-rulers"></i>
+                                        <div class="title">Plan / Dessins</div>
+                                        <div class="desc">Plans, schémas</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md">
+                                    <div class="type-livrable-card" data-value="PV_RECEPTION">
+                                        <i class="bi bi-check2-circle"></i>
+                                        <div class="title">PV Réception</div>
+                                        <div class="desc">Procès-verbal</div>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md">
+                                    <div class="type-livrable-card" data-value="AUTRE">
+                                        <i class="bi bi-three-dots"></i>
+                                        <div class="title">Autre</div>
+                                        <div class="desc">Autre type</div>
+                                    </div>
+                                </div>
+                            </div>
+                            {{ form.type_livrable }}
+                            {% if form.type_livrable.errors %}
+                                <div class="invalid-feedback d-block mt-2">
+                                    {{ form.type_livrable.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 2: IDENTIFICATION -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-info-circle-fill"></i>
+                                Identification du livrable
+                            </div>
+                            <div class="row g-3">
+                                <!-- Désignation -->
+                                <div class="col-md-8">
+                                    <label for="{{ form.designation.id_for_label }}" class="form-label">
+                                        Désignation <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.designation }}
+                                    <div class="form-help">
+                                        Nom ou titre du livrable
+                                    </div>
+                                    {% if form.designation.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.designation.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Version -->
+                                <div class="col-md-4">
+                                    <label for="{{ form.version.id_for_label }}" class="form-label">
+                                        Version
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">v</span>
+                                        {{ form.version }}
+                                    </div>
+                                    <div class="form-help">
+                                        Numéro de version (ex: 1, 2, 3...)
+                                    </div>
+                                    {% if form.version.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.version.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Description -->
+                                <div class="col-12">
+                                    <label for="{{ form.description.id_for_label }}" class="form-label">
+                                        Description
+                                    </label>
+                                    {{ form.description }}
+                                    <div class="form-help">
+                                        Description détaillée du contenu et des spécifications du livrable
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 3: ÉCHÉANCE -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-calendar-event-fill"></i>
+                                Échéance & Suivi
+                            </div>
+                            <div class="row g-3">
+                                <!-- Date échéance -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.date_echeance.id_for_label }}" class="form-label">
+                                        Date d'échéance <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.date_echeance }}
+                                    <div class="form-help">
+                                        Date limite de remise du livrable
+                                    </div>
+                                    {% if form.date_echeance.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.date_echeance.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Jours restants (calculé) -->
+                                <div class="col-md-6">
+                                    <label class="form-label">Jours restants</label>
+                                    <div class="input-group">
+                                        <input type="text" 
+                                               class="form-control fw-bold" 
+                                               id="joursRestants" 
+                                               readonly
+                                               value="-">
+                                        <span class="input-group-text">jours</span>
+                                    </div>
+                                    <div class="form-help">
+                                        Calculé automatiquement à partir d'aujourd'hui
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Deadline Preview -->
+                            <div class="deadline-preview">
+                                <div class="d-flex justify-content-around align-items-center">
+                                    <div>
+                                        <small class="text-muted d-block">Aujourd'hui</small>
+                                        <div class="fw-bold" id="previewAujourdhui">-</div>
+                                    </div>
+                                    <div>
+                                        <i class="bi bi-arrow-right fs-3" style="color: #0d9488;"></i>
+                                    </div>
+                                    <div>
+                                        <small class="text-muted d-block">Échéance</small>
+                                        <div class="fw-bold" id="previewEcheance">-</div>
+                                    </div>
+                                    <div>
+                                        <i class="bi bi-arrow-right fs-3" style="color: #0d9488;"></i>
+                                    </div>
+                                    <div>
+                                        <small class="text-muted d-block">Jours restants</small>
+                                        <div class="value safe" id="previewJours">-</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Warning deadline proche -->
+                            <div class="warning-deadline d-none" id="warningDeadline">
+                                <div class="d-flex align-items-start">
+                                    <i class="bi bi-exclamation-triangle-fill me-2 mt-1 fs-5"></i>
+                                    <div>
+                                        <strong>Attention :</strong>
+                                        <span id="warningMessage">L'échéance est très proche.</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Success deadline éloignée -->
+                            <div class="success-deadline d-none" id="successDeadline">
+                                <div class="d-flex align-items-start">
+                                    <i class="bi bi-check-circle-fill me-2 mt-1 fs-5"></i>
+                                    <div>
+                                        <strong>Bonne nouvelle :</strong>
+                                        <span id="successMessage">Vous disposez de suffisamment de temps.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 4: DOCUMENT DU LIVRABLE -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-paperclip"></i>
+                                Document du livrable
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="{{ form.document.id_for_label }}" class="form-label">
+                                        Fichier du livrable (PDF, DOCX, XLSX, DWG...)
+                                    </label>
+                                    {{ form.document }}
+                                    <div class="form-help">
+                                        Taille maximale : 10 MB. Formats acceptés : PDF, DOC, DOCX, XLS, XLSX, DWG, JPG, PNG, ZIP
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- BOUTONS D'ACTION -->
+                        <!-- ============================================================ -->
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                            <a href="{% url 'projets:projet_detail' projet.pk %}" 
+                               class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i> Annuler
+                            </a>
+                            <div class="d-flex gap-2">
+                                <button type="reset" class="btn btn-outline-warning">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Réinitialiser
+                                </button>
+                                <button type="submit" class="btn text-white" style="background: linear-gradient(135deg, #0d9488 0%, #06b6d4 100%);">
+                                    <i class="bi bi-check-circle me-1"></i> Créer le livrable
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Info Box -->
+            <div class="alert alert-light border mt-3" role="alert">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-info-circle-fill me-2 mt-1" style="color: #0d9488;"></i>
+                    <div class="small">
+                        <strong>Informations utiles :</strong>
+                        <ul class="mb-0 mt-1">
+                            <li>Les champs marqués d'un <span class="required-star">*</span> sont obligatoires.</li>
+                            <li>Les <strong>types de livrables</strong> :
+                                <ul class="mt-1">
+                                    <li><span class="badge" style="background: #0d9488;">Rapport</span> - Rapport d'activité, compte rendu</li>
+                                    <li><span class="badge" style="background: #0d9488;">Document technique</span> - Spécifications, notices techniques</li>
+                                    <li><span class="badge" style="background: #0d9488;">Plan / Dessins</span> - Plans, schémas, dessins techniques</li>
+                                    <li><span class="badge" style="background: #0d9488;">PV Réception</span> - Procès-verbal de réception</li>
+                                    <li><span class="badge" style="background: #0d9488;">Autre</span> - Tout autre type de livrable</li>
+                                </ul>
+                            </li>
+                            <li>La <strong>version</strong> permet de suivre les différentes versions du livrable.</li>
+                            <li>La <strong>date d'échéance</strong> est utilisée pour calculer les jours restants et déclencher des alertes.</li>
+                            <li>Un <strong>avertissement</strong> sera affiché si l'échéance est dans moins de 7 jours.</li>
+                            <li>Après l'enregistrement, le livrable sera visible dans la page de détails du projet.</li>
+                            <li>🎉 <strong>Félicitations !</strong> Vous avez terminé la création de tous les fichiers du module <strong>Gestion des Projets & Marchés</strong>.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Félicitations Box -->
+            <div class="alert mt-3" role="alert" style="background: linear-gradient(135deg, #0d9488 0%, #06b6d4 100%); color: white; border: none;">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-trophy-fill fs-1 me-3"></i>
+                    <div>
+                        <h5 class="mb-1 text-white">🎉 Module complet !</h5>
+                        <p class="mb-0 small">
+                            Vous avez créé avec succès les <strong>42 fichiers</strong> du module 
+                            <strong>Gestion des Projets & Marchés</strong>. 
+                            Vous pouvez maintenant exécuter les commandes de migration et commencer à utiliser le module !
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // ============================================================
+        // GESTION DES CARTES DE TYPE
+        // ============================================================
+        const typeLivrableSelect = document.getElementById('{{ form.type_livrable.id_for_label }}');
+        const typeLivrableCards = document.querySelectorAll('.type-livrable-card');
+
+        function selectTypeLivrable(value) {
+            if (typeLivrableSelect) {
+                typeLivrableSelect.value = value;
+            }
+            typeLivrableCards.forEach(card => {
+                if (card.dataset.value === value) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
+        }
+
+        typeLivrableCards.forEach(card => {
+            card.addEventListener('click', function() {
+                selectTypeLivrable(this.dataset.value);
+            });
+        });
+
+        // Sélection par défaut : RAPPORT
+        if (typeLivrableSelect && typeLivrableSelect.value) {
+            selectTypeLivrable(typeLivrableSelect.value);
+        } else {
+            selectTypeLivrable('RAPPORT');
+        }
+
+        // ============================================================
+        // CALCUL DES JOURS RESTANTS
+        // ============================================================
+        const dateEcheance = document.getElementById('{{ form.date_echeance.id_for_label }}');
+        const joursRestants = document.getElementById('joursRestants');
+        const previewAujourdhui = document.getElementById('previewAujourdhui');
+        const previewEcheance = document.getElementById('previewEcheance');
+        const previewJours = document.getElementById('previewJours');
+        const warningDeadline = document.getElementById('warningDeadline');
+        const warningMessage = document.getElementById('warningMessage');
+        const successDeadline = document.getElementById('successDeadline');
+        const successMessage = document.getElementById('successMessage');
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        function calculateJoursRestants() {
+            // Afficher la date d'aujourd'hui
+            const today = new Date();
+            previewAujourdhui.textContent = formatDate(today.toISOString().split('T')[0]);
+
+            if (dateEcheance.value) {
+                const echeance = new Date(dateEcheance.value);
+                const diffTime = echeance - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                // Mise à jour des champs
+                previewEcheance.textContent = formatDate(dateEcheance.value);
+
+                if (diffDays < 0) {
+                    // Échéance dépassée
+                    joursRestants.value = diffDays;
+                    joursRestants.className = 'form-control fw-bold text-danger';
+                    previewJours.textContent = diffDays + ' jours';
+                    previewJours.className = 'value danger';
+
+                    warningDeadline.classList.remove('d-none');
+                    warningDeadline.style.borderLeftColor = '#dc3545';
+                    warningMessage.innerHTML = `
+                        <span class="text-danger fw-bold">L'échéance est DÉPASSÉE depuis ${Math.abs(diffDays)} jours !</span>
+                    `;
+                    successDeadline.classList.add('d-none');
+                } else if (diffDays === 0) {
+                    // Échéance aujourd'hui
+                    joursRestants.value = "Aujourd'hui !";
+                    joursRestants.className = 'form-control fw-bold text-danger';
+                    previewJours.textContent = "Aujourd'hui";
+                    previewJours.className = 'value danger';
+
+                    warningDeadline.classList.remove('d-none');
+                    warningDeadline.style.borderLeftColor = '#dc3545';
+                    warningMessage.innerHTML = `
+                        <span class="text-danger fw-bold">L'échéance est AUJOURD'HUI !</span>
+                    `;
+                    successDeadline.classList.add('d-none');
+                } else if (diffDays <= 7) {
+                    // Échéance très proche (moins de 7 jours)
+                    joursRestants.value = diffDays;
+                    joursRestants.className = 'form-control fw-bold text-warning';
+                    previewJours.textContent = diffDays + ' jours';
+                    previewJours.className = 'value warning';
+
+                    warningDeadline.classList.remove('d-none');
+                    warningDeadline.style.borderLeftColor = '#f59e0b';
+                    warningMessage.innerHTML = `
+                        L'échéance est dans <strong class="text-warning">${diffDays} jours</strong>. 
+                        Assurez-vous que le livrable sera prêt à temps.
+                    `;
+                    successDeadline.classList.add('d-none');
+                } else if (diffDays <= 30) {
+                    // Échéance proche (moins de 30 jours)
+                    joursRestants.value = diffDays;
+                    joursRestants.className = 'form-control fw-bold text-info';
+                    previewJours.textContent = diffDays + ' jours';
+                    previewJours.className = 'value warning';
+
+                    warningDeadline.classList.add('d-none');
+                    successDeadline.classList.add('d-none');
+                } else {
+                    // Échéance éloignée (plus de 30 jours)
+                    joursRestants.value = diffDays;
+                    joursRestants.className = 'form-control fw-bold text-success';
+                    previewJours.textContent = diffDays + ' jours';
+                    previewJours.className = 'value safe';
+
+                    warningDeadline.classList.add('d-none');
+                    successDeadline.classList.remove('d-none');
+                    successMessage.innerHTML = `
+                        Vous disposez de <strong class="text-success">${diffDays} jours</strong> 
+                        pour préparer ce livrable.
+                    `;
+                }
+
+                // Validation : date échéance ne doit pas être dans le passé (sauf si c'est aujourd'hui)
+                if (diffDays < 0) {
+                    dateEcheance.classList.add('is-invalid');
+                    if (!dateEcheance.nextElementSibling || !dateEcheance.nextElementSibling.classList.contains('invalid-feedback')) {
+                        const feedback = document.createElement('div');
+                        feedback.className = 'invalid-feedback d-block';
+                        feedback.textContent = 'La date d\'échéance ne peut pas être dans le passé';
+                        dateEcheance.parentNode.appendChild(feedback);
+                    }
+                } else {
+                    dateEcheance.classList.remove('is-invalid');
+                    const feedback = dateEcheance.parentNode.querySelector('.invalid-feedback');
+                    if (feedback) feedback.remove();
+                }
+            } else {
+                joursRestants.value = '-';
+                joursRestants.className = 'form-control fw-bold';
+                previewEcheance.textContent = '-';
+                previewJours.textContent = '-';
+                previewJours.className = 'value safe';
+                warningDeadline.classList.add('d-none');
+                successDeadline.classList.add('d-none');
+            }
+        }
+
+        if (dateEcheance) dateEcheance.addEventListener('change', calculateJoursRestants);
+
+        // Calcul initial
+        calculateJoursRestants();
+
+        // ============================================================
+        // CONFIRMATION DE RÉINITIALISATION
+        // ============================================================
+        const resetButton = document.querySelector('button[type="reset"]');
+        if (resetButton) {
+            resetButton.addEventListener('click', function(e) {
+                if (!confirm('Êtes-vous sûr de vouloir réinitialiser le formulaire ?')) {
+                    e.preventDefault();
+                } else {
+                    setTimeout(() => {
+                        typeLivrableCards.forEach(card => card.classList.remove('selected'));
+                        calculateJoursRestants();
+                    }, 100);
+                }
+            });
+        }
+
+        // ============================================================
+        // ACTIVATION DES TOOLTIPS
+        // ============================================================
+        var tooltipTriggerList = [].slice.call(
+            document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        );
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

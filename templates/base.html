@@ -1,0 +1,808 @@
+{% load static i18n %}
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    
+    {% if DEBUG %}
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="0">
+    {% endif %}
+    
+    <title>{% block title %}Pétro Dashboard - SITEP{% endblock %}</title>
+    
+    <!-- ✅ Bootstrap 5 CSS (محلي - Offline) -->
+    <link href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+    <!-- ✅ Bootstrap Icons (محلي) -->
+    <link href="{% static 'vendor/bootstrap-icons/font/bootstrap-icons.min.css' %}" rel="stylesheet">
+
+    {% block extra_css %}{% endblock %}
+    
+    <style>
+        /* ======================================== */
+        /* ✅ إعدادات عامة + دعم الاتجاه - صيغة CSS صالحة */
+        /* ======================================== */
+        * { box-sizing: border-box; }
+        body { 
+            margin: 0; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa; 
+            color: #212529; 
+            line-height: 1.5;
+            visibility: visible !important;
+        }
+        [dir="rtl"] { text-align: right; }
+        [dir="ltr"] { text-align: left; }
+        
+        /* شاشة التحميل */
+        #global-loader { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: linear-gradient(135deg, #1a252f 0%, #2c3e50 100%);
+            z-index: 99999; display: flex; align-items: center; justify-content: center;
+            transition: opacity 0.3s ease;
+        }
+        #global-loader.hidden { opacity: 0; pointer-events: none; }
+        
+        /* تخطيط الصفحة */
+        .wrapper { display: flex; min-height: 100vh; position: relative; }
+        
+        /* الشريط الجانبي الأيسر */
+        .sidebar { 
+            width: 250px; 
+            background: linear-gradient(180deg, #1a252f 0%, #2c3e50 100%) !important;
+            color: #ecf0f1 !important; 
+            border-right: 1px solid #1a252f;
+            display: flex; flex-direction: column; 
+            transition: transform 0.3s ease; 
+            z-index: 1030; position: fixed; top: 0; bottom: 0; overflow-y: auto;
+        }
+        [dir="rtl"] .sidebar { border-right: none; border-left: 1px solid #1a252f; }
+        .sidebar-header { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.1); }
+        .sidebar-brand { font-size: 1.1rem; font-weight: 600; color: #fff !important; display: flex; align-items: center; gap: 0.5rem; }
+        .sidebar-brand img { filter: brightness(0) invert(1); max-height: 35px; }
+        .sidebar-body { flex: 1; padding: 0.5rem; background: transparent; }
+        
+        /* روابط القائمة */
+        .sidebar-menu .nav-link, .sidebar-menu > a { 
+            color: rgba(255,255,255,0.85) !important; padding: 0.6rem 1rem; border-radius: 6px; 
+            margin: 2px 0; display: flex; align-items: center; gap: 0.5rem;
+            text-decoration: none; transition: all 0.2s ease; font-size: 0.95rem;
+        }
+        .sidebar-menu .nav-link:hover, .sidebar-menu > a:hover { 
+            background: rgba(255,255,255,0.15) !important; color: #fff !important; 
+        }
+        [dir="ltr"] .sidebar-menu .nav-link:hover,
+        [dir="ltr"] .sidebar-menu > a:hover { transform: translateX(4px); }
+        [dir="rtl"] .sidebar-menu .nav-link:hover,
+        [dir="rtl"] .sidebar-menu > a:hover { transform: translateX(-4px); }
+        
+        .sidebar-menu .nav-link.active, .sidebar-menu > a.active { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; 
+            color: #fff !important; font-weight: 500;
+        }
+        .sidebar-menu .nav-link i, .sidebar-menu > a i { width: 20px; text-align: center; font-size: 1.1rem; }
+        
+        /* القوائم المنسدلة */
+        .sidebar-menu .collapse .nav-link, .sidebar-menu .collapse a {
+            padding-left: 2.5rem !important; font-size: 0.9rem !important; background: rgba(255,255,255,0.05) !important;
+        }
+        [dir="rtl"] .sidebar-menu .collapse .nav-link,
+        [dir="rtl"] .sidebar-menu .collapse a {
+            padding-left: 1rem !important; padding-right: 2.5rem !important;
+        }
+        
+        /* الهيدر العلوي - ✅ صيغة صالحة */
+        .header { 
+            position: fixed; top: 0; z-index: 999; min-height: 100px;
+            background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        [dir="ltr"] .header { left: 250px; right: 0; }
+        [dir="rtl"] .header { right: 250px; left: 0; }
+        
+        /* المحتوى الرئيسي - ✅ صيغة صالحة */
+        .main-content { 
+            padding: 20px; min-height: calc(100vh - 100px); background: #f8f9fa;
+            margin-top: 100px;
+            transition: margin 0.3s ease;
+        }
+        [dir="ltr"] .main-content { margin-left: 250px; margin-right: 0; }
+        [dir="rtl"] .main-content { margin-right: 250px; margin-left: 0; }
+        
+        .main-content.with-right-sidebar { }
+        [dir="ltr"] .main-content.with-right-sidebar { margin-right: 320px; }
+        [dir="rtl"] .main-content.with-right-sidebar { margin-left: 320px; }
+        
+        /* الشريط الجانبي الأيمن */
+        .sidebar-right { 
+            width: 320px !important; background: linear-gradient(180deg, #34495e 0%, #2c3e50 100%) !important;
+            border-left: 1px solid #1a252f !important; position: fixed; top: 100px;
+            bottom: 0; z-index: 1020; transform: translateX(100%);
+            transition: transform 0.3s ease; display: flex; flex-direction: column;
+        }
+        [dir="ltr"] .sidebar-right { right: 0; }
+        [dir="rtl"] .sidebar-right { left: 0; }
+        [dir="rtl"] .sidebar-right { border-left: none; border-right: 1px solid #1a252f; }
+        .sidebar-right.show { transform: translateX(0); }
+        .sidebar-right .sidebar-header {
+            padding: 0.75rem 1rem; background: rgba(0,0,0,0.15);
+            border-bottom: 2px solid #667eea; display: flex; justify-content: space-between; align-items: center;
+        }
+        .sidebar-right .sidebar-header h6 { color: #fff !important; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 0.5rem; }
+        .sidebar-right .sidebar-body { flex: 1; padding: 1rem; overflow-y: auto; }
+        
+        /* بطاقات الإشعارات */
+        .notification-card {
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px; padding: 0.75rem; margin-bottom: 0.75rem; color: #ecf0f1;
+            transition: all 0.2s ease;
+        }
+        [dir="ltr"] .notification-card { border-left: 3px solid #667eea; }
+        [dir="rtl"] .notification-card { border-right: 3px solid #667eea; }
+        
+        .notification-card:hover { background: rgba(255,255,255,0.18); border-color: #667eea; }
+        .notification-card.unread { background: rgba(102, 126, 234, 0.15); }
+        [dir="ltr"] .notification-card.unread { border-left-color: #2ecc71; }
+        [dir="rtl"] .notification-card.unread { border-right-color: #2ecc71; }
+        
+        .notification-card .notification-title { font-weight: 600; color: #fff; margin-bottom: 0.25rem; font-size: 0.9rem; }
+        .notification-card .notification-meta { font-size: 0.8rem; color: rgba(255,255,255,0.85); }
+        .notification-card .notification-time { font-size: 0.7rem; color: rgba(255,255,255,0.6); margin-top: 0.25rem; }
+        
+        /* زر تبديل الشريط الأيمن */
+        .sidebar-toggle-right {
+            position: fixed; top: 110px; z-index: 1025;
+            background: #667eea; color: #fff; border: none; border-radius: 50%;
+            width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: all 0.2s;
+        }
+        [dir="ltr"] .sidebar-toggle-right { right: 10px; }
+        [dir="rtl"] .sidebar-toggle-right { left: 10px; }
+        .sidebar-toggle-right:hover { transform: scale(1.1); background: #764ba2; }
+        .sidebar-toggle-right i { font-size: 1.1rem; }
+        
+        /* شريط التمرير */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
+        
+        /* الموبايل */
+        @media (max-width: 991.98px) {
+            .sidebar { transform: translateX(-100%); }
+            [dir="rtl"] .sidebar { transform: translateX(100%); }
+            .sidebar.show { transform: translateX(0); }
+            [dir="ltr"] .header { left: 0; }
+            [dir="rtl"] .header { right: 0; }
+            [dir="ltr"] .main-content { margin-left: 0; }
+            [dir="rtl"] .main-content { margin-right: 0; }
+            [dir="ltr"] .main-content.with-right-sidebar { margin-right: 0; }
+            [dir="rtl"] .main-content.with-right-sidebar { margin-left: 0; }
+            .sidebar-right { transform: translateX(100%); }
+            [dir="rtl"] .sidebar-right { transform: translateX(-100%); }
+            .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1010; }
+            .sidebar-overlay.show { display: block; }
+            .mobile-menu-toggle { display: flex !important; }
+            .sidebar-toggle-right { display: none; }
+        }
+        @media (min-width: 992px) {
+            .mobile-menu-toggle { display: none !important; }
+        }
+        
+        /* عناصر أخرى */
+        .notification-badge {
+            position: absolute; top: -5px; font-size: 0.7em; padding: 0.2em 0.5em;
+        }
+        [dir="ltr"] .notification-badge { right: -5px; }
+        [dir="rtl"] .notification-badge { left: -5px; }
+        
+        .footer { background: #fff; border-top: 1px solid #dee2e6; padding: 1rem 0; margin-top: 2rem; }
+        
+        /* ======================================== */
+        /* ✅ تحسينات بطاقات المعلومات (Cards) - عناوين واضحة */
+        /* ======================================== */
+        .card { 
+            border: none; 
+            border-radius: 12px; 
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08); 
+            margin-bottom: 1.5rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            overflow: hidden;
+            background: #fff;
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12) !important;
+        }
+        
+        /* عناوين البطاقات - تصميم احترافي وواضح */
+        .card-header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-bottom: 1px solid #dee2e6;
+            font-weight: 700;
+            font-size: 1.05rem;
+            padding: 0.875rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+            color: #1a252f;
+            text-shadow: 0 1px 1px rgba(255,255,255,0.8);
+        }
+        .card-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #667eea, transparent);
+        }
+        .card-header i {
+            font-size: 1.2rem;
+            width: 24px;
+            text-align: center;
+            color: #0d6efd;
+        }
+        
+        /* ألوان مخصصة لعناوين البطاقات حسب النوع - مع تحسين الوضوح */
+        .card.border-primary .card-header {
+            background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+            color: #fff !important;
+            border-bottom: none;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        .card.border-primary .card-header::after { display: none; }
+        .card.border-primary .card-header i { color: #fff; }
+        
+        .card.border-secondary .card-header {
+            background: linear-gradient(135deg, #6c757d 0%, #5c636a 100%);
+            color: #fff !important;
+            border-bottom: none;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        .card.border-secondary .card-header::after { display: none; }
+        .card.border-secondary .card-header i { color: #fff; }
+        
+        .card.border-success .card-header {
+            background: linear-gradient(135deg, #198754 0%, #157347 100%);
+            color: #fff !important;
+            border-bottom: none;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        .card.border-success .card-header::after { display: none; }
+        .card.border-success .card-header i { color: #fff; }
+        
+        .card.border-info .card-header {
+            background: linear-gradient(135deg, #0dcaf0 0%, #0aa2c0 100%);
+            color: #000 !important;
+            border-bottom: none;
+            text-shadow: 0 1px 1px rgba(255,255,255,0.5);
+            font-weight: 700;
+        }
+        .card.border-info .card-header::after { display: none; }
+        .card.border-info .card-header i { color: #000; }
+        
+        .card.border-warning .card-header {
+            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+            color: #000 !important;
+            border-bottom: none;
+            text-shadow: 0 1px 1px rgba(255,255,255,0.5);
+            font-weight: 700;
+        }
+        .card.border-warning .card-header::after { display: none; }
+        .card.border-warning .card-header i { color: #000; }
+        
+        .card.border-danger .card-header {
+            background: linear-gradient(135deg, #dc3545 0%, #bb2d3b 100%);
+            color: #fff !important;
+            border-bottom: none;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        .card.border-danger .card-header::after { display: none; }
+        .card.border-danger .card-header i { color: #fff; }
+        
+        /* محتوى البطاقة */
+        .card-body {
+            padding: 1rem 1.25rem;
+        }
+        .card-body .list-unstyled {
+            margin: 0;
+            padding: 0;
+        }
+        .card-body .list-unstyled li {
+            margin-bottom: 0.5rem;
+        }
+        .card-body .list-unstyled a {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0.5rem;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            color: #212529;
+            font-weight: 500;
+        }
+        .card-body .list-unstyled a:hover {
+            background: rgba(13, 110, 253, 0.1);
+            color: #0d6efd !important;
+        }
+        [dir="ltr"] .card-body .list-unstyled a:hover { padding-left: 0.75rem; }
+        [dir="rtl"] .card-body .list-unstyled a:hover { padding-right: 0.75rem; }
+        
+        .card-body .list-unstyled a i {
+            width: 20px;
+            text-align: center;
+            font-size: 1rem;
+            color: #6c757d;
+        }
+        .card-body .list-unstyled a:hover i {
+            color: #0d6efd;
+        }
+        
+        /* مؤشرات التحميل والـ HTMX */
+        .htmx-indicator { display: none; }
+        .htmx-request .htmx-indicator { display: inline; }
+        .htmx-request.htmx-indicator { display: inline; }
+        
+        /* Alpine.js transitions */
+        [x-cloak] { display: none !important; }
+        
+        /* Offline indicator */
+        .offline-indicator {
+            position: fixed; bottom: 20px; z-index: 9999;
+            background: #ffc107; color: #000; padding: 0.5rem 1rem;
+            border-radius: 8px; font-size: 0.85rem; display: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        [dir="ltr"] .offline-indicator { right: 20px; }
+        [dir="rtl"] .offline-indicator { left: 20px; }
+        .offline-indicator.show { display: block; }
+    </style>
+</head>
+<body>
+
+<!-- ✅ شاشة التحميل العالمية -->
+<div id="global-loader">
+    <div class="text-center">
+        <div class="spinner-border text-light mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+        <div class="text-white-50">Chargement de Pétro Dashboard...</div>
+    </div>
+</div>
+
+<!-- ✅ مؤشر عدم الاتصال -->
+<div class="offline-indicator" id="offlineIndicator">
+    <i class="bi bi-wifi-off me-2"></i>
+    <span>Mode hors ligne - Les données seront synchronisées automatiquement</span>
+</div>
+
+<div class="wrapper">
+    
+    <!-- ✅ القائمة الجانبية اليسرى -->
+    <aside class="sidebar" id="sidebarMenu">
+        <div class="sidebar-header">
+            <a href="{% url 'dashboard:index' %}" class="sidebar-brand text-decoration-none">
+                <img src="{% static 'images/1.png' %}" alt="SITEP" height="35">
+                <span>Pétro Dashboard</span>
+            </a>
+        </div>
+        <div class="sidebar-body">
+            <nav class="sidebar-menu nav flex-column px-2">
+                <!-- Tableau de bord -->
+                <a class="nav-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}" href="{% url 'dashboard:index' %}">
+                    <i class="bi bi-house-door"></i> <span>Tableau de bord</span>
+                </a>
+                <!-- Paramétrage -->
+                <a class="nav-link dropdown-toggle {% if 'service' in request.resolver_match.url_name or 'personnel' in request.resolver_match.url_name %}active{% endif %}" 
+                   data-bs-toggle="collapse" href="#parametrageSubMenu" role="button" aria-expanded="false">
+                    <i class="bi bi-gear"></i> <span>Paramétrage</span>
+                </a>
+                <div class="collapse {% if 'service' in request.resolver_match.url_name or 'personnel' in request.resolver_match.url_name %}show{% endif %}" id="parametrageSubMenu">
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{% url 'core:service_list' %}"><i class="bi bi-building"></i> Services</a>
+                        <a class="nav-link" href="{% url 'core:personnel_list' %}"><i class="bi bi-people"></i> Personnel</a>
+                        <a class="nav-link" href="{% url 'core:tiers_list' %}"><i class="bi bi-building"></i> Tiers</a>
+                        <a class="nav-link" href="{% url 'core:types_mouvement' %}"><i class="bi bi-arrow-repeat"></i> Types de Mouvements</a>
+                        <a class="nav-link" href="{% url 'core:nature_stock_list' %}"><i class="bi bi-archive"></i> Nature du Stock</a>
+                        <a class="nav-link" href="{% url 'core:valeur_article_list' %}"><i class="bi bi-percent"></i> Valeur d'Article</a>
+                        <a class="nav-link" href="{% url 'core:etape_dossier_list' %}"><i class="bi bi-folder-check"></i> Étape de Dossier</a>
+                        <a class="nav-link" href="{% url 'core:db_monitor' %}"><i class="bi bi-server"></i> Surveillance DB</a>
+                    </nav>
+                </div>
+                <!-- Gestion des articles -->
+                <a class="nav-link dropdown-toggle {% if 'list' in request.resolver_match.url_name or 'caracteristique' in request.resolver_match.url_name or 'famille' in request.resolver_match.url_name or 'recherche' in request.resolver_match.url_name or 'statistiques' in request.resolver_match.url_name %}active{% endif %}" 
+                   data-bs-toggle="collapse" href="#articlesSubMenu" role="button" aria-expanded="false">
+                    <i class="bi bi-box-seam"></i> <span>Gestion des articles</span>
+                </a>
+                <div class="collapse {% if 'list' in request.resolver_match.url_name or 'caracteristique' in request.resolver_match.url_name or 'famille' in request.resolver_match.url_name or 'recherche' in request.resolver_match.url_name or 'statistiques' in request.resolver_match.url_name %}show{% endif %}" id="articlesSubMenu">
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{% url 'articles:list' %}"><i class="bi bi-inbox"></i> Articles en stock</a>
+                        <a class="nav-link" href="{% url 'articles:gestion_caracteristiques' %}"><i class="bi bi-list-task"></i> Caractéristiques</a>
+                        <a class="nav-link" href="{% url 'articles:famille_codification' %}"><i class="bi bi-upc"></i> Codification</a>
+                        <a class="nav-link" href="{% url 'articles:recherche' %}"><i class="bi bi-search"></i> Recherche</a>
+                        <a class="nav-link" href="{% url 'articles:statistiques' %}"><i class="bi bi-bar-chart"></i> Statistiques</a>
+                    </nav>
+                </div>
+                <!-- Gestion des BC -->
+                <a class="nav-link dropdown-toggle {% if 'commande' in request.resolver_match.url_name or 'avis' in request.resolver_match.url_name %}active{% endif %}" 
+                   data-bs-toggle="collapse" href="#BCSubMenu" role="button" aria-expanded="false">
+                    <i class="bi bi-file-earmark-text"></i> <span>Gestion des BC</span>
+                </a>
+                <div class="collapse {% if 'commande' in request.resolver_match.url_name or 'avis' in request.resolver_match.url_name %}show{% endif %}" id="BCSubMenu">
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{% url 'core:bons_commande' %}"><i class="bi bi-file-text"></i> Bons de Commande</a>
+                        <a class="nav-link" href="{% url 'core:avis_arrivee_list_page' %}"><i class="bi bi-truck"></i> Avis d'Arrivée</a>
+                    </nav>
+                </div>
+                <!-- Gestion des Tâches -->
+                <a class="nav-link dropdown-toggle {% if 'tache' in request.resolver_match.url_name or 'planning' in request.resolver_match.url_name %}active{% endif %}" 
+                   data-bs-toggle="collapse" href="#tachesSubMenu" role="button" aria-expanded="false">
+                    <i class="bi bi-check2-square"></i> <span>Gestion des Tâches</span>
+                </a>
+                <div class="collapse {% if 'tache' in request.resolver_match.url_name or 'planning' in request.resolver_match.url_name %}show{% endif %}" id="tachesSubMenu">
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{% url 'core:planning_referentiel_list' %}"><i class="bi bi-journal-bookmark"></i> Planning</a>
+                        <a class="nav-link" href="{% url 'core:tache_list' %}"><i class="bi bi-list-task"></i> Liste des Tâches</a>
+                    </nav>
+                </div>
+                <!-- Station Service -->
+                <a class="nav-link dropdown-toggle {% if 'citerne' in request.resolver_match.url_name or 'lecture' in request.resolver_match.url_name %}active{% endif %}" 
+                   data-bs-toggle="collapse" href="#citerneSubMenu" role="button" aria-expanded="false">
+                    <i class="bi bi-fuel-pump"></i> <span>Station Service</span>
+                </a>
+                <div class="collapse {% if 'citerne' in request.resolver_match.url_name or 'lecture' in request.resolver_match.url_name %}show{% endif %}" id="citerneSubMenu">
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{% url 'core:citerne_list' %}"><i class="bi bi-list"></i> Citernes</a>
+                        <a class="nav-link" href="{% url 'core:citerne_create' %}"><i class="bi bi-plus-circle"></i> Nouvelle</a>
+                        <a class="nav-link" href="{% url 'core:lectures_consommations' %}"><i class="bi bi-graph-up"></i> Lectures</a>
+                    </nav>
+                </div>
+                <!-- Utilisateurs -->
+                <a class="nav-link dropdown-toggle mt-auto {% if 'user' in request.resolver_match.url_name or 'permission' in request.resolver_match.url_name %}active{% endif %}" 
+                   data-bs-toggle="collapse" href="#usersSubMenu" role="button" aria-expanded="false">
+                    <i class="bi bi-people"></i> <span>Utilisateurs</span>
+                </a>
+                <div class="collapse {% if 'user' in request.resolver_match.url_name or 'permission' in request.resolver_match.url_name %}show{% endif %}" id="usersSubMenu">
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{% url 'core:user_list' %}"><i class="bi bi-person-lines-fill"></i> Liste</a>
+                        <a class="nav-link" href="{% url 'core:user_create' %}"><i class="bi bi-person-plus"></i> Ajouter</a>
+                        <a class="nav-link" href="{% url 'core:permissions' %}"><i class="bi bi-shield-lock"></i> Permissions</a>
+                    </nav>
+                </div>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- ✅ الهيدر العلوي - مع الشعار ومعلومات الاتصال الكاملة -->
+    <header class="header">
+        <nav class="navbar navbar-dark px-3">
+            <div class="d-flex align-items-center w-100">
+                <!-- زر القائمة للموبايل -->
+                <button class="btn btn-link text-white mobile-menu-toggle me-2" id="mobileMenuToggle" type="button">
+                    <i class="bi bi-list fs-4"></i>
+                </button>
+                
+                <!-- ✅ شعار SITEP + معلومات الاتصال الكاملة -->
+                <a href="{% url 'dashboard:index' %}" class="navbar-brand d-flex align-items-start text-decoration-none text-white">
+                    <img src="{% static 'images/1.png' %}" alt="SITEP" height="40" class="me-3">
+                    <div>
+                        <div class="fw-bold">Société Italo-Tunisienne d'Exploitation Pétrolière (SITEP)</div>
+                        <div class="text-white opacity-75 d-none d-md-block mt-1" style="font-size: 0.7rem; line-height: 1.4;">
+                            <i class="bi bi-telephone me-2"></i>+216 71 75 43 33<br>
+                            <i class="bi bi-geo-alt me-2"></i>Centre Urbain Nord B.P. 424 - 1080 Tunis CEDEX<br>
+                            <span class="ms-4">TUNISIE</span>
+                        </div>
+                    </div>
+                </a>
+                
+                <!-- عناصر الهيدر اليمنى -->
+                <div class="d-flex align-items-center ms-auto gap-2">
+                    {% if user.is_authenticated %}
+                        <!-- 🔔 الإشعارات -->
+                        <button class="btn btn-light position-relative" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
+                            <i class="bi bi-bell fs-5"></i>
+                            <span id="notificationBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display:none; font-size: 0.65rem;">0</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end p-0 shadow" style="width: 320px; max-height: 400px; overflow-y: auto;">
+                            <li><h6 class="dropdown-header py-2">🔔 Notifications</h6></li>
+                            <li id="notificationList"><div class="text-center p-3 text-muted small">Chargement...</div></li>
+                            <li><hr class="dropdown-divider my-0"></li>
+                            <li><button class="dropdown-item text-center small text-primary" id="openTasksSidebar" type="button"><i class="bi bi-journal-check me-1"></i> Voir les tâches</button></li>
+                        </ul>
+                        <span class="text-white d-none d-sm-block small"><i class="bi bi-person-circle me-1"></i>{{ user.get_full_name|default:user.username }}</span>
+                    {% endif %}
+
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'accounts:logout' %}" class="btn btn-outline-light btn-sm" title="Déconnexion"><i class="bi bi-box-arrow-right"></i><span class="d-none d-md-inline">Déconnexion</span></a>
+                    {% endif %}
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- ✅ زر فتح/إغلاق الشريط الأيمن (يعمل كـ Toggle) -->
+    <button class="sidebar-toggle-right" id="toggleSidebarRight" title="Afficher/Masquer le panel">
+        <i class="bi bi-layout-sidebar-inset" id="toggleIcon"></i>
+    </button>
+
+    <!-- ✅ المحتوى الرئيسي -->
+    <main class="main-content {% block has_right_sidebar %}{% endblock %}" id="mainContent">
+        {% if messages %}
+            <div class="position-fixed top-0 start-50 translate-middle-x mt-4" style="z-index: 1050;">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert" style="min-width: 300px;">
+                        <i class="bi bi-{{ message.tags|default:'info' }}-circle me-2"></i>{{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- ✅ الشريط الجانبي الأيمن - مرن وقابل للحقن -->
+    {% block right_sidebar_container %}
+    <aside class="sidebar-right" id="sidebarTasks">
+        <div class="sidebar-header">
+            <h6><i class="bi bi-journal-check"></i><span>{% trans "Panel d'information" %}</span></h6>
+            <button class="btn btn-sm btn-link text-white p-0" id="closeSidebarRight" title="Fermer"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="sidebar-body">
+            {% block right_sidebar_content %}
+                <div class="text-center text-white-50 py-4">
+                    <i class="bi bi-info-circle fs-3 d-block mb-2"></i>
+                    <small>{% trans "Aucune information supplémentaire" %}</small>
+                </div>
+            {% endblock %}
+        </div>
+    </aside>
+    {% endblock %}
+
+    <!-- ✅ طبقة التعتيم للموبايل -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+</div>
+
+<!-- ✅ الفوتر -->
+<footer class="footer">
+    <div class="container text-center">
+        <small class="text-muted">&copy; {% now "Y" %} <strong>SITEP</strong> - Pétro Dashboard • v1.0 • {% now "d/m/Y H:i" %}</small>
+    </div>
+</footer>
+
+<!-- ✅ المكتبات المحلية (Offline-First) -->
+<script src="{% static 'vendor/jquery/jquery.min.js' %}"></script>
+<script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'vendor/chart.js/chart.umd.min.js' %}"></script>
+<script src="{% static 'vendor/xlsx/xlsx.full.min.js' %}"></script>
+<script src="{% static 'vendor/datatables/js/dataTables.min.js' %}"></script>
+<script src="{% static 'vendor/alpinejs/alpine.min.js' %}" defer></script>
+<script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
+<script src="{% static 'vendor/localforage/localforage.min.js' %}"></script>
+
+<!-- ✅ السكريبتات الرئيسية - نسخة نظيفة ومضمونة -->
+<script>
+(function() {
+    'use strict';
+    
+    // 🎯 إخفاء شاشة التحميل
+    function hideLoader() {
+        const loader = document.getElementById('global-loader');
+        if (loader) { 
+            loader.classList.add('hidden'); 
+            setTimeout(() => { 
+                if (loader.parentNode) loader.parentNode.removeChild(loader); 
+            }, 300); 
+        }
+        document.body.classList.add('js-loaded');
+    }
+    if (document.readyState === 'loading') { 
+        document.addEventListener('DOMContentLoaded', hideLoader); 
+    } else { 
+        hideLoader(); 
+    }
+    setTimeout(hideLoader, 3000);
+    
+    // 🎯 تهيئة العناصر بعد تحميل DOM
+    document.addEventListener('DOMContentLoaded', function() {
+        // ✅ العناصر الأساسية
+        const sidebarRight = document.getElementById('sidebarTasks');
+        const mainContent = document.getElementById('mainContent');
+        const toggleBtn = document.getElementById('toggleSidebarRight');
+        const toggleIcon = document.getElementById('toggleIcon');
+        const closeBtn = document.getElementById('closeSidebarRight');
+        const overlay = document.getElementById('sidebarOverlay');
+        
+        console.log('🔍 العناصر:', { sidebarRight, mainContent, toggleBtn, toggleIcon, closeBtn, overlay });
+        
+        // ✅ دالة تبديل الشريط الأيمن (إظهار/إخفاء) - كود صريح وبسيط
+        function toggleSidebar() {
+            if (!sidebarRight || !mainContent) {
+                console.error('❌ عناصر الشريط غير موجودة');
+                return;
+            }
+            
+            // التحقق من الحالة الحالية
+            const isShown = sidebarRight.classList.contains('show');
+            console.log('🔄 تبديل الشريط - الحالة الحالية:', isShown ? 'ظاهر' : 'مخفي');
+            
+            // التبديل اليدوي الصريح (بدون toggle() لتجنب التعارض)
+            if (isShown) {
+                sidebarRight.classList.remove('show');
+                mainContent.classList.remove('with-right-sidebar');
+                toggleIcon.classList.remove('bi-x-lg');
+                toggleIcon.classList.add('bi-layout-sidebar-inset');
+                console.log('✅ تم إخفاء الشريط');
+            } else {
+                sidebarRight.classList.add('show');
+                mainContent.classList.add('with-right-sidebar');
+                toggleIcon.classList.remove('bi-layout-sidebar-inset');
+                toggleIcon.classList.add('bi-x-lg');
+                console.log('✅ تم إظهار الشريط');
+            }
+            
+            // تحديث طبقة التعتيم للموبايل
+            if (overlay && window.innerWidth < 992) {
+                overlay.classList.toggle('show', !isShown);
+            }
+        }
+        
+        // ✅ ربط زر التبديل
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🔘 تم الضغط على زر التبديل');
+                toggleSidebar();
+            });
+        }
+        
+        // ✅ زر الإغلاق داخل الشريط
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function() {
+                if (sidebarRight) sidebarRight.classList.remove('show');
+                if (mainContent) mainContent.classList.remove('with-right-sidebar');
+                if (overlay) overlay.classList.remove('show');
+                if (toggleIcon) {
+                    toggleIcon.classList.remove('bi-x-lg');
+                    toggleIcon.classList.add('bi-layout-sidebar-inset');
+                }
+                console.log('✅ تم إغلاق الشريط عبر زر X');
+            });
+        }
+        
+        // ✅ إغلاق عند النقر على الطبقة المعتمة
+        if (overlay) {
+            overlay.addEventListener('click', function() {
+                if (sidebarRight) sidebarRight.classList.remove('show');
+                if (mainContent) mainContent.classList.remove('with-right-sidebar');
+                if (overlay) overlay.classList.remove('show');
+                if (toggleIcon) {
+                    toggleIcon.classList.remove('bi-x-lg');
+                    toggleIcon.classList.add('bi-layout-sidebar-inset');
+                }
+            });
+        }
+        
+        // ✅ الشريط الأيسر (موبايل)
+        const sidebarLeft = document.getElementById('sidebarMenu');
+        const mobileToggle = document.getElementById('mobileMenuToggle');
+        if (mobileToggle && sidebarLeft) {
+            mobileToggle.addEventListener('click', function() {
+                sidebarLeft.classList.toggle('show');
+                overlay.classList.toggle('show');
+            });
+        }
+        
+        // إغلاق القائمة اليسار عند النقر على رابط (موبايل)
+        if (sidebarLeft) {
+            sidebarLeft.querySelectorAll('a.nav-link:not(.dropdown-toggle)').forEach(link => {
+                link.addEventListener('click', function() { 
+                    if (window.innerWidth < 992) { 
+                        sidebarLeft.classList.remove('show'); 
+                        overlay.classList.remove('show'); 
+                    } 
+                });
+            });
+        }
+        
+        // 🔔 نظام الإشعارات - نسخة محصنة وآمنة 100%
+        function fetchNotifications() {
+            const notificationBadge = document.getElementById('notificationBadge');
+            const notificationList = document.getElementById('notificationList');
+            const notificationDropdown = document.getElementById('notificationDropdown');
+
+            if (!notificationList) return;
+
+            fetch('{% url "core:get_notifications" %}')
+                .then(r => r.json())
+                .then(data => {
+                    if (notificationBadge) {
+                        if (data.count > 0) { 
+                            notificationBadge.textContent = data.count > 9 ? '9+' : data.count; 
+                            notificationBadge.style.display = 'inline-block'; 
+                        } else { 
+                            notificationBadge.style.display = 'none'; 
+                        }
+                    }
+
+                    notificationList.innerHTML = '';
+                    
+                    if (data.notifications?.length > 0) {
+                        data.notifications.forEach(n => {
+                            const link = document.createElement('a');
+                            link.href = n.url || '#';
+                            link.className = `dropdown-item notification-card ${n.is_read ? '' : 'unread'}`;
+                            link.style.borderRadius = '0';
+
+                            const title = document.createElement('div');
+                            title.className = 'notification-title';
+                            title.innerHTML = `<i class="bi bi-${n.icon || 'bell'} me-1"></i>${n.type_label || n.type}`;
+
+                            const message = document.createElement('div');
+                            message.className = 'notification-meta';
+                            message.textContent = n.message;
+
+                            const time = document.createElement('div');
+                            time.className = 'notification-time';
+                            time.textContent = n.created_at;
+
+                            link.appendChild(title);
+                            link.appendChild(message);
+                            link.appendChild(time);
+                            notificationList.appendChild(link);
+                        });
+                    } else {
+                        notificationList.innerHTML = `<div class="text-center p-3 text-muted small"><i class="bi bi-check-circle d-block fs-4 mb-2 text-success"></i>Aucune nouvelle notification</div>`;
+                    }
+                })
+                .catch(() => { 
+                    notificationList.innerHTML = `<div class="text-center p-3 text-danger small"><i class="bi bi-exclamation-triangle d-block mb-1"></i>Erreur de chargement</div>`; 
+                });
+        }
+
+        // تنفيذ الدالة فقط إذا كانت العناصر موجودة
+        if (document.getElementById('notificationList')) {
+            fetchNotifications();
+            setInterval(fetchNotifications, 60000);
+        }
+        if (document.getElementById('notificationDropdown')) { 
+            document.getElementById('notificationDropdown').addEventListener('shown.bs.dropdown', fetchNotifications); 
+        }
+        
+        // 🌐 دعم العمل دون اتصال (Offline-First)
+        const offlineIndicator = document.getElementById('offlineIndicator');
+        function updateOfflineIndicator() {
+            if (!navigator.onLine && offlineIndicator) {
+                offlineIndicator.classList.add('show');
+            } else if (offlineIndicator) {
+                offlineIndicator.classList.remove('show');
+            }
+        }
+        
+        if (typeof localforage !== 'undefined') {
+            localforage.config({
+                name: 'petro_dashboard',
+                storeName: 'offline_data',
+                description: 'Stockage hors ligne pour Pétro Dashboard'
+            });
+            
+            window.addEventListener('online', function() {
+                updateOfflineIndicator();
+            });
+            window.addEventListener('offline', function() {
+                updateOfflineIndicator();
+            });
+            updateOfflineIndicator();
+        }
+        
+        console.log('✅ Pétro Dashboard initialized');
+    });
+})();
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

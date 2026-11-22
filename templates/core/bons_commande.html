@@ -1,0 +1,2050 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}Consultation des Bons de Commande{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+<style>
+.comparaison-cell[data-statut="complet"] {
+    background-color: #d4edda !important; /* أخضر */
+}
+.comparaison-cell[data-statut="partiel"] {
+    background-color: #fff3cd !important; /* أصفر */
+}
+.comparaison-cell[data-statut="non_recu"] {
+    background-color: #f8d7da !important; /* أحمر */
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="container-fluid p-4">
+    <!-- قسم البحث -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <i class="bi bi-search"></i> Recherche des Bons de Commande
+        </div>
+        <div class="card-body">
+            <form id="filterForm" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">N° Bon</label>
+                    <input type="text" name="num_com" class="form-control" placeholder="Ex: 0175/2024">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Fournisseur</label>
+                    <div class="input-group">
+                        <input type="text" id="fournInput" class="form-control" placeholder="Sélectionner un fournisseur" readonly>
+                        <button type="button" id="openLookupBtn" class="btn btn-outline-secondary">
+                            <i class="bi bi-search"></i> Choisir
+                        </button>
+                        <input type="hidden" name="code_fourn" id="selectedCodeFourn" value="">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Date BC Min</label>
+                    <input type="date" name="date_com_min" class="form-control">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Date BC Max</label>
+                    <input type="date" name="date_com_max" class="form-control">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Rechercher
+                    </button>
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-outline-secondary w-100" id="resetBtn">
+                        <i class="bi bi-arrow-clockwise"></i> Réinitialiser
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- تبويبات النتائج -->
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" id="resultTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="liste-tab" data-bs-toggle="tab" data-bs-target="#liste" type="button" role="tab">
+                        <i class="bi bi-list"></i> Liste des Bons
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="details-tab" data-bs-toggle="tab" data-bs-target="#details" type="button" role="tab" disabled>
+                        <i class="bi bi-file-text"></i> Détails du Bon
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="etapes-tab" data-bs-toggle="tab" data-bs-target="#etapes" type="button" role="tab" disabled>
+                        <i class="bi bi-clock-history"></i> Suivi des Étapes
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="detailsEtape-tab" data-bs-toggle="tab" data-bs-target="#detailsEtape" type="button" role="tab" disabled>
+                        <i class="bi bi-file-earmark-text"></i> Détails de l'Étape
+                    </button>
+                </li>
+				<li class="nav-item" role="presentation">
+					<button class="nav-link" id="avisArrivee-tab" data-bs-toggle="tab" data-bs-target="#avisArrivee" type="button" role="tab" disabled>
+						<i class="bi bi-file-earmark-check"></i> Avis d'Arrivée
+					</button>
+				</li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="etatB1-tab" data-bs-toggle="tab" data-bs-target="#etatB1" type="button" role="tab" disabled>
+                        <i class="bi bi-clipboard-data"></i> État B1
+                    </button>
+                </li>
+				<li class="nav-item" role="presentation">
+					<button class="nav-link" id="comparaison-tab" data-bs-toggle="tab" data-bs-target="#comparaison" type="button" role="tab" disabled>
+						<i class="bi bi-graph-up"></i> Comparaison C/R
+					</button>
+				</li>
+            </ul>
+        </div>
+        <div class="card-body">
+            <div class="tab-content" id="resultTabsContent">
+                <!-- تبويب القائمة -->
+                <div class="tab-pane fade show active" id="liste" role="tabpanel">
+                    <div class="table-responsive">
+                        <table id="bonsCommandeTable" class="table table-hover dt-responsive" style="width:100%">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>N° Bon</th>
+                                    <th>Date BC</th>
+                                    <th>Fournisseur</th>
+                                    <th>Nature</th>
+                                    <th>État</th>
+                                    <th>Mode Paiement</th>
+                                    <th>Date Livraison</th>
+                                    <th>TTC</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- سيتم ملؤه بواسطة DataTables -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- تبويب التفاصيل -->
+                <div class="tab-pane fade" id="details" role="tabpanel">
+                    <div id="detailsContent" style="display:none;">
+                        <div class="card mb-4">
+                            <div class="card-header bg-info text-white">
+                                <i class="bi bi-file-text"></i> <span id="bonHeaderTitle">Bon de Commande</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p><strong>N° Bon:</strong> <span id="bonNumero"></span></p>
+                                        <p><strong>Date BC:</strong> <span id="bonDate"></span></p>
+                                        <p><strong>Fournisseur:</strong> <span id="bonFournisseur"></span></p>
+                                        <p><strong>Code Fournisseur:</strong> <span id="bonCodeFourn"></span></p>
+                                        <p><strong>Devise:</strong> <span id="bonDevise"></span></p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p><strong>Nature:</strong> <span id="bonNature"></span></p>
+                                        <p><strong>État:</strong> <span id="bonEtat"></span></p>
+                                        <p><strong>Mode Paiement:</strong> <span id="bonModePay"></span></p>
+                                        <p><strong>Date Livraison:</strong> <span id="bonDateLiv"></span></p>
+                                        <p><strong>Centre Responsabilité:</strong> <span id="bonCentreResp"></span></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header bg-success text-white">
+                                <i class="bi bi-list"></i> Détails des Lignes
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-bordered" id="lignesTable">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Item</th>
+                                                <th>Désignation</th>
+                                                <th>UM</th>
+                                                <th>Quantité</th>
+                                                <th>Prix Unitaire</th>
+                                                <th>Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="lignesBody">
+                                            <!-- سيتم ملؤه بواسطة AJAX -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <p><strong>Total HT:</strong> <span id="totalHT"></span> <span id="uniteDevise"></span></p>
+                                        <p><strong>Remise:</strong> <span id="remise"></span> <span id="uniteDevise"></span></p>
+                                        <p><strong>Total HT après remise:</strong> <span id="totalRemise"></span> <span id="uniteDevise"></span></p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p><strong>Total TTC:</strong> <span id="totalTTC"></span> <span id="uniteDevise"></span></p>
+                                        <p><strong>FOB:</strong> <span id="bonFob"></span> <span id="uniteDevise"></span></p>
+                                        <p><strong>Fret:</strong> <span id="bonFret"></span> <span id="uniteDevise"></span></p>
+                                        <div class="mt-3">
+                                            <p><strong>Arrêté à la somme de:</strong></p>
+                                            <p id="montantLettres" class="fw-bold"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="noDetailsMessage" class="text-center py-5">
+                        <i class="bi bi-info-circle fs-1 text-muted"></i>
+                        <p class="mt-3">Sélectionnez un bon de commande dans la liste pour afficher ses détails.</p>
+                    </div>
+                </div>
+                <!-- تبويب مراحل الملف -->
+                <div class="tab-pane fade" id="etapes" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5><i class="bi bi-clock-history"></i> Étapes du Dossier: <span id="dossierRef"></span></h5>
+                        <button class="btn btn-success btn-sm" id="addEtapeBtn">
+                            <i class="bi bi-plus-circle"></i> Ajouter une étape
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="etapesTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Date Étape</th>
+                                    <th>Étape</th>
+                                    <th>Influence</th>
+                                    <th>Observation</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="etapesBody">
+                                <!-- سيتم ملؤه بواسطة AJAX -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <!-- تبويب تفاصيل المرحلة -->
+                <div class="tab-pane fade" id="detailsEtape" role="tabpanel">
+                    <div class="card mb-4">
+                        <div class="card-header bg-warning text-white">
+                            <i class="bi bi-file-earmark-text"></i> <span id="etapeHeaderTitle">Détails de l'Étape</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>N° Bon:</strong> <span id="etapeNumeroCom"></span></p>
+                                    <p><strong>Date Étape:</strong> <span id="etapeDateEtape"></span></p>
+                                    <p><strong>Étape:</strong> <span id="etapeLibelle"></span></p>
+                                    <p><strong>Influence:</strong> <span id="etapeInfluence"></span></p>
+                                    <p><strong>Observation:</strong> <span id="etapeObservation"></span></p>
+                                    <p><strong>N° Bordereau:</strong> <span id="etapeNumeroBordereau"></span></p>
+                                    <p><strong>N° Avis:</strong> <span id="etapeNumeroAvis"></span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>N° Facture:</strong> <span id="etapeNumeroFacture"></span></p>
+                                    <p><strong>Date Facture:</strong> <span id="etapeDateFacture"></span></p>
+                                    <p><strong>N° BL:</strong> <span id="etapeNumeroBl"></span></p>
+                                    <p><strong>Date BL:</strong> <span id="etapeDateBl"></span></p>
+                                    <p><strong>Email:</strong> <span id="etapeEmail"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- قسم رفع الملفات -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <i class="bi bi-paperclip"></i> Pièces Jointes
+                        </div>
+                        <div class="card-body">
+                            <form id="uploadForm" enctype="multipart/form-data">
+                                <input type="hidden" id="etapeIdForUpload" name="etape_id">
+                                <div class="mb-3">
+                                    <label class="form-label">Sélectionner un fichier</label>
+                                    <input type="file" class="form-control" id="fichierPiece" name="fichier" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Description (facultatif)</label>
+                                    <input type="text" class="form-control" id="descriptionPiece" name="description">
+                                </div>
+                                <button type="submit" class="btn btn-success">Uploader</button>
+                            </form>
+                            <hr>
+                            <h5>Fichiers existants:</h5>
+                            <div id="listePiecesJointes">
+                                <!-- سيتم ملؤه بواسطة AJAX -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+				<!-- تبويب Avis d'Arrivée -->
+				<div class="tab-pane fade" id="avisArrivee" role="tabpanel">
+					<div class="d-flex justify-content-between align-items-center mb-3">
+						<h5><i class="bi bi-file-earmark-check"></i> Avis d'Arrivée: <span id="bonRefAvis"></span></h5>
+						<button class="btn btn-success btn-sm" id="addAvisBtn">
+							<i class="bi bi-plus-circle"></i> Nouvel Avis
+						</button>
+					</div>
+
+					<!-- نموذج الإشعار (غير جدولي) -->
+					<div class="card mb-4">
+						<div class="card-header bg-primary text-white">
+							<i class="bi bi-file-earmark"></i> Informations de l'Avis
+						</div>
+						<div class="card-body">
+							<form id="avisForm">
+								<input type="hidden" id="avisId" name="id">
+								<input type="hidden" id="avisNumeroCom" name="numero_com">
+								<input type="hidden" id="avisDateCom" name="dat_com">
+
+								<div class="row">
+									<div class="col-md-4">
+										<label class="form-label">N° Avis *</label>
+										<input type="text" class="form-control" id="avisNumeroAvis" name="numero_avis" required>
+									</div>
+									<div class="col-md-4">
+										<label class="form-label">Date Avis *</label>
+										<input type="date" class="form-control" id="avisDateAvis" name="date_avis" required>
+									</div>
+									<div class="col-md-4">
+										<label class="form-label">N° Bordereau</label>
+										<input type="text" class="form-control" id="avisNumeroBordereau" name="numero_bordereau">
+									</div>
+								</div>
+								<div class="row mt-3">
+									<div class="col-md-4">
+										<label class="form-label">BCT</label>
+										<input type="text" class="form-control" id="avisBct" name="bct">
+									</div>
+									<div class="col-md-4">
+										<label class="form-label">N° Facture</label>
+										<input type="text" class="form-control" id="avisNumeroFacture" name="numero_facture">
+									</div>
+									<div class="col-md-4">
+										<label class="form-label">N° BL</label>
+										<input type="text" class="form-control" id="avisNumeroBl" name="numero_bl">
+									</div>
+								</div>
+								<div class="row mt-3">
+									<div class="col-12">
+										<label class="form-label">Observation</label>
+										<textarea class="form-control" id="avisObservation" name="observation" rows="2"></textarea>
+									</div>
+								</div>
+								<div class="mt-3">
+									<button type="button" class="btn btn-primary" id="saveAvisBtn">Enregistrer l'Avis</button>
+									<button type="button" class="btn btn-danger" id="deleteAvisBtn" disabled>Supprimer l'Avis</button>
+									<button type="button" class="btn btn-secondary" id="cancelAvisBtn">Annuler</button>
+								</div>
+							</form>
+						</div>
+					</div>
+					<!-- أزرار التنقل بين الإشعارات -->
+					<div class="d-flex justify-content-between mt-3">
+						<button class="btn btn-outline-secondary" id="prevAvisBtn" disabled>
+							<i class="bi bi-arrow-left"></i> Précédent
+						</button>
+						<span id="avisCounter" class="align-self-center"></span>
+						<button class="btn btn-outline-secondary" id="nextAvisBtn" disabled>
+							Suivant <i class="bi bi-arrow-right"></i>
+						</button>
+					</div>
+					<!-- تفاصيل الإشعار (جدول السلع) -->
+					<div class="card mb-4">
+						<div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+							<span><i class="bi bi-list"></i> Détails des Articles</span>
+							<button class="btn btn-sm btn-outline-light" id="addDetailBtn" disabled>
+								<i class="bi bi-plus-circle"></i> Ajouter un article
+							</button>
+						</div>
+						<div class="card-body">
+							<div class="table-responsive">
+								<table class="table table-striped table-hover" id="detailsAvisTable">
+									<thead class="table-dark">
+										<tr>
+											<th>ITEM</th>
+											<th>COD_ART</th>
+											<th>LIB_ART</th>
+											<th>QTE Commandée</th>
+											<th>QTE Réceptionnée *</th>
+											<th>UM Commande</th>
+											<th>UM Réception</th>
+											<th>Conformité</th>
+											<th>Observation</th>
+											<th>Actions</th>
+										</tr>
+									</thead>
+									<tbody id="detailsAvisBody">
+										<!-- سيتم ملؤه بواسطة AJAX -->
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+                <!-- تبويب État B1 -->
+                <div class="tab-pane fade" id="etatB1" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5><i class="bi bi-clipboard-data"></i> État B1: <span id="bonRefEtatB1"></span></h5>
+                        <button class="btn btn-outline-primary btn-sm" id="syncEtatB1Btn">
+                            <i class="bi bi-arrow-repeat"></i> Synchroniser depuis SQL Server
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="etatB1Table">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ITEM</th>
+                                    <th>COD_ART</th>
+                                    <th>LIB_ART</th>
+                                    <th>QTE COMMANDE</th>
+                                    <th>UM COMMANDE</th>
+                                    <th>QTE RECEPT</th>
+                                    <th>UM RECEPTION</th>
+                                    <th>N° Bon</th>
+                                    <th>Date Bon</th>
+                                    <th>N° BP</th>
+                                    <th>Taux Change</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="etatB1Body">
+                                <!-- سيتم ملؤه بواسطة AJAX -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+				<!-- تبويب المقارنة -->
+				<div class="tab-pane fade" id="comparaison" role="tabpanel">
+					<div class="d-flex justify-content-between align-items-center mb-3">
+						<h5><i class="bi bi-graph-up"></i> Comparaison Commande / Réception: <span id="bonRefComparaison"></span></h5>
+					</div>
+					<div class="table-responsive">
+						<table class="table table-striped table-hover" id="comparaisonTable">
+							<thead class="table-dark">
+								<tr>
+									<th>ITEM</th>
+									<th>COD_ART</th>
+									<th>LIB_ART</th>
+									<th>QTE Commandée (Source)</th>
+									<th>QTE Commandée (Locale)</th>
+									<th>QTE Reçue</th>
+									<th>Écart</th>
+									<th>UM Commande</th>
+									<th>UM Réception</th>
+								</tr>
+							</thead>
+							<tbody id="comparaisonBody">
+								<!-- سيتم ملؤه بواسطة AJAX -->
+							</tbody>
+						</table>
+					</div>
+				</div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal بحث الموردين -->
+<div class="modal fade" id="lookupModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Rechercher un fournisseur</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="lookupSearch" class="form-control mb-3" placeholder="Taper le nom du fournisseur...">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Libellé</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lookupResults">
+                            <tr><td colspan="3">Commencez à taper pour rechercher...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal لإدارة مراحل الملف -->
+<div class="modal fade" id="etapeModal" tabindex="-1" aria-labelledby="etapeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="etapeModalLabel">Ajouter une étape</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+		<div class="modal-body">
+			<form id="etapeForm" enctype="multipart/form-data">
+				<input type="hidden" id="etapeId">
+				<input type="hidden" id="numeroCom" name="numero_com">
+				<input type="hidden" id="datCom" name="dat_com">
+				<input type="hidden" id="codeFourn" name="code_fourn">
+
+				<!-- القسم 1: المعلومات الأساسية -->
+				<div class="card mb-3 border-primary">
+					<div class="card-header bg-primary text-white">
+						<i class="bi bi-info-circle me-2"></i> Informations de base
+					</div>
+					<div class="card-body">
+						<div class="row mb-3">
+							<div class="col-md-6">
+								<label class="form-label">Étape *</label>
+								<select class="form-select" id="idEtape" name="id_etape" required>
+									<option value="">Sélectionner une étape</option>
+								</select>
+							</div>
+							<div class="col-md-6">
+								<label class="form-label">Date Étape *</label>
+								<input type="datetime-local" class="form-control" id="dateEtape" name="date_etape" required>
+							</div>
+						</div>
+						<div class="mb-3">
+							<label class="form-label">Influence sur dossier *</label>
+							<input type="text" class="form-control" id="influenceSurDossier" name="influence_sur_dossier" readonly>
+						</div>
+						<div class="mb-3">
+							<label class="form-label">Observation</label>
+							<textarea class="form-control" id="observation" name="observation" rows="2"></textarea>
+						</div>
+					</div>
+				</div>
+
+				<!-- القسم 2: الوثائق المرتبطة -->
+				<div class="card mb-3 border-success">
+					<div class="card-header bg-success text-white">
+						<i class="bi bi-file-earmark-text me-2"></i> Documents associés
+					</div>
+					<div class="card-body">
+						<div class="row mb-3">
+							<div class="col-md-4">
+								<label class="form-label">N° Bordereau</label>
+								<input type="text" class="form-control" id="numeroBordereau" name="numero_bordereau">
+							</div>
+							<div class="col-md-4">
+								<label class="form-label">Date Bordereau</label>
+								<input type="date" class="form-control" id="dateBordereau" name="date_bordereau">
+							</div>
+							<div class="col-md-4">
+								<label class="form-label">BCT</label>
+								<input type="text" class="form-control" id="bct" name="bct">
+							</div>
+						</div>
+						<div class="row mb-3">
+							<div class="col-md-4">
+								<label class="form-label">Date BCT</label>
+								<input type="date" class="form-control" id="dateBct" name="date_bct">
+							</div>
+							<div class="col-md-4">
+								<label class="form-label">N° Avis</label>
+								<input type="text" class="form-control" id="numeroAvis" name="numero_avis">
+							</div>
+							<div class="col-md-4">
+								<label class="form-label">Date Avis</label>
+								<input type="date" class="form-control" id="dateAvis" name="date_avis">
+							</div>
+						</div>
+						<div class="row mb-3">
+							<div class="col-md-4">
+								<label class="form-label">N° CI</label>
+								<input type="text" class="form-control" id="numeroCi" name="numero_ci">
+							</div>
+							<div class="col-md-4">
+								<label class="form-label">N° Facture</label>
+								<input type="text" class="form-control" id="numeroFacture" name="numero_facture">
+							</div>
+							<div class="col-md-4">
+								<label class="form-label">Date Facture</label>
+								<input type="date" class="form-control" id="dateFacture" name="date_facture">
+							</div>
+						</div>
+						<div class="row mb-3">
+							<div class="col-md-4">
+								<label class="form-label">N° BL</label>
+								<input type="text" class="form-control" id="numeroBl" name="numero_bl">
+							</div>
+							<div class="col-md-4">
+								<label class="form-label">Date BL</label>
+								<input type="date" class="form-control" id="dateBl" name="date_bl">
+							</div>
+							<div class="col-md-4">
+								<label class="form-label">Date Email</label>
+								<input type="date" class="form-control" id="dateEmail" name="date_email">
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- القسم 3: البريد الإلكتروني -->
+				<div class="card mb-3 border-warning">
+					<div class="card-header bg-warning text-dark">
+						<i class="bi bi-envelope me-2"></i> Email & Pièces jointes
+					</div>
+					<div class="card-body">
+						<div class="mb-3">
+							<label class="form-label">Contenu de l'email</label>
+							<textarea class="form-control" id="emailBody" name="email_body" rows="5" placeholder="Collez ici le texte de l'email"></textarea>
+						</div>
+						<div class="mb-3">
+							<label class="form-label">Pièces jointes de l'email</label>
+							<input type="file" class="form-control" id="emailAttachments" name="email_attachments" multiple>
+							<small class="form-text text-muted">Vous pouvez sélectionner plusieurs fichiers.</small>
+						</div>
+					</div>
+				</div>
+			</form>
+		</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-primary" id="saveEtapeBtn">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+<script>
+const AJAX_URL = "{% url 'core:bons_commande_ajax' %}";
+let currentBonDetails = null;
+let currentEtapeId = null;
+document.addEventListener('DOMContentLoaded', function() {
+    const table = $('#bonsCommandeTable').DataTable({
+        processing: true,
+        serverSide: true,
+        responsive: true,
+        ajax: {
+            url: AJAX_URL,
+            type: "GET",
+            data: function(d) {
+                d.num_com = $('input[name="num_com"]').val();
+                d.code_fourn = $('input[name="code_fourn"]').val();
+                d.date_com_min = $('input[name="date_com_min"]').val();
+                d.date_com_max = $('input[name="date_com_max"]').val();
+            }
+        },
+        columns: [
+            { data: 'NUMERO_COM', title: 'N° Bon' },
+            { 
+                data: 'DAT_COM', 
+                title: 'Date BC',
+                render: function(data) {
+                    return data ? new Date(data).toLocaleDateString('fr-FR') : '-';
+                }
+            },
+            { data: 'LIB_FOURN', title: 'Fournisseur' },
+            { data: 'NATURE_LIB', title: 'Nature' },
+            { data: 'ETAT_LIB', title: 'État' },
+            { data: 'MODE_PAIEM_LIB', title: 'Mode Paiement' },
+            { 
+                data: 'LIV_COM', 
+                title: 'Date Livraison',
+                render: function(data) {
+                    return data ? new Date(data).toLocaleDateString('fr-FR') : '-';
+                }
+            },
+            { 
+                data: 'TTC', 
+                title: 'TTC',
+                render: function(data) {
+                    return data ? parseFloat(data).toFixed(3) : '0.000';
+                }
+            },
+            {
+                data: null,
+                title: 'Actions',
+                orderable: false,
+                render: function(data, type, row) {
+                    return `
+                        <button class="btn btn-sm btn-info view-details" 
+                                data-num-com="${row.NUMERO_COM}" 
+                                data-code-fourn="${row.CODE_FOURN}">
+                            <i class="bi bi-eye"></i> Voir
+                        </button>
+                    `;
+                }
+            }
+        ],
+        language: {
+            url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json"
+        }
+    });
+    $('#bonsCommandeTable').on('click', '.view-details', function() {
+        const numCom = $(this).data('num-com');
+        const codeFourn = $(this).data('code-fourn');
+        loadBonDetails(numCom, codeFourn);
+        document.querySelector('#details-tab').disabled = false;
+        document.querySelector('#etapes-tab').disabled = false;
+		document.querySelector('#avisArrivee-tab').disabled = false;
+        document.querySelector('#etatB1-tab').disabled = false;
+		document.querySelector('#comparaison-tab').disabled = false;
+        new bootstrap.Tab(document.querySelector('#details-tab')).show();
+    });
+    document.getElementById('etapes-tab').addEventListener('shown.bs.tab', function () {
+        if (currentBonDetails) {
+            loadEtapesDossier();
+        }
+    });
+    $('#etapesTable').on('click', '.view-etape-details', function() {
+        const etapeId = $(this).data('id');
+        currentEtapeId = etapeId;
+        loadDetailsEtape(etapeId);
+        document.querySelector('#detailsEtape-tab').disabled = false;
+        new bootstrap.Tab(document.querySelector('#detailsEtape-tab')).show();
+    });
+    document.getElementById('openLookupBtn').addEventListener('click', function() {
+        const modal = new bootstrap.Modal(document.getElementById('lookupModal'));
+        modal.show();
+        document.getElementById('lookupSearch').focus();
+    });
+    document.getElementById('lookupSearch').addEventListener('input', debounce(function() {
+        const query = this.value.trim();
+        if (query.length < 2) {
+            document.getElementById('lookupResults').innerHTML = '<tr><td colspan="3">Tapez au moins 2 caractères</td></tr>';
+            return;
+        }
+        fetch(`{% url 'core:api_fournisseurs' %}?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById('lookupResults');
+                tbody.innerHTML = '';
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3">Aucun résultat</td></tr>';
+                    return;
+                }
+                data.forEach(fourn => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${fourn.CODE_FOURN}</td>
+                        <td>${fourn.LIB_FOURN}</td>
+                        <td>
+                            <button class="btn btn-sm btn-primary select-fourn-btn"
+                                    data-code="${fourn.CODE_FOURN}"
+                                    data-libelle="${fourn.LIB_FOURN}">
+                                Sélectionner
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                document.querySelectorAll('.select-fourn-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        selectFournisseur(this.dataset.code, this.dataset.libelle);
+                    });
+                });
+            })
+            .catch(err => {
+                console.error('Erreur recherche fournisseurs:', err);
+                document.getElementById('lookupResults').innerHTML = '<tr><td colspan="3">Erreur de chargement</td></tr>';
+            });
+    }, 300));
+    document.getElementById('filterForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const listeTab = new bootstrap.Tab(document.querySelector('#liste-tab'));
+        listeTab.show();
+        table.ajax.reload();
+    });
+    document.getElementById('resetBtn').addEventListener('click', function() {
+        document.getElementById('filterForm').reset();
+        document.getElementById('fournInput').value = '';
+        document.getElementById('selectedCodeFourn').value = '';
+        const listeTab = new bootstrap.Tab(document.querySelector('#liste-tab'));
+        listeTab.show();
+        table.ajax.reload();
+    });
+    function selectFournisseur(code, libelle) {
+        document.getElementById('selectedCodeFourn').value = code;
+        document.getElementById('fournInput').value = `${code} - ${libelle}`;
+        bootstrap.Modal.getInstance(document.getElementById('lookupModal')).hide();
+    }
+    function loadBonDetails(numCom, codeFourn) {
+        fetch(`{% url 'core:bons_commande_details' %}?num_com=${encodeURIComponent(numCom)}&code_fourn=${encodeURIComponent(codeFourn)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                displayBonDetails(data);
+            })
+            .catch(err => {
+                console.error('Erreur:', err);
+                alert('Erreur lors du chargement des détails');
+            });
+    }
+	
+	function toISODate(dateStr) {
+		if (!dateStr) return '';
+		// رفض التواريخ غير الصالحة مباشرةً
+		if (dateStr === '0000-00-00' || dateStr.startsWith('1900') || dateStr.startsWith('1899')) {
+			return '';
+		}
+		const d = new Date(dateStr);
+		if (isNaN(d.getTime()) || d.getFullYear() < 1950 || d.getFullYear() > 2100) {
+			return '';
+		}
+		const year = d.getFullYear();
+		const month = String(d.getMonth() + 1).padStart(2, '0');
+		const day = String(d.getDate()).padStart(2, '0');
+		return `${year}-${month}-${day}`;
+	}
+
+    function displayBonDetails(data) {
+        const bon = data.bon;
+        currentBonDetails = {
+			numCom: bon.NUMERO_COM,
+			datCom: toISODate(bon.DAT_COM), // ← مهم جدًا
+			codeFourn: bon.CODE_FOURN
+		};
+        const lignes = data.lignes;
+        const fournisseur = data.fournisseur;
+        const calculs = data.calculs;
+        document.getElementById('bonNumero').textContent = bon.NUMERO_COM || '-';
+        document.getElementById('bonDate').textContent = formatDate(bon.DAT_COM);
+        document.getElementById('bonFournisseur').textContent = fournisseur.LIB_FOURN || 'Inconnu';
+        document.getElementById('bonCodeFourn').textContent = bon.CODE_FOURN || '-';
+        document.getElementById('bonNature').textContent = bon.NATURE_LIB || '-';
+        document.getElementById('bonEtat').textContent = bon.ETAT_LIB || '-';
+        document.getElementById('bonModePay').textContent = bon.MODE_PAIEM_LIB || '-';
+        document.getElementById('bonDateLiv').textContent = formatDate(bon.LIV_COM);
+        document.getElementById('bonDevise').textContent = bon.LIB_DEVISE || '-';
+        document.getElementById('bonCentreResp').textContent = bon.LIB_CENT_R || '-';
+        document.getElementById('bonFob').textContent = bon.FOB != null && bon.FOB !== '' ? parseFloat(bon.FOB).toFixed(3) : '-';
+        document.getElementById('bonFret').textContent = bon.FRET != null && bon.FRET !== '' ? parseFloat(bon.FRET).toFixed(3) : '-';
+        document.getElementById('bonHeaderTitle').textContent = `Bon de Commande ${bon.NUMERO_COM}`;
+        const libDevise = bon.LIB_DEVISE || 'DINARS';
+        document.getElementById('uniteDevise').textContent = libDevise;
+        const tbody = document.getElementById('lignesBody');
+        tbody.innerHTML = lignes.map(l => `
+            <tr>
+                <td>${l.ITEM || '-'}</td>
+                <td>${escapeHtml(l.LIB_ART) || '-'}</td>
+                <td>${l.UNITE_MES || '-'}</td>
+                <td>${parseFloat(l.QTE).toFixed(2)}</td>
+                <td>${parseFloat(l.PRIX_UNIT).toFixed(3)}</td>
+                <td>${parseFloat(l.QTE * l.PRIX_UNIT).toFixed(3)}</td>
+            </tr>
+        `).join('');
+        document.getElementById('totalHT').textContent = calculs.total_ht.toFixed(3);
+        document.getElementById('remise').textContent = calculs.total_remise.toFixed(3);
+        document.getElementById('totalRemise').textContent = (calculs.total_ht - calculs.total_remise).toFixed(3);
+        document.getElementById('totalTTC').textContent = calculs.total_ttc.toFixed(3);
+        const totalTTC = calculs.total_ttc;
+        const partieEntiere = Math.floor(totalTTC);
+        const millimes = Math.round((totalTTC - partieEntiere) * 1000);
+        const libSDevise = bon.lib_s_devise || 'MILLIMES';
+        const montantTexte = `${numberToWords(partieEntiere)} ${libDevise} ${millimes.toString().padStart(3, '0')} ${libSDevise}`;
+        document.getElementById('montantLettres').textContent = montantTexte;
+        document.getElementById('detailsContent').style.display = 'block';
+        document.getElementById('noDetailsMessage').style.display = 'none';
+    }
+    function loadEtapesDossier() {
+        let numCom = currentBonDetails?.numCom;
+        let datCom = currentBonDetails?.datCom;
+        let codeFourn = currentBonDetails?.codeFourn;
+        if (!numCom) numCom = document.getElementById('bonNumero')?.textContent;
+        if (!datCom) datCom = document.getElementById('bonDate')?.textContent;
+        if (!codeFourn) codeFourn = document.getElementById('bonCodeFourn')?.textContent;
+        if (!numCom || !datCom || !codeFourn) {
+            console.warn("Données du bon manquantes pour charger les étapes");
+            document.getElementById('etapesBody').innerHTML = '<tr><td colspan="5">Sélectionnez un bon valide</td></tr>';
+            return;
+        }
+        const formattedDate = formatDateForQuery(datCom);
+        fetch(`{% url 'core:suivi_etapes' %}?num_com=${encodeURIComponent(numCom)}&dat_com=${encodeURIComponent(formattedDate)}&code_fourn=${encodeURIComponent(codeFourn)}`)
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById('etapesBody');
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5">Aucune étape enregistrée</td></tr>';
+                } else {
+                    tbody.innerHTML = data.map(etape => `
+                        <tr>
+                            <td>${formatDateTime(etape.date_etape)}</td>
+                            <td>${etape.libelle_etape}</td>
+                            <td>${etape.influence_sur_dossier}</td>
+                            <td>${etape.observation || '-'}</td>
+                            <td>
+                                <button class="btn btn-sm btn-info view-etape-details" data-id="${etape.id}">
+                                    <i class="bi bi-eye"></i> Voir
+                                </button>
+                                <button class="btn btn-sm btn-warning edit-etape" data-id="${etape.id}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger delete-etape" data-id="${etape.id}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+                document.getElementById('dossierRef').textContent = `${numCom} / ${codeFourn}`;
+            })
+            .catch(err => {
+                console.error('Erreur chargement étapes:', err);
+                document.getElementById('etapesBody').innerHTML = '<tr><td colspan="5">Erreur de chargement</td></tr>';
+            });
+    }
+    function loadDetailsEtape(etapeId) {
+        fetch(`{% url 'core:etape_details' %}?id=${etapeId}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('etapeNumeroCom').textContent = data.numero_com || '-';
+                document.getElementById('etapeDateEtape').textContent = formatDateTime(data.date_etape);
+                document.getElementById('etapeLibelle').textContent = data.libelle_etape || '-';
+                document.getElementById('etapeInfluence').textContent = data.influence_sur_dossier || '-';
+                document.getElementById('etapeObservation').textContent = data.observation || '-';
+                document.getElementById('etapeNumeroBordereau').textContent = data.numero_bordereau || '-';
+                document.getElementById('etapeNumeroAvis').textContent = data.numero_avis || '-';
+                document.getElementById('etapeNumeroFacture').textContent = data.numero_facture || '-';
+                document.getElementById('etapeDateFacture').textContent = data.date_facture ? formatDate(data.date_facture) : '-';
+                document.getElementById('etapeNumeroBl').textContent = data.numero_bl || '-';
+                document.getElementById('etapeDateBl').textContent = data.date_bl ? formatDate(data.date_bl) : '-';
+				document.getElementById('etapeDateAvis').textContent = data.date_avis ? formatDate(data.date_avis) : '-';
+				document.getElementById('etapeBct').textContent = data.bct || '-';
+				document.getElementById('etapeDateBct').textContent = data.date_bct ? formatDate(data.date_bct) : '-';
+				document.getElementById('etapeDateBordereau').textContent = data.date_bordereau ? formatDate(data.date_bordereau) : '-';
+				document.getElementById('etapeDateEmail').textContent = data.date_email ? formatDate(data.date_email) : '-';
+                document.getElementById('etapeEmail').innerHTML = data.email_data?.corps 
+                    ? `<pre style="white-space: pre-wrap;">${data.email_data.corps}</pre>` 
+                    : '-';
+                document.getElementById('etapeIdForUpload').value = etapeId;
+                loadPiecesJointes(etapeId);
+            });
+    }
+    function loadEtapesReference() {
+        return fetch('{% url "core:api_etapes" %}')
+            .then(response => response.json())
+            .then(data => {
+                const select = document.getElementById('idEtape');
+                select.innerHTML = '<option value="">Sélectionner une étape</option>';
+                data.forEach(etape => {
+                    const option = document.createElement('option');
+                    option.value = etape.code_etape;
+                    option.textContent = etape.libelle_etape;
+                    option.dataset.influence = etape.influence;
+                    select.appendChild(option);
+                });
+            });
+    }
+    document.getElementById('idEtape').addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const influence = selectedOption.dataset.influence || '';
+        document.getElementById('influenceSurDossier').value = influence;
+    });
+    document.getElementById('addEtapeBtn').addEventListener('click', function() {
+        if (!currentBonDetails) return;
+		const now = new Date();
+		// تنسيق datetime-local: "YYYY-MM-DDTHH:mm"
+		const nowLocal = now.toISOString().slice(0, 16);
+		document.getElementById('dateEtape').value = nowLocal;
+		
+		// مسح الحقول الجديدة
+		document.getElementById('dateAvis').value = '';
+		document.getElementById('bct').value = '';
+		document.getElementById('dateBct').value = '';
+		document.getElementById('dateBordereau').value = '';
+		document.getElementById('dateEmail').value = '';
+        document.getElementById('etapeModalLabel').textContent = 'Ajouter une étape';
+        document.getElementById('etapeId').value = '';
+        document.getElementById('etapeForm').reset();
+        document.getElementById('numeroCom').value = currentBonDetails.numCom;
+        document.getElementById('datCom').value = currentBonDetails.datCom;
+        document.getElementById('codeFourn').value = currentBonDetails.codeFourn;
+		
+        loadEtapesReference();
+        const modal = new bootstrap.Modal(document.getElementById('etapeModal'));
+        modal.show();
+    });
+    $('#etapesTable').on('click', '.edit-etape', function() {
+		const id = $(this).data('id');
+		fetch(`{% url 'core:suivi_etapes_detail' %}?id=${id}`)
+			.then(response => response.json())
+			.then(data => {
+				document.getElementById('etapeModalLabel').textContent = 'Modifier l\'étape';
+				document.getElementById('etapeId').value = data.id;
+				document.getElementById('numeroCom').value = data.numero_com;
+				document.getElementById('datCom').value = data.dat_com;
+				document.getElementById('codeFourn').value = data.code_fourn;
+				document.getElementById('observation').value = data.observation || '';
+				document.getElementById('numeroBordereau').value = data.numero_bordereau || '';
+				document.getElementById('numeroAvis').value = data.numero_avis || '';
+				document.getElementById('numeroCi').value = data.numero_ci || '';
+				document.getElementById('numeroFacture').value = data.numero_facture || '';
+				document.getElementById('dateFacture').value = data.date_facture || '';
+				document.getElementById('numeroBl').value = data.numero_bl || '';
+				document.getElementById('dateBl').value = data.date_bl || '';
+				<!-- document.getElementById('email').value = data.email || ''; -->
+				document.getElementById('emailBody').value = data.email_data?.corps || '';
+
+				// ✅ تصحيح: تنسيق date_etape لـ datetime-local
+				if (data.date_etape) {
+					const dateEtape = new Date(data.date_etape);
+					// التأكد من عدم وجود توقيت غير صالح
+					if (!isNaN(dateEtape.getTime())) {
+						// تحويل إلى التنسيق المحلي بدون الثواني والميلي ثانية
+						const year = dateEtape.getFullYear();
+						const month = String(dateEtape.getMonth() + 1).padStart(2, '0');
+						const day = String(dateEtape.getDate()).padStart(2, '0');
+						const hours = String(dateEtape.getHours()).padStart(2, '0');
+						const minutes = String(dateEtape.getMinutes()).padStart(2, '0');
+						document.getElementById('dateEtape').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+					} else {
+						document.getElementById('dateEtape').value = '';
+					}
+				} else {
+					document.getElementById('dateEtape').value = '';
+				}
+
+				// ✅ إضافة الحقول الجديدة
+				document.getElementById('dateAvis').value = data.date_avis || '';
+				document.getElementById('bct').value = data.bct || '';
+				document.getElementById('dateBct').value = data.date_bct || '';
+				document.getElementById('dateBordereau').value = data.date_bordereau || '';
+				document.getElementById('dateEmail').value = data.date_email || '';
+
+				// تحميل مراحل الإشارة
+				loadEtapesReference().then(() => {
+					document.getElementById('idEtape').value = data.id_etape;
+					document.getElementById('influenceSurDossier').value = data.influence_sur_dossier || '';
+				});
+
+				const modal = new bootstrap.Modal(document.getElementById('etapeModal'));
+				modal.show();
+			})
+			.catch(err => {
+				console.error('Erreur chargement étape pour édition:', err);
+				alert('Impossible de charger les données de l\'étape.');
+			});
+	});
+    document.getElementById('saveEtapeBtn').addEventListener('click', function() {
+        const etapeId = document.getElementById('etapeId').value;
+        const formData = new FormData(document.getElementById('etapeForm'));
+        formData.append('email_body', document.getElementById('emailBody').value);
+		formData.append('date_etape', document.getElementById('dateEtape').value);
+		formData.append('date_avis', document.getElementById('dateAvis').value || '');
+		formData.append('bct', document.getElementById('bct').value || '');
+		formData.append('date_bct', document.getElementById('dateBct').value || '');
+		formData.append('date_bordereau', document.getElementById('dateBordereau').value || '');
+		formData.append('date_email', document.getElementById('dateEmail').value || '');
+        const files = document.getElementById('emailAttachments').files;
+        for (let i = 0; i < files.length; i++) {
+            formData.append('email_attachments', files[i]);
+        }
+        let url, method;
+        if (etapeId) {
+            url = '{% url "core:suivi_etapes_update" %}';
+            method = 'POST';
+            formData.set('id', etapeId);
+        } else {
+            url = '{% url "core:suivi_etapes_create" %}';
+            method = 'POST';
+        }
+        fetch(url, {
+            method: method,
+            headers: {'X-CSRFToken': getCookie('csrftoken')},
+            body: formData
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.error) {
+                alert('Erreur: ' + result.error);
+                return;
+            }
+            loadEtapesDossier();
+            bootstrap.Modal.getInstance(document.getElementById('etapeModal')).hide();
+        })
+        .catch(err => {
+            console.error('Erreur:', err);
+            alert('Erreur réseau ou serveur');
+        });
+    });
+    $('#etapesTable').on('click', '.delete-etape', function() {
+        if (confirm("Supprimer cette étape ?")) {
+            const id = $(this).data('id');
+            fetch('{% url "core:suivi_etapes_delete" %}', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+                body: JSON.stringify({id: id})
+            }).then(() => {
+                loadEtapesDossier();
+                if (!document.querySelector('#detailsEtape-tab').classList.contains('active')) {
+                    document.querySelector('#detailsEtape-tab').disabled = true;
+                }
+            });
+        }
+    });
+    document.getElementById('uploadForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        fetch('{% url "core:upload_piece_jointe" %}', {
+            method: 'POST',
+            headers: {'X-CSRFToken': getCookie('csrftoken')},
+            body: formData
+        }).then(() => {
+            loadPiecesJointes(document.getElementById('etapeIdForUpload').value);
+            document.getElementById('fichierPiece').value = '';
+            document.getElementById('descriptionPiece').value = '';
+        }).catch(err => {
+            console.error('Erreur upload:', err);
+            alert('Erreur lors du téléchargement');
+        });
+    });
+    function loadPiecesJointes(etapeId) {
+        fetch(`{% url 'core:liste_pieces_jointes' %}?etape_id=${etapeId}`)
+            .then(response => response.json())
+            .then(pieces => {
+                const container = document.getElementById('listePiecesJointes');
+                if (pieces.length === 0) {
+                    container.innerHTML = '<p>Aucune pièce jointe.</p>';
+                } else {
+                    container.innerHTML = pieces.map(p => `
+                        <div class="alert alert-light border">
+                            <a href="${p.url}" target="_blank">${p.nom_original}</a>
+                            <small class="d-block">${p.description || ''}</small>
+                        </div>
+                    `).join('');
+                }
+            });
+    }
+    function formatDate(dateString) {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('fr-FR');
+    }
+    function formatDateTime(dateTimeString) {
+        if (!dateTimeString) return '-';
+        const date = new Date(dateTimeString);
+        return date.toLocaleString('fr-FR');
+    }
+    function formatDateForQuery(dateStr) {
+        if (!dateStr || dateStr === '-') return '';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '';
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    function escapeHtml(text) {
+        if (typeof text !== 'string') return text;
+        const map = {
+            '&': '&amp;',
+            '<': '<',
+            '>': '>',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+    function numberToWords(num) {
+        if (num === 0) return 'ZÉRO';
+        const units = ['', 'UN', 'DEUX', 'TROIS', 'QUATRE', 'CINQ', 'SIX', 'SEPT', 'HUIT', 'NEUF'];
+        const teens = ['DIX', 'ONZE', 'DOUZE', 'TREIZE', 'QUATORZE', 'QUINZE', 'SEIZE', 'DIX-SEPT', 'DIX-HUIT', 'DIX-NEUF'];
+        const tens = ['', '', 'VINGT', 'TRENTE', 'QUARANTE', 'CINQUANTE', 'SOIXANTE', 'SOIXANTE-DIX', 'QUATRE-VINGT', 'QUATRE-VINGT-DIX'];
+        function convertLessThanThousand(n) {
+            if (n === 0) return '';
+            if (n < 10) return units[n];
+            if (n < 20) return teens[n - 10];
+            if (n < 100) {
+                const t = Math.floor(n / 10);
+                const u = n % 10;
+                let word = tens[t];
+                if (u > 0) {
+                    if (t === 7 || t === 9) {
+                        word += '-' + teens[u];
+                    } else {
+                        word += '-' + units[u];
+                    }
+                }
+                return word;
+            }
+            const h = Math.floor(n / 100);
+            const rest = n % 100;
+            let word = h === 1 ? 'CENT' : units[h] + ' CENT';
+            if (rest > 0) {
+                word += ' ' + convertLessThanThousand(rest);
+            }
+            return word;
+        }
+        if (num < 1000) {
+            return convertLessThanThousand(num);
+        }
+        let result = '';
+        const billions = Math.floor(num / 1000000000);
+        if (billions > 0) {
+            result += convertLessThanThousand(billions) + ' MILLIARD';
+            if (billions > 1) result += 'S';
+            num %= 1000000000;
+            if (num > 0) result += ' ';
+        }
+        const millions = Math.floor(num / 1000000);
+        if (millions > 0) {
+            result += convertLessThanThousand(millions) + ' MILLION';
+            if (millions > 1) result += 'S';
+            num %= 1000000;
+            if (num > 0) result += ' ';
+        }
+        const milliers = Math.floor(num / 1000);
+        if (milliers > 0) {
+            if (milliers === 1) {
+                result += 'MILLE';
+            } else {
+                result += convertLessThanThousand(milliers) + ' MILLE';
+            }
+            num %= 1000;
+            if (num > 0) result += ' ';
+        }
+        if (num > 0) {
+            result += convertLessThanThousand(num);
+        }
+        return result.trim();
+    }
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+	// عند التبديل إلى تبويب Avis d'Arrivée
+	document.getElementById('avisArrivee-tab').addEventListener('shown.bs.tab', function () {
+		if (currentBonDetails?.numCom && currentBonDetails.datCom) {
+			loadAvisList(currentBonDetails.numCom);
+		} else {
+			alert("Veuillez d'abord sélectionner un bon de commande valide depuis la liste.");
+			// العودة تلقائيًا إلى تبويب القائمة
+			new bootstrap.Tab(document.querySelector('#liste-tab')).show();
+		}
+	});
+
+	function loadAvisArrivee(numCom) {
+		fetch(`{% url 'core:avis_arrivee_list' %}?num_com=${encodeURIComponent(numCom)}`)
+			.then(response => response.json())
+			.then(data => {
+				const tbody = document.getElementById('avisArriveeBody');
+				document.getElementById('bonRefAvis').textContent = numCom;
+				if (data.length === 0) {
+					tbody.innerHTML = '<tr><td colspan="8" class="text-center">Aucun avis d\'arrivée</td></tr>';
+					return;
+				}
+				tbody.innerHTML = data.map(avis => `
+					<tr>
+						<td>${avis.numero_avis}</td>
+						<td>${formatDate(avis.date_avis)}</td>
+						<td>${avis.numero_bordereau || '-'}</td>
+						<td>${avis.bct || '-'}</td>
+						<td>${avis.numero_facture || '-'}</td>
+						<td>${avis.numero_bl || '-'}</td>
+						<td>${avis.observation || '-'}</td>
+						<td>
+							<button class="btn btn-sm btn-info view-avis-details" data-id="${avis.id}">
+								<i class="bi bi-eye"></i> Détails
+							</button>
+							<button class="btn btn-sm btn-warning edit-avis" data-id="${avis.id}">
+								<i class="bi bi-pencil"></i>
+							</button>
+							<button class="btn btn-sm btn-danger delete-avis" data-id="${avis.id}">
+								<i class="bi bi-trash"></i>
+							</button>
+						</td>
+					</tr>
+				`).join('');
+			})
+			.catch(err => {
+				console.error('Erreur chargement avis:', err);
+				document.getElementById('avisArriveeBody').innerHTML = '<tr><td colspan="8" class="text-center text-danger">Erreur de chargement</td></tr>';
+			});
+	}
+	// --- Avis d'Arrivée ---
+	// عند التبديل إلى تبويب Avis d'Arrivée
+	let currentAvisList = [];
+	let currentAvisIndex = -1;
+
+	document.getElementById('avisArrivee-tab').addEventListener('shown.bs.tab', function () {
+		if (currentBonDetails?.numCom) {
+			loadAvisList(currentBonDetails.numCom);
+		}
+	});
+
+	// تحميل قائمة الإشعارات
+	function loadAvisList(numCom) {
+		fetch(`{% url 'core:avis_arrivee_list' %}?num_com=${encodeURIComponent(numCom)}`)
+			.then(response => response.json())
+			.then(data => {
+				currentAvisList = data;
+				if (data.length > 0) {
+					showAvisAtIndex(0);
+					document.getElementById('saveAvisBtn').disabled = false; // تمكين إذا كان هناك إشعار
+				} else {
+					resetAvisForm(true); // تعطيل الحفظ
+				}
+				document.getElementById('bonRefAvis').textContent = numCom;
+			});
+	}
+
+	// عرض إشعار محدد
+	function showAvisAtIndex(index) {
+		if (index < 0 || index >= currentAvisList.length) return;
+		currentAvisIndex = index;
+		const avis = currentAvisList[index];
+		
+		// ملء نموذج الإشعار
+		document.getElementById('avisId').value = avis.id;
+		document.getElementById('avisNumeroCom').value = avis.numero_com;
+		document.getElementById('avisDateCom').value = avis.dat_com;
+		document.getElementById('avisNumeroAvis').value = avis.numero_avis;
+		document.getElementById('avisDateAvis').value = avis.date_avis;
+		document.getElementById('avisNumeroBordereau').value = avis.numero_bordereau || '';
+		document.getElementById('avisBct').value = avis.bct || '';
+		document.getElementById('avisNumeroFacture').value = avis.numero_facture || '';
+		document.getElementById('avisNumeroBl').value = avis.numero_bl || '';
+		document.getElementById('avisObservation').value = avis.observation || '';
+		
+		document.getElementById('deleteAvisBtn').disabled = false; // ← تفعيل زر الحذف
+		// تحميل التفاصيل
+		loadDetailsAvis(avis.id);
+		updateAvisNavigation();
+	}
+
+	// تحديث أزرار التنقل
+	function updateAvisNavigation() {
+		document.getElementById('prevAvisBtn').disabled = currentAvisIndex <= 0;
+		document.getElementById('nextAvisBtn').disabled = currentAvisIndex >= currentAvisList.length - 1 || currentAvisList.length === 0;
+		document.getElementById('avisCounter').textContent = 
+			currentAvisList.length > 0 ? `${currentAvisIndex + 1} / ${currentAvisList.length}` : '0 / 0';
+		document.getElementById('addDetailBtn').disabled = currentAvisIndex === -1;
+	}
+	
+	// حذف إشعار استلام
+	document.getElementById('deleteAvisBtn').addEventListener('click', function() {
+		const avisId = document.getElementById('avisId').value;
+		if (!avisId) {
+			alert("Aucun avis sélectionné à supprimer.");
+			return;
+		}
+
+		if (!confirm("Êtes-vous sûr de vouloir supprimer cet avis d'arrivée ? Cette action est irréversible.")) {
+			return;
+		}
+
+		fetch('{% url "core:avis_arrivee_delete" %}', {
+			method: 'POST',
+			headers: {
+				'X-CSRFToken': getCookie('csrftoken'),
+				'Content-Type': 'application/x-www-form-urlencoded'
+			},
+			body: new URLSearchParams({ id: avisId })
+		})
+		.then(response => response.json())
+		.then(result => {
+			if (result.error) {
+				alert('Erreur: ' + result.error);
+				return;
+			}
+			// بعد الحذف، أعد تحميل القائمة
+			loadAvisList(currentBonDetails.numCom);
+		})
+		.catch(err => {
+			console.error('Erreur suppression avis:', err);
+			alert('Erreur réseau ou serveur');
+		});
+	});
+
+	// تفريغ نموذج الإشعار (بدون مسح الحقول المخفية المهمة)
+	function resetAvisForm(disableSave = true) {
+		// تفريغ الحقول المرئية فقط (كما فعلنا سابقًا)
+		document.getElementById('avisId').value = '';
+		document.getElementById('avisNumeroAvis').value = '';
+		document.getElementById('avisDateAvis').value = '';
+		document.getElementById('avisNumeroBordereau').value = '';
+		document.getElementById('avisBct').value = '';
+		document.getElementById('avisNumeroFacture').value = '';
+		document.getElementById('avisNumeroBl').value = '';
+		document.getElementById('avisObservation').value = '';
+
+		document.getElementById('deleteAvisBtn').disabled = true;
+		
+		// لا نلمس الحقول المخفية هنا
+
+		document.getElementById('detailsAvisBody').innerHTML = '<tr><td colspan="8" class="text-center">Sélectionnez un avis</td></tr>';
+		currentAvisIndex = -1;
+		updateAvisNavigation();
+
+		// تعطيل زر الحفظ
+		document.getElementById('saveAvisBtn').disabled = disableSave;
+		document.getElementById('addDetailBtn').disabled = true;
+	}
+
+	// تحميل تفاصيل الإشعار مع دعم conformité، observation، ووحدة القياس بالاسم
+	function loadDetailsAvis(avisId) {
+		fetch(`{% url 'core:avis_arrivee_details' %}?id=${avisId}`)
+			.then(response => response.json())
+			.then(data => {
+				const tbody = document.getElementById('detailsAvisBody');
+				if (data.length === 0) {
+					tbody.innerHTML = '<tr><td colspan="10" class="text-center">Aucun détail</td></tr>';
+					return;
+				}
+
+				// جمع أكواد وحدات القياس الفريدة
+				const umCodes = new Set();
+				data.forEach(d => {
+					if (d.um_commande) umCodes.add(d.um_commande);
+					if (d.um_reception) umCodes.add(d.um_reception);
+				});
+
+				// تحويل الأكواد إلى أسماء
+				const umMap = {};
+				const umPromises = Array.from(umCodes).map(code =>
+					fetch(`{% url 'core:api_unite_libelle' %}?um_code=${encodeURIComponent(code)}`)
+						.then(res => res.json())
+						.then(result => {
+							umMap[code] = result.libelle || code;
+						})
+						.catch(() => {
+							umMap[code] = code;
+						})
+				);
+
+				Promise.all(umPromises).then(() => {
+					// عرض الجدول بعد تحميل أسماء الوحدات
+					tbody.innerHTML = data.map(detail => {
+						const umCmd = umMap[detail.um_commande] || detail.um_commande || '-';
+						const umRec = umMap[detail.um_reception] || detail.um_reception || '-';
+
+						// قائمة منسدلة لـ conformité
+						const conformiteSelect = `
+							<select class="form-select form-select-sm conformite-select" data-id="${detail.id}">
+								<option value="en_attente_de_l_avis" ${detail.conformite === 'en_attente_de_l_avis' ? 'selected' : ''}>En attente de l avis</option>
+								<option value="conforme" ${detail.conformite === 'conforme' ? 'selected' : ''}>Conforme</option>
+								<option value="non_conforme" ${detail.conformite === 'non_conforme' ? 'selected' : ''}>Non Conforme</option>
+								<option value="en_litige" ${detail.conformite === 'en_litige' ? 'selected' : ''}>En Litige</option>
+							</select>
+						`;
+
+						return `
+							<tr data-id="${detail.id}">
+								<td>${detail.item || '-'}</td>
+								<td>${detail.cod_art || '-'}</td>
+								<td>${escapeHtml(detail.lib_art) || '-'}</td>
+								<td>${detail.qte_commande != null ? parseFloat(detail.qte_commande).toFixed(2) : '-'}</td>
+								<td>
+									<input type="number" step="0.01" class="form-control form-control-sm qte-rec-input" 
+										   value="${detail.qte_receptionnee != null ? detail.qte_receptionnee : ''}" 
+										   data-id="${detail.id}" required>
+								</td>
+								<td>${umCmd}</td>
+								<td>
+									<input type="text" class="form-control form-control-sm um-rec-input" 
+										   value="${umRec}" 
+										   data-id="${detail.id}">
+								</td>
+								<td>${conformiteSelect}</td>
+								<td>
+									<textarea class="form-control form-control-sm observation-detail-input"
+											  rows="1"
+											  placeholder="Observation">${escapeHtml(detail.observation || '')}</textarea>
+								</td>
+								<td>
+									<button class="btn btn-sm btn-warning save-detail-btn" data-id="${detail.id}">
+										<i class="bi bi-save"></i>
+									</button>
+									<button class="btn btn-sm btn-danger delete-detail-btn" data-id="${detail.id}">
+										<i class="bi bi-trash"></i>
+									</button>
+								</td>
+							</tr>
+						`;
+					}).join('');
+
+					// ربط أزرار الحفظ
+					document.querySelectorAll('.save-detail-btn').forEach(btn => {
+						btn.addEventListener('click', function() {
+							const id = this.dataset.id;
+							const row = this.closest('tr');
+							const qte = row.querySelector('.qte-rec-input').value;
+							const um = row.querySelector('.um-rec-input').value;
+							const conformite = row.querySelector('.conformite-select').value;
+							const observation = row.querySelector('.observation-detail-input').value.trim();
+
+							if (!qte) {
+								alert("La quantité réceptionnée est obligatoire.");
+								return;
+							}
+
+							fetch('{% url "core:detail_avis_update" %}', {
+								method: 'POST',
+								headers: { 'X-CSRFToken': getCookie('csrftoken') },
+								body: new URLSearchParams({
+									id: id,
+									qte_receptionnee: qte,
+									um_reception: um,
+									conformite: conformite,
+									observation: observation
+								})
+							}).then(() => loadDetailsAvis(avisId));
+						});
+					});
+
+					// ربط أزرار الحذف
+					document.querySelectorAll('.delete-detail-btn').forEach(btn => {
+						btn.addEventListener('click', function() {
+							if (!confirm('Supprimer ce détail ?')) return;
+							const id = this.dataset.id;
+							fetch('{% url "core:detail_avis_delete" %}', {
+								method: 'POST',
+								headers: { 'X-CSRFToken': getCookie('csrftoken') },
+								body: new URLSearchParams({ id: id })
+							}).then(() => loadDetailsAvis(avisId));
+						});
+					});
+				});
+			})
+			.catch(err => {
+				console.error('Erreur chargement détails avis:', err);
+				document.getElementById('detailsAvisBody').innerHTML = '<tr><td colspan="10" class="text-center text-danger">Erreur de chargement</td></tr>';
+			});
+	}
+
+	// إضافة سطر جديد لتفاصيل الإشعار (مع دعم اختيار من الطلبية)
+	// إضافة سطر جديد لتفاصيل الإشعار (مع دعم ITEM من الطلبية + conformité + observation)
+	document.getElementById('addDetailBtn').addEventListener('click', async function() {
+		const avisId = document.getElementById('avisId').value;
+		if (!avisId) {
+			alert("Veuillez d'abord enregistrer l'avis d'arrivée.");
+			return;
+		}
+
+		// جلب قائمة ITEMS من الطلبية (نوع M فقط)
+		let itemOptions = [];
+		try {
+			const response = await fetch(`{% url 'core:api_items' %}?num_com=${encodeURIComponent(currentBonDetails.numCom)}`);
+			const items = await response.json();
+			if (!response.ok) throw new Error("Impossible de charger les articles");
+			itemOptions = items;
+		} catch (err) {
+			console.error("Erreur chargement items:", err);
+			alert("Erreur lors du chargement des articles.");
+			return;
+		}
+
+		const itemSelectHtml = itemOptions.length
+			? itemOptions.map(item => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join('')
+			: '<option value="">Aucun article disponible</option>';
+
+		const newRow = document.createElement('tr');
+		// ✅ تم تغيير اسم الحقل إلى um-cmd-input لتوحيد التسمية
+		newRow.innerHTML = `
+			<td>
+				<select class="form-select form-select-sm item-select">
+					<option value="">Sélectionner ITEM</option>
+					${itemSelectHtml}
+				</select>
+			</td>
+			<td><input type="text" class="form-control form-control-sm cod-art-input" placeholder="COD_ART" readonly></td>
+			<td><input type="text" class="form-control form-control-sm lib-art-input" placeholder="LIB_ART" readonly></td>
+			<td><input type="number" step="0.01" class="form-control form-control-sm qte-cmd-input" placeholder="QTE" readonly></td>
+			<td>
+				<input type="number" step="0.01" class="form-control form-control-sm qte-rec-input" placeholder="QTE *" required>
+			</td>
+			<td><input type="text" class="form-control form-control-sm um-cmd-input" placeholder="UM Cmd" readonly></td>
+			<td><input type="text" class="form-control form-control-sm um-rec-input" placeholder="UM Rec"></td>
+			<td>
+				<select class="form-select form-select-sm conformite-select">
+					<option value="en_attente_de_l_avis">En attente de l avis</option>
+					<option value="conforme">Conforme</option>
+					<option value="non_conforme">Non Conforme</option>
+					<option value="en_litige">En Litige</option>
+				</select>
+			</td>
+			<td>
+				<textarea class="form-control form-control-sm observation-detail-input" 
+						  placeholder="Observation sur le détail" 
+						  rows="1"></textarea>
+			</td>
+			<td>
+				<button class="btn btn-sm btn-success save-new-detail-btn">
+					<i class="bi bi-check-circle"></i>
+				</button>
+				<button class="btn btn-sm btn-secondary cancel-new-detail-btn">
+					<i class="bi bi-x-circle"></i>
+				</button>
+			</td>
+		`;
+
+		const tbody = document.getElementById('detailsAvisBody');
+		tbody.appendChild(newRow);
+
+		// ✅ حدث change واحد فقط (تم إزالة التكرار)
+		const itemSelect = newRow.querySelector('.item-select');
+		itemSelect.addEventListener('change', async function() {
+			const item = this.value;
+			if (!item) {
+				newRow.querySelector('.cod-art-input').value = '';
+				newRow.querySelector('.lib-art-input').value = '';
+				newRow.querySelector('.qte-cmd-input').value = '';
+				newRow.querySelector('.um-cmd-input').value = ''; // ← الاسم الصحيح
+				return;
+			}
+			try {
+				const response = await fetch(`{% url 'core:api_item_qte_um' %}?num_com=${encodeURIComponent(currentBonDetails.numCom)}&item=${encodeURIComponent(item)}`);
+				const data = await response.json();
+				if (response.ok) {
+					newRow.querySelector('.cod-art-input').value = data.cod_art || '';
+					newRow.querySelector('.lib-art-input').value = data.lib_art || '';
+					newRow.querySelector('.qte-cmd-input').value = data.qte || '';
+					newRow.querySelector('.um-cmd-input').value = data.lib_um || ''; // ← هنا نستخدم الاسم
+					if (!newRow.querySelector('.um-rec-input').value) {
+						newRow.querySelector('.um-rec-input').value = data.lib_um || '';
+					}
+				} else {
+					alert("Erreur: " + (data.error || "Article non trouvé"));
+				}
+			} catch (err) {
+				console.error("Erreur:", err);
+				alert("Erreur réseau");
+			}
+		});
+
+		// زر الحفظ
+		newRow.querySelector('.save-new-detail-btn').addEventListener('click', function() {
+			const item = newRow.querySelector('.item-select').value.trim();
+			const codArt = newRow.querySelector('.cod-art-input').value.trim();
+			const libArt = newRow.querySelector('.lib-art-input').value.trim();
+			const qteCommande = newRow.querySelector('.qte-cmd-input').value || null;
+			const qteReceptionnee = newRow.querySelector('.qte-rec-input').value;
+			const umCommande = newRow.querySelector('.um-cmd-input').value.trim(); // ← الاسم الصحيح
+			const umReception = newRow.querySelector('.um-rec-input').value.trim();
+			const conformite = newRow.querySelector('.conformite-select').value;
+			const observation = newRow.querySelector('.observation-detail-input').value.trim();
+
+			if (!item || !qteReceptionnee) {
+				alert("ITEM et QTE Réceptionnée sont obligatoires.");
+				return;
+			}
+
+			const formData = new URLSearchParams();
+			formData.append('avis_id', avisId);
+			formData.append('item', item);
+			formData.append('cod_art', codArt);
+			formData.append('lib_art', libArt);
+			if (qteCommande) formData.append('qte_commande', qteCommande);
+			formData.append('qte_receptionnee', qteReceptionnee);
+			formData.append('um_commande', umCommande);
+			formData.append('um_reception', umReception);
+			formData.append('conformite', conformite);
+			formData.append('observation', observation);
+
+			fetch('{% url "core:detail_avis_create" %}', {
+				method: 'POST',
+				headers: {
+					'X-CSRFToken': getCookie('csrftoken'),
+					'Content-Type': 'application/x-www-form-urlencoded'
+				},
+				body: formData
+			})
+			.then(response => response.json())
+			.then(result => {
+				if (result.error) {
+					alert('Erreur: ' + result.error);
+					return;
+				}
+				loadDetailsAvis(avisId);
+			})
+			.catch(err => {
+				console.error('Erreur ajout détail:', err);
+				alert('Erreur réseau');
+			});
+		});
+
+		// زر الإلغاء
+		newRow.querySelector('.cancel-new-detail-btn').addEventListener('click', function() {
+			newRow.remove();
+		});
+	});
+	
+	// جلب قائمة العناصر (ITEM) من تفاصيل الطلبية الحالية
+	async function fetchItemsForBon(numCom) {
+		const response = await fetch(`{% url 'core:api_items' %}?num_com=${encodeURIComponent(numCom)}`);
+		const items = await response.json();
+		if (response.ok) {
+			return items;
+		} else {
+			throw new Error("Impossible de charger les articles");
+		}
+	}
+
+	// أحداث التنقل
+	document.getElementById('prevAvisBtn').addEventListener('click', () => {
+		if (currentAvisIndex > 0) showAvisAtIndex(currentAvisIndex - 1);
+	});
+
+	document.getElementById('nextAvisBtn').addEventListener('click', () => {
+		if (currentAvisIndex < currentAvisList.length - 1) showAvisAtIndex(currentAvisIndex + 1);
+	});
+
+	// إنشاء إشعار جديد
+	document.getElementById('addAvisBtn').addEventListener('click', function() {
+		if (!currentBonDetails?.numCom || !currentBonDetails?.datCom) {
+			alert("Les informations de la commande sont incomplètes.");
+			return;
+		}
+		resetAvisForm(false);
+		// 1. أولًا: اضبط الحقول المخفية
+		document.getElementById('avisNumeroCom').value = currentBonDetails.numCom;
+		document.getElementById('avisDateCom').value = currentBonDetails.datCom;
+		
+		document.getElementById('deleteAvisBtn').disabled = true; // ← تعطيل الحذف
+		
+		// 2. ثم: أَعِد باقي الحقول
+		document.getElementById('avisId').value = '';
+		document.getElementById('avisNumeroAvis').value = '';
+		document.getElementById('avisDateAvis').value = '';
+		document.getElementById('avisNumeroBordereau').value = '';
+		document.getElementById('avisBct').value = '';
+		document.getElementById('avisNumeroFacture').value = '';
+		document.getElementById('avisNumeroBl').value = '';
+		document.getElementById('avisObservation').value = '';
+		document.getElementById('addDetailBtn').disabled = false;
+		document.getElementById('detailsAvisBody').innerHTML = '<tr><td colspan="8" class="text-center">Sélectionnez un avis</td></tr>';
+		currentAvisIndex = -1;
+		updateAvisNavigation();
+	});
+
+	// حفظ الإشعار
+	document.getElementById('saveAvisBtn').addEventListener('click', function() {
+		const numCom = document.getElementById('avisNumeroCom').value;
+		const datCom = document.getElementById('avisDateCom').value;
+
+		if (!numCom || !datCom) {
+			alert("Les informations de la commande (N° et date) sont manquantes. Veuillez sélectionner une commande valide.");
+			return;
+		}
+
+		const avisId = document.getElementById('avisId').value;
+		const formData = new FormData(document.getElementById('avisForm'));
+
+		let url;
+		if (avisId) {
+			url = '{% url "core:avis_arrivee_update" %}';
+			formData.set('id', avisId);
+		} else {
+			url = '{% url "core:avis_arrivee_create" %}';
+		}
+
+		fetch(url, {
+			method: 'POST',
+			headers: {'X-CSRFToken': getCookie('csrftoken')},
+			body: formData
+		})
+		.then(response => response.json())
+		.then(result => {
+			if (result.error) {
+				alert('Erreur: ' + result.error);
+				return;
+			}
+			loadAvisList(currentBonDetails.numCom);
+		});
+	});
+
+	// إلغاء التعديل
+	document.getElementById('cancelAvisBtn').addEventListener('click', function() {
+		if (currentAvisIndex >= 0) {
+			showAvisAtIndex(currentAvisIndex);
+		} else {
+			resetAvisForm();
+		}
+	});
+    // --- État B1 ---
+    document.getElementById('etatB1-tab').addEventListener('shown.bs.tab', function () {
+        if (currentBonDetails?.numCom) {
+            loadEtatB1FromLocal(currentBonDetails.numCom);
+        }
+    });
+
+    document.getElementById('syncEtatB1Btn').addEventListener('click', function() {
+        if (currentBonDetails?.numCom) {
+            if (confirm("Voulez-vous synchroniser les données depuis SQL Server ?\nLes modifications locales non sauvegardées seront perdues.")) {
+                fetch(`{% url 'core:etat_b1_sync' %}?num_com=${encodeURIComponent(currentBonDetails.numCom)}`)
+                    .then(() => loadEtatB1FromLocal(currentBonDetails.numCom));
+            }
+        }
+    });
+
+    function loadEtatB1FromLocal(numCom) {
+        fetch(`{% url 'core:etat_b1' %}?num_com=${encodeURIComponent(numCom)}`)
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById('etatB1Body');
+                document.getElementById('bonRefEtatB1').textContent = numCom;
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="12" class="text-center">Aucune donnée disponible</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = data.map(row => `
+                    <tr data-saved-item="${row.item || ''}">
+                        <td>
+                            <select class="form-select form-select-sm item-select" 
+                                    data-date-b="${row.date_b}" 
+                                    data-numero-bon="${row.numero_bon}">
+                                <option value="">Sélectionner...</option>
+                            </select>
+                        </td>
+                        <td>${row.cod_art || '-'}</td>
+                        <td>${escapeHtml(row.lib_art) || '-'}</td>
+                        <td>
+                            <input type="number" step="0.01" class="form-control form-control-sm qte-cmd-input" 
+                                   value="${row.qte_commande != null ? row.qte_commande : ''}" 
+                                   data-date-b="${row.date_b}" 
+                                   data-numero-bon="${row.numero_bon}">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm um-cmd-input" 
+                                   value="${row.lib_um_com || ''}" 
+                                   data-date-b="${row.date_b}" 
+                                   data-numero-bon="${row.numero_bon}">
+                        </td>
+                        <td>${row.qte_recept != null ? parseFloat(row.qte_recept).toFixed(2) : '-'}</td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm um-rec-input" 
+                                   value="${row.lib_um || ''}" 
+                                   data-date-b="${row.date_b}" 
+                                   data-numero-bon="${row.numero_bon}">
+                        </td>
+                        <td>${row.numero_bon || '-'}</td>
+                        <td>${formatDate(row.date_b)}</td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm bp-input" 
+                                   value="${row.numero_bp || ''}" 
+                                   data-date-b="${row.date_b}" 
+                                   data-numero-bon="${row.numero_bon}">
+                        </td>
+                        <td>
+                            <input type="number" step="0.000001" class="form-control form-control-sm taux-input" 
+                                   value="${row.taux_change != null ? row.taux_change : ''}" 
+                                   data-date-b="${row.date_b}" 
+                                   data-numero-bon="${row.numero_bon}">
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-warning save-etat-btn" 
+                                    data-date-b="${row.date_b}" 
+                                    data-numero-bon="${row.numero_bon}">
+                                <i class="bi bi-save"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger delete-etat-btn" 
+                                    data-date-b="${row.date_b}" 
+                                    data-numero-bon="${row.numero_bon}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+
+				// ملء القوائم المنسدلة مع تحديد القيمة الحالية + إضافة حدث change
+				document.querySelectorAll('.item-select').forEach(select => {
+					const row = select.closest('tr');
+					const savedItem = row.dataset.savedItem;
+
+					// جلب قائمة العناصر
+					fetch(`{% url 'core:api_items' %}?num_com=${encodeURIComponent(numCom)}`)
+						.then(response => response.json())
+						.then(itemsList => {
+							select.innerHTML = '<option value="">Sélectionner...</option>';
+							itemsList.forEach(itemValue => {
+								const option = document.createElement('option');
+								option.value = itemValue;
+								option.textContent = itemValue;
+								if (itemValue == savedItem) {
+									option.selected = true;
+								}
+								select.appendChild(option);
+							});
+
+							// بعد ملء القائمة، أضف حدث change
+							select.addEventListener('change', function() {
+								const itemValue = this.value.trim();
+								const date_b = this.dataset.dateB;
+								const numero_bon = this.dataset.numeroBon;
+
+								if (!itemValue) {
+									const row = this.closest('tr');
+									row.querySelector('.qte-cmd-input').value = '';
+									row.querySelector('.um-cmd-input').value = '';
+									return;
+								}
+
+								// ⚠️ تعديل مهم: ITEM ليس بالضرورة رقمًا!
+								// غالبًا هو نص مثل "001" أو "A123"، لذا لا تتحقق من parseFloat
+								// فقط تأكد أنه ليس فارغًا
+
+								// إرسال الطلب إلى الخادم
+								fetch(`{% url 'core:api_item_qte_um' %}?num_com=${encodeURIComponent(currentBonDetails.numCom)}&item=${encodeURIComponent(itemValue)}`)
+									.then(response => response.json())
+									.then(data => {
+										const row = this.closest('tr');
+										if (data.qte !== null) {
+											row.querySelector('.qte-cmd-input').value = data.qte;
+										}
+										if (data.lib_um) {
+											row.querySelector('.um-cmd-input').value = data.lib_um;
+											const umRecInput = row.querySelector('.um-rec-input');
+											if (!umRecInput.value.trim()) {
+												umRecInput.value = data.lib_um;
+											}
+										}
+									})
+									.catch(err => {
+										console.error("Erreur lors du chargement QTE/UM:", err);
+									});
+							});
+						});
+				});
+
+                // عند تغيير ITEM
+                document.querySelectorAll('.item-select').forEach(select => {
+                    select.addEventListener('change', function() {
+                        const item = this.value;
+                        const date_b = this.dataset.dateB;
+                        const numero_bon = this.dataset.numeroBon;
+                        if (!item) return;
+                        fetch(`{% url 'core:api_item_qte_um' %}?num_com=${encodeURIComponent(numCom)}&item=${encodeURIComponent(item)}`)
+                            .then(response => response.json())
+                            .then(details => {
+                                const row = this.closest('tr');
+                                row.querySelector('.qte-cmd-input').value = details.qte != null ? details.qte : '';
+                                row.querySelector('.um-cmd-input').value = details.lib_um || '';
+                                const umRecInput = row.querySelector('.um-rec-input');
+                                if (!umRecInput.value) {
+                                    umRecInput.value = details.lib_um || '';
+                                }
+                            });
+                    });
+                });
+
+                // ربط أزرار الحفظ
+                document.querySelectorAll('.save-etat-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const date_b = this.dataset.dateB;
+                        const numero_bon = this.dataset.numeroBon;
+                        const row = this.closest('tr');
+                        const dataToSend = {
+                            date_b: date_b,
+                            numero_bon: numero_bon,
+                            item: row.querySelector('.item-select').value,
+                            qte_commande: row.querySelector('.qte-cmd-input').value || null,
+                            lib_um_com: row.querySelector('.um-cmd-input').value,
+                            lib_um: row.querySelector('.um-rec-input').value,
+                            numero_bp: row.querySelector('.bp-input').value,
+                            taux_change: row.querySelector('.taux-input').value || null,
+                        };
+                        console.log("Données envoyées:", dataToSend);
+                        fetch('{% url "core:etat_b1_update" %}', {
+                            method: 'POST',
+                            headers: {'X-CSRFToken': getCookie('csrftoken')},
+                            body: new URLSearchParams(dataToSend)
+                        })
+                        .then(response => response.json())
+                        .then(result => {
+                            if (result.error) {
+                                console.error("Erreur:", result.error);
+                                alert("Erreur: " + result.error);
+                            } else {
+                                loadEtatB1FromLocal(numCom);
+                            }
+                        })
+                        .catch(err => {
+                            console.error("Erreur réseau:", err);
+                            alert("Erreur réseau");
+                        });
+                    });
+                });
+
+                // ربط أزرار الحذف
+                document.querySelectorAll('.delete-etat-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        if (!confirm('Confirmer la suppression ?')) return;
+                        const date_b = this.dataset.dateB;
+                        const numero_bon = this.dataset.numeroBon;
+                        fetch('{% url "core:etat_b1_delete" %}', {
+                            method: 'POST',
+                            headers: {'X-CSRFToken': getCookie('csrftoken')},
+                            body: new URLSearchParams({
+                                date_b: date_b,
+                                numero_bon: numero_bon
+                            })
+                        }).then(() => loadEtatB1FromLocal(numCom));
+                    });
+                });
+            });
+    }
+	
+	// عند التبديل إلى تبويب المقارنة
+	document.getElementById('comparaison-tab').addEventListener('shown.bs.tab', function () {
+		if (currentBonDetails?.numCom) {
+			loadComparaison(currentBonDetails.numCom);
+		}
+	});
+
+	function loadComparaison(numCom) {
+		fetch(`{% url 'core:comparaison_commande_reception' %}?num_com=${encodeURIComponent(numCom)}`)
+			.then(response => response.json())
+			.then(data => {
+				const tbody = document.getElementById('comparaisonBody');
+				document.getElementById('bonRefComparaison').textContent = numCom;
+				if (data.length === 0) {
+					tbody.innerHTML = '<tr><td colspan="9" class="text-center">Aucune donnée disponible</td></tr>';
+					return;
+				}
+				tbody.innerHTML = data.map(row => `
+					<tr>
+						<td class="comparaison-cell" data-statut="${row.statut_reception}">${row.item || '-'}</td>
+						<td class="comparaison-cell" data-statut="${row.statut_reception}">${row.cod_art || '-'}</td>
+						<td class="comparaison-cell" data-statut="${row.statut_reception}">${escapeHtml(row.lib_art) || '-'}</td>
+						<td class="comparaison-cell text-end" data-statut="${row.statut_reception}">${row.qte_commande_source.toFixed(2)}</td>
+						<td class="comparaison-cell text-end" data-statut="${row.statut_reception}">${row.qte_commande_locale.toFixed(2)}</td>
+						<td class="comparaison-cell text-end" data-statut="${row.statut_reception}">${row.qte_reception.toFixed(2)}</td>
+						<td class="comparaison-cell text-end ${row.ecart < 0 ? 'text-danger' : row.ecart > 0 ? 'text-success' : ''}" data-statut="${row.statut_reception}">
+							${row.ecart.toFixed(2)}
+						</td>
+						<td class="comparaison-cell" data-statut="${row.statut_reception}">${row.lib_um_com || '-'}</td>
+						<td class="comparaison-cell" data-statut="${row.statut_reception}">${row.lib_um || '-'}</td>
+					</tr>
+				`).join('');
+			})
+			.catch(err => {
+				console.error('Erreur chargement comparaison:', err);
+				document.getElementById('comparaisonBody').innerHTML = '<tr><td colspan="9" class="text-center text-danger">Erreur de chargement</td></tr>';
+			});
+	}
+});
+</script>
+{% endblock %}

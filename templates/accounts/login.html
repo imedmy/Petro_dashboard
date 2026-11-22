@@ -1,0 +1,782 @@
+{% extends "base.html" %}
+{% load static i18n %}
+
+{% block title %}{% trans "Connexion" %} - Pétro Dashboard{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    /* ======================================== */
+    /* ✅ تحسينات خاصة بصفحة تسجيل الدخول */
+    /* ======================================== */
+    
+    /* إزالة أي هوامش افتراضية من base.html قد تؤثر على التمركز */
+    .login-wrapper {
+        min-height: 100vh;
+        width: 100%;
+        background: linear-gradient(135deg, #1a252f 0%, #2c3e50 50%, #34495e 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+        position: relative;
+        overflow: hidden;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* تأثير الخلفية المتحركة */
+    .login-wrapper::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+        animation: pulse 15s ease-in-out infinite;
+        pointer-events: none;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+    }
+    
+    .login-card {
+        width: 100%;
+        max-width: 420px;
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        background: #fff;
+        overflow: hidden;
+        animation: slideUp 0.4s ease;
+        z-index: 10;
+    }
+    
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .login-header {
+        background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+        padding: 2rem 1.5rem;
+        text-align: center;
+        color: #fff;
+        position: relative;
+    }
+    
+    .login-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    }
+    
+    .login-logo {
+        width: 80px;
+        height: 80px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        backdrop-filter: blur(10px);
+    }
+    
+    .login-logo i {
+        font-size: 2rem;
+        color: #fff;
+    }
+    
+    .login-header h4 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.25rem;
+        text-align: center;
+    }
+    
+    .login-header p {
+        margin: 0.5rem 0 0;
+        font-size: 0.9rem;
+        opacity: 0.9;
+        text-align: center;
+    }
+    
+    .login-body {
+        padding: 2rem 1.5rem;
+    }
+    
+    /* ✅ تصحيح حقول النموذج - المشكلة الرئيسية هنا */
+    .form-floating {
+        position: relative;
+        margin-bottom: 1.25rem;
+    }
+    
+    /* ✅ التأكد من أن حقول النموذج لها الستايل الصحيح */
+    .form-floating input.form-control {
+        height: calc(3.5rem + 2px);
+        padding: 1rem 0.75rem;
+        font-size: 1rem;
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+        background: #f8f9fa;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .form-floating input.form-control:focus {
+        border-color: #0d6efd;
+        background: #fff;
+        box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+        outline: none;
+    }
+    
+    .form-floating input.form-control.is-invalid {
+        border-color: #dc3545;
+        background: #fff5f5;
+    }
+    
+    .form-floating input.form-control.is-invalid:focus {
+        box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.1);
+    }
+    
+    .form-floating label {
+        padding: 1rem 0.75rem;
+        color: #6c757d;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        pointer-events: none;
+    }
+    
+    .form-floating input.form-control:focus ~ label,
+    .form-floating input.form-control:not(:placeholder-shown) ~ label {
+        color: #0d6efd;
+        font-weight: 600;
+        transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem);
+    }
+    
+    /* زر إظهار/إخفاء كلمة المرور */
+    .password-toggle {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #6c757d;
+        cursor: pointer;
+        padding: 0.25rem;
+        z-index: 10;
+        transition: color 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .password-toggle:hover {
+        color: #0d6efd;
+    }
+    
+    .password-toggle:focus {
+        outline: none;
+        color: #0d6efd;
+    }
+    
+    /* خيارات إضافية */
+    .login-options {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .form-check {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .form-check-input {
+        width: 1.1rem;
+        height: 1.1rem;
+        cursor: pointer;
+        margin: 0;
+    }
+    
+    .form-check-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+        cursor: pointer;
+        user-select: none;
+        margin: 0;
+    }
+    
+    .forgot-password {
+        font-size: 0.9rem;
+        color: #0d6efd;
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s ease;
+    }
+    
+    .forgot-password:hover {
+        color: #0a58ca;
+        text-decoration: underline;
+    }
+    
+    /* زر الدخول */
+    .btn-login {
+        width: 100%;
+        padding: 0.875rem;
+        font-size: 1rem;
+        font-weight: 600;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+        border: none;
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+    }
+    
+    .btn-login:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(13, 110, 253, 0.4);
+    }
+    
+    .btn-login:active {
+        transform: translateY(0);
+    }
+    
+    .btn-login:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    .btn-login .spinner-border {
+        width: 1.25rem;
+        height: 1.25rem;
+        border-width: 2px;
+    }
+    
+    /* رسائل الخطأ */
+    .alert-login {
+        border-radius: 10px;
+        border: none;
+        margin-bottom: 1.5rem;
+        animation: shake 0.5s ease;
+    }
+    
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+    
+    .alert-login i {
+        margin-right: 0.5rem;
+        font-size: 1.1rem;
+    }
+    
+    /* معلومات إضافية */
+    .login-footer {
+        text-align: center;
+        padding: 1rem 1.5rem;
+        background: #f8f9fa;
+        border-top: 1px solid #e9ecef;
+    }
+    
+    .login-footer p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: #6c757d;
+        text-align: center;
+    }
+    
+    .login-footer a {
+        color: #0d6efd;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    
+    .login-footer a:hover {
+        text-decoration: underline;
+    }
+    
+    /* دعم اللغة العربية */
+    [dir="rtl"] .password-toggle {
+        right: auto;
+        left: 12px;
+    }
+    
+    [dir="rtl"] .login-options {
+        flex-direction: row-reverse;
+    }
+    
+    /* Responsive */
+    @media (max-width: 576px) {
+        .login-card {
+            max-width: 100%;
+            margin: 0 1rem;
+        }
+        
+        .login-header {
+            padding: 1.5rem 1rem;
+        }
+        
+        .login-body {
+            padding: 1.5rem 1rem;
+        }
+        
+        .login-logo {
+            width: 60px;
+            height: 60px;
+        }
+        
+        .login-logo i {
+            font-size: 1.5rem;
+        }
+    }
+    
+    /* وضع الظلام (اختياري) */
+    @media (prefers-color-scheme: dark) {
+        .login-card {
+            background: #1a1a2e;
+        }
+        
+        .form-floating input.form-control {
+            background: #16213e;
+            border-color: #0f3460;
+            color: #fff;
+        }
+        
+        .form-floating label {
+            color: #adb5bd;
+        }
+        
+        .login-footer {
+            background: #16213e;
+            border-top-color: #0f3460;
+        }
+        
+        .login-footer p {
+            color: #adb5bd;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ✅ إزالة أي حاويات خارجية قد تؤثر على التمركز -->
+<div class="login-wrapper">
+    <div class="login-card">
+        <!-- رأس البطاقة -->
+        <div class="login-header">
+            <div class="login-logo">
+                <i class="bi bi-shield-lock"></i>
+            </div>
+            <h4 class="text-center">{% trans "Pétro Dashboard" %}</h4>
+            <p class="text-center">{% trans "Accès sécurisé au système" %}</p>
+        </div>
+        
+        <!-- جسم البطاقة -->
+        <div class="login-body">
+            <!-- رسائل الخطأ العامة -->
+            {% if form.errors %}
+                <div class="alert alert-danger alert-login d-flex align-items-center" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <div>
+                        <strong>{% trans "Erreur de connexion" %}</strong><br>
+                        {% trans "Nom d'utilisateur ou mot de passe incorrect." %}
+                    </div>
+                </div>
+            {% endif %}
+            
+            <!-- رسالة التوجيه بعد تسجيل الخروج -->
+            {% if next %}
+                {% if user.is_authenticated %}
+                    <div class="alert alert-info alert-login d-flex align-items-center" role="alert">
+                        <i class="bi bi-info-circle-fill"></i>
+                        <div>
+                            {% trans "Votre compte n'a pas accès à cette page. Pour procéder avec un compte qui a accès," %}
+                            <a href="{% url 'accounts:logout' %}?next={{ next }}">{% trans "déconnectez-vous" %}</a>.
+                        </div>
+                    </div>
+                {% endif %}
+            {% endif %}
+            
+            <!-- نموذج تسجيل الدخول -->
+            <form method="post" id="loginForm" novalidate autocomplete="on">
+                {% csrf_token %}
+                
+                <!-- حقل اسم المستخدم - ✅ تم تحسينه -->
+                <div class="form-floating">
+                    {{ form.username }}
+                    <label for="{{ form.username.id_for_label }}">
+                        <i class="bi bi-person me-1"></i>
+                        {% trans "Nom d'utilisateur" %}
+                    </label>
+                    {% if form.username.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.username.errors|striptags }}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- حقل كلمة المرور - ✅ تم تحسينه -->
+                <div class="form-floating">
+                    {{ form.password }}
+                    <label for="{{ form.password.id_for_label }}">
+                        <i class="bi bi-key me-1"></i>
+                        {% trans "Mot de passe" %}
+                    </label>
+                    <button type="button" class="password-toggle" id="togglePassword" 
+                            aria-label="{% trans 'Afficher/masquer le mot de passe' %}"
+                            title="{% trans 'Afficher/masquer le mot de passe' %}">
+                        <i class="bi bi-eye" id="toggleIcon"></i>
+                    </button>
+                    {% if form.password.errors %}
+                        <div class="invalid-feedback d-block">
+                            {{ form.password.errors|striptags }}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- خيارات إضافية -->
+                <div class="login-options">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" 
+                               id="rememberMe" name="remember" value="1">
+                        <label class="form-check-label" for="rememberMe">
+                            {% trans "Se souvenir de moi" %}
+                        </label>
+                    </div>
+                    <a href="#" class="forgot-password" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">
+                        {% trans "Mot de passe oublié ?" %}
+                    </a>
+                </div>
+                
+                <!-- زر الدخول -->
+                <button type="submit" class="btn btn-primary btn-login" id="loginBtn">
+                    <span id="loginText">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>
+                        {% trans "Se connecter" %}
+                    </span>
+                    <span id="loginSpinner" class="spinner-border spinner-border-sm d-none" 
+                          role="status" aria-hidden="true"></span>
+                </button>
+            </form>
+        </div>
+        
+        <!-- تذييل البطاقة -->
+        <div class="login-footer">
+            <p class="text-center">
+                {% trans "©" %} {% now "Y" %} SITEP - {% trans "Tous droits réservés" %}<br>
+                <small>{% trans "Système de gestion intégré" %}</small>
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: استعادة كلمة المرور -->
+<div class="modal fade" id="forgotPasswordModal" tabindex="-1" 
+     aria-labelledby="forgotPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="forgotPasswordModalLabel">
+                    <i class="bi bi-key me-2"></i>
+                    {% trans "Réinitialisation du mot de passe" %}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" 
+                        aria-label="{% trans 'Fermer' %}"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">
+                    {% trans "Entrez votre adresse e-mail associée à votre compte. Nous vous enverrons un lien pour réinitialiser votre mot de passe." %}
+                </p>
+                <form id="passwordResetForm">
+                    {% csrf_token %}
+                    <div class="form-floating mb-3">
+                        <input type="email" class="form-control" id="resetEmail" 
+                               placeholder="name@example.com" required>
+                        <label for="resetEmail">
+                            <i class="bi bi-envelope me-1"></i>
+                            {% trans "Adresse e-mail" %}
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-send me-2"></i>
+                        {% trans "Envoyer le lien de réinitialisation" %}
+                    </button>
+                </form>
+                <div id="resetMessage" class="mt-3" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast container للإشعارات -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
+    <!-- سيتم إضافة الإشعارات هنا ديناميكيًا -->
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+/**
+ * ✅ تحسينات صفحة تسجيل الدخول - نسخة مُصحَّحة
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // === 0. ✅ تصحيح حقول النموذج إذا لم تكن صحيحة ===
+    // هذه الخطوة مهمة إذا كان Django form لا يضيف class="form-control" تلقائيًا
+    const usernameField = document.querySelector('[name="username"]');
+    const passwordField = document.querySelector('[name="password"]');
+    
+    if (usernameField && !usernameField.classList.contains('form-control')) {
+        usernameField.classList.add('form-control');
+        usernameField.setAttribute('placeholder', '');
+        usernameField.setAttribute('required', 'required');
+        usernameField.setAttribute('autocomplete', 'username');
+    }
+    
+    if (passwordField && !passwordField.classList.contains('form-control')) {
+        passwordField.classList.add('form-control');
+        passwordField.setAttribute('placeholder', '');
+        passwordField.setAttribute('required', 'required');
+        passwordField.setAttribute('autocomplete', 'current-password');
+    }
+    
+    // === 1. تبديل إظهار/إخفاء كلمة المرور ===
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.querySelector('[name="password"]');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    if (togglePassword && passwordInput) {
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.type === 'password' ? 'text' : 'password';
+            passwordInput.type = type;
+            toggleIcon.classList.toggle('bi-eye');
+            toggleIcon.classList.toggle('bi-eye-slash');
+        });
+    }
+    
+    // === 2. معالجة نموذج تسجيل الدخول مع تحسينات ===
+    const loginForm = document.getElementById('loginForm');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginText = document.getElementById('loginText');
+    const loginSpinner = document.getElementById('loginSpinner');
+    
+    if (loginForm) {
+        loginForm.addEventListener('submit', function(e) {
+            // ✅ إظهار مؤشر التحميل
+            loginBtn.disabled = true;
+            if (loginText) loginText.classList.add('d-none');
+            if (loginSpinner) loginSpinner.classList.remove('d-none');
+            
+            // ✅ حفظ اسم المستخدم إذا كان "تذكرني" مفعلًا
+            const rememberCheckbox = document.getElementById('rememberMe');
+            const usernameInput = document.querySelector('[name="username"]');
+            
+            if (rememberCheckbox?.checked && usernameInput?.value) {
+                localStorage.setItem('savedUsername', usernameInput.value);
+                localStorage.setItem('rememberMe', 'true');
+            } else {
+                localStorage.removeItem('savedUsername');
+                localStorage.removeItem('rememberMe');
+            }
+            
+            // ✅ السماح بإرسال النموذج
+            // (لا نمنع الإرسال، فقط نضيف المؤشرات البصرية)
+        });
+    }
+    
+    // === 3. معالجة نموذج استعادة كلمة المرور ===
+    const passwordResetForm = document.getElementById('passwordResetForm');
+    const resetMessage = document.getElementById('resetMessage');
+    
+    if (passwordResetForm) {
+        passwordResetForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('resetEmail').value.trim();
+            
+            if (!email) {
+                showToast('{% trans "Veuillez entrer votre adresse e-mail" %}', 'warning');
+                return;
+            }
+            
+            // ✅ تعطيل الزر أثناء الإرسال
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Envoi...';
+            
+            // إرسال الطلب إلى الخادم
+            fetch('{% url "accounts:password_reset" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ email: email })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    showToast('{% trans "Lien de réinitialisation envoyé ! Vérifiez votre boîte mail." %}', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('forgotPasswordModal'))?.hide();
+                    passwordResetForm.reset();
+                } else {
+                    showToast(data.message || '{% trans "Erreur lors de l envoi" %}', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showToast('{% trans "Erreur de connexion au serveur" %}', 'error');
+            })
+            .finally(() => {
+                // ✅ إعادة تمكين الزر
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-send me-2"></i>{% trans "Envoyer le lien de réinitialisation" %}';
+            });
+        });
+    }
+    
+    // === 4. دالة عرض الإشعارات (Toast) ===
+    function showToast(message, type = 'info') {
+        const container = document.querySelector('.toast-container');
+        if (!container) return;
+        
+        const bgClass = {
+            'success': 'bg-success',
+            'error': 'bg-danger',
+            'warning': 'bg-warning',
+            'info': 'bg-primary'
+        }[type] || 'bg-primary';
+        
+        const icon = {
+            'success': 'bi-check-circle-fill',
+            'error': 'bi-exclamation-triangle-fill',
+            'warning': 'bi-exclamation-circle-fill',
+            'info': 'bi-info-circle-fill'
+        }[type] || 'bi-info-circle-fill';
+        
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white ${bgClass} border-0 mb-2`;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="bi ${icon} me-2"></i>${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" 
+                        data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+        
+        container.appendChild(toast);
+        
+        const bsToast = new bootstrap.Toast(toast, { delay: 4000 });
+        bsToast.show();
+        
+        // إزالة العنصر بعد الإخفاء
+        toast.addEventListener('hidden.bs.toast', function() {
+            toast.remove();
+        });
+    }
+    
+    // === 5. دالة الحصول على قيمة الكوكي ===
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // === 6. تحسينات إمكانية الوصول ===
+    // التركيز التلقائي على حقل اسم المستخدم
+    const usernameInput = document.querySelector('[name="username"]');
+    if (usernameInput && !usernameInput.value) {
+        usernameInput.focus();
+    }
+    
+    // دعم مفتاح Enter في حقل كلمة المرور
+    if (passwordInput) {
+        passwordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && loginForm) {
+                e.preventDefault();
+                loginForm.requestSubmit();
+            }
+        });
+    }
+    
+    // === 7. حفظ/استعادة "تذكرني" ===
+    const rememberCheckbox = document.getElementById('rememberMe');
+    if (rememberCheckbox) {
+        // استعادة القيمة من التخزين المحلي
+        const savedRemember = localStorage.getItem('rememberMe');
+        if (savedRemember === 'true') {
+            rememberCheckbox.checked = true;
+        }
+        
+        // حفظ القيمة عند التغيير
+        rememberCheckbox.addEventListener('change', function() {
+            localStorage.setItem('rememberMe', this.checked);
+        });
+    }
+    
+    // === 8. حفظ/استعادة اسم المستخدم ===
+    if (usernameInput) {
+        const savedUsername = localStorage.getItem('savedUsername');
+        if (savedUsername && !usernameInput.value) {
+            usernameInput.value = savedUsername;
+            if (rememberCheckbox) rememberCheckbox.checked = true;
+        }
+    }
+    
+    // === 9. ✅ معالجة أخطاء تسجيل الدخول بشكل أفضل ===
+    // عرض تفاصيل الخطأ من الخادم إذا كان متاحًا
+    {% if form.errors %}
+        // ✅ إظهار تفاصيل الخطأ في Console للمساعدة في التصحيح
+        console.warn('⚠️ Erreur de connexion Django:');
+        console.log('Username field errors:', {{ form.username.errors|default:"[]"|safe }});
+        console.log('Password field errors:', {{ form.password.errors|default:"[]"|safe }});
+        console.log('Non-field errors:', {{ form.non_field_errors|default:"[]"|safe }});
+        
+        // ✅ عرض إشعار مفصل إذا كان هناك أخطاء غير مرتبطة بحقل معين
+        {% if form.non_field_errors %}
+            showToast('{{ form.non_field_errors.0 }}', 'error');
+        {% endif %}
+    {% endif %}
+});
+</script>
+{% endblock %}

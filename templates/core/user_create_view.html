@@ -1,0 +1,53 @@
+# core/views.py
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+
+@login_required
+def user_create_view(request):
+    # تحقق من صلاحية الإضافة
+    try:
+        page = Page.objects.get(url_name='users')
+        perm = PermissionMatrix.objects.get(user=request.user, page=page)
+        if not perm.can_insert:
+            return redirect('core:forbidden')
+    except (Page.DoesNotExist, PermissionMatrix.DoesNotExist):
+        return redirect('core:forbidden')
+
+    if request.method == 'POST':
+        username = request.POST['username']
+        email = request.POST['email']
+        first_name = request.POST['first_name']
+        last_name = request.POST['last_name']
+        phone = request.POST['phone']
+        address = request.POST['address']
+        is_active = 'is_active' in request.POST
+        is_staff = 'is_staff' in request.POST
+
+        # تحقق من أن كلمة المرور قوية (اختياري)
+        password = 'TempPass123!'  # يمكنك لاحقًا إضافة حقل إدخال
+
+        # التحقق من صحة كلمة المرور
+        try:
+            validate_password(password)
+        except ValidationError as e:
+            messages.error(request, f"كلمة المرور غير آمنة: {' '.join(e.messages)}")
+            return render(request, 'core/user_form.html', {'title': 'إنشاء مستخدم'})
+
+        # إنشاء المستخدم
+        user = CustomUser.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            phone=phone,
+            address=address,
+            is_active=is_active,
+            is_staff=is_staff
+        )
+        messages.success(request, f"تم إنشاء المستخدم {username} بنجاح.")
+        return redirect('core:user_list')
+
+    return render(request, 'core/user_form.html', {
+        'title': 'إنشاء مستخدم جديد'
+    })

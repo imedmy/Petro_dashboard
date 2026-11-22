@@ -1,0 +1,55 @@
+<!-- templates/core/personnel_form.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid p-4">
+    <h2>{{ title }}</h2>
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label>Matricule *</label>
+                <input type="text" name="matricule" class="form-control" value="{{ personnel.matricule|default:'' }}" required>
+            </div>
+            <div class="col-md-4">
+                <label>Nom *</label>
+                <input type="text" name="nom" class="form-control" value="{{ personnel.nom|default:'' }}" required>
+            </div>
+            <div class="col-md-4">
+                <label>Prénom *</label>
+                <input type="text" name="prenom" class="form-control" value="{{ personnel.prenom|default:'' }}" required>
+            </div>
+            <div class="col-md-4">
+                <label>Email *</label>
+                <input type="email" name="email" class="form-control" value="{{ personnel.email|default:'' }}" required>
+            </div>
+            <div class="col-md-4">
+                <label>Username *</label>
+                <input type="text" name="username" class="form-control" value="{{ personnel.username|default:'' }}" required>
+            </div>
+            <div class="col-md-4">
+                <label>Mot de passe {% if not personnel %}*{% endif %}</label>
+                <input type="password" name="password" class="form-control" {% if not personnel %}required{% endif %}>
+            </div>
+            <div class="col-md-4">
+                <label>Téléphone</label>
+                <input type="text" name="telephone" class="form-control" value="{{ personnel.telephone|default:'' }}">
+            </div>
+            <div class="col-md-4">
+                <label>Poste</label>
+                <input type="text" name="poste" class="form-control" value="{{ personnel.poste|default:'' }}">
+            </div>
+            <div class="col-md-4">
+                <label>Statut</label>
+                <div class="form-check mt-2">
+                    <input type="checkbox" name="actif" class="form-check-input" {% if personnel.actif|default:True %}checked{% endif %}>
+                    <label class="form-check-label">Actif</label>
+                </div>
+            </div>
+        </div>
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <a href="{% url 'core:personnel_list' %}" class="btn btn-secondary">Annuler</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

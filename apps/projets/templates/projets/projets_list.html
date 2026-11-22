@@ -1,0 +1,409 @@
+{% extends 'base.html' %}
+{% load static i18n %}
+
+{% block title %}Gestion des Projets{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border-left: 4px solid;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,.1);
+    }
+    .stat-card.primary { border-left-color: #0d6efd; }
+    .stat-card.success { border-left-color: #198754; }
+    .stat-card.info    { border-left-color: #0dcaf0; }
+    .stat-card.warning { border-left-color: #ffc107; }
+
+    .project-row {
+        transition: background-color 0.2s;
+    }
+    .project-row:hover {
+        background-color: #f8f9fa;
+    }
+
+    .reference-link {
+        font-weight: 600;
+        color: #0d6efd;
+        text-decoration: none;
+    }
+    .reference-link:hover {
+        text-decoration: underline;
+    }
+
+    .progress-thin {
+        height: 8px;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h2 class="mb-1">
+                <i class="bi bi-kanban me-2 text-primary"></i>
+                Gestion des Projets & Marchés
+            </h2>
+            <p class="text-muted mb-0">
+                Suivi et pilotage de tous les projets de l'entreprise
+            </p>
+        </div>
+        <div>
+            <a href="{% url 'projets:dashboard' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-speedometer2 me-1"></i> Dashboard
+            </a>
+            <a href="{% url 'projets:projet_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Nouveau projet
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card primary shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">Total projets</div>
+                            <div class="h3 mb-0 mt-1 fw-bold">{{ stats.total }}</div>
+                        </div>
+                        <i class="bi bi-folder2-open fs-2 text-primary opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card success shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">En cours</div>
+                            <div class="h3 mb-0 mt-1 fw-bold text-success">{{ stats.en_cours }}</div>
+                        </div>
+                        <i class="bi bi-play-circle-fill fs-2 text-success opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card info shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">Terminés</div>
+                            <div class="h3 mb-0 mt-1 fw-bold text-info">{{ stats.termines }}</div>
+                        </div>
+                        <i class="bi bi-check-circle-fill fs-2 text-info opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card warning shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small text-uppercase mb-1">Montant total</div>
+                    <div class="h5 mb-0 fw-bold text-warning">
+                        {{ stats.montant_total|floatformat:3 }} <small class="text-muted">TND</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold">
+                        <i class="bi bi-search me-1"></i> Recherche
+                    </label>
+                    <input type="text" name="search" class="form-control"
+                           placeholder="Référence, nom, lieu..."
+                           value="{{ request.GET.search }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">
+                        <i class="bi bi-tag me-1"></i> Type de projet
+                    </label>
+                    <select name="type_projet" class="form-select">
+                        <option value="">Tous les types</option>
+                        {% for type in types_projets %}
+                        <option value="{{ type.pk }}"
+                                {% if request.GET.type_projet == type.pk|stringformat:"d" %}selected{% endif %}>
+                            {{ type.libelle }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">
+                        <i class="bi bi-flag me-1"></i> Statut
+                    </label>
+                    <select name="statut" class="form-select">
+                        <option value="">Tous les statuts</option>
+                        {% for value, label in statuts %}
+                        <option value="{{ value }}"
+                                {% if request.GET.statut == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-grow-1">
+                        <i class="bi bi-funnel me-1"></i> Filtrer
+                    </button>
+                    <a href="{% url 'projets:projet_list' %}" class="btn btn-outline-secondary" title="Réinitialiser">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-list-ul me-2"></i>
+                Liste des projets
+                <span class="badge bg-secondary ms-2">{{ stats.total }}</span>
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="projetsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 120px;">Référence</th>
+                            <th>Nom du projet</th>
+                            <th style="width: 150px;">Type</th>
+                            <th>Maître d'ouvrage</th>
+                            <th style="width: 150px;">Montant</th>
+                            <th style="width: 180px;">Avancement</th>
+                            <th style="width: 120px;">Statut</th>
+                            <th style="width: 120px;" class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for projet in projets %}
+                        <tr class="project-row">
+                            <td>
+                                <a href="{% url 'projets:projet_detail' projet.pk %}" class="reference-link">
+                                    {{ projet.reference }}
+                                </a>
+                            </td>
+                            <td>
+                                <div class="fw-semibold">{{ projet.nom|truncatechars:50 }}</div>
+                                {% if projet.lieu %}
+                                    <small class="text-muted">
+                                        <i class="bi bi-geo-alt"></i> {{ projet.lieu|truncatechars:30 }}
+                                    </small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">
+                                    {{ projet.type_projet.libelle }}
+                                </span>
+                            </td>
+                            <td>
+                                <small>
+                                    <i class="bi bi-building text-muted"></i>
+                                    {{ projet.maitre_ouvrage.raison_sociale|truncatechars:30 }}
+                                </small>
+                            </td>
+                            <td class="fw-semibold">
+                                {{ projet.montant_final|floatformat:3 }}
+                                <small class="text-muted">{{ projet.devise }}</small>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress progress-thin flex-grow-1 me-2">
+                                        <div class="progress-bar
+                                            {% if projet.pourcentage_avancement >= 100 %}bg-success
+                                            {% elif projet.pourcentage_avancement >= 75 %}bg-primary
+                                            {% elif projet.pourcentage_avancement >= 50 %}bg-info
+                                            {% elif projet.pourcentage_avancement >= 25 %}bg-warning
+                                            {% else %}bg-danger{% endif %}"
+                                             style="width: {{ projet.pourcentage_avancement }}%"></div>
+                                    </div>
+                                    <small class="fw-bold text-nowrap">
+                                        {{ projet.pourcentage_avancement|floatformat:0 }}%
+                                    </small>
+                                </div>
+                            </td>
+                            <td>
+                                {% if projet.statut == 'EN_COURS' %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-play-circle-fill me-1"></i>En cours
+                                    </span>
+                                {% elif projet.statut == 'PLANIFIE' %}
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-clock-fill me-1"></i>Planifié
+                                    </span>
+                                {% elif projet.statut == 'SUSPENDU' %}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="bi bi-pause-circle-fill me-1"></i>Suspendu
+                                    </span>
+                                {% elif projet.statut == 'ACHEVE' %}
+                                    <span class="badge bg-info">
+                                        <i class="bi bi-check-circle-fill me-1"></i>Achevé
+                                    </span>
+                                {% elif projet.statut == 'RESILIE' %}
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-x-circle-fill me-1"></i>Résilié
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'projets:projet_detail' projet.pk %}"
+                                       class="btn btn-outline-primary"
+                                       title="Voir les détails"
+                                       data-bs-toggle="tooltip">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'projets:projet_update' projet.pk %}"
+                                       class="btn btn-outline-secondary"
+                                       title="Modifier"
+                                       data-bs-toggle="tooltip">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'projets:ged_list' projet.pk %}"
+                                       class="btn btn-outline-info"
+                                       title="Documents"
+                                       data-bs-toggle="tooltip">
+                                        <i class="bi bi-folder"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <i class="bi bi-inbox text-muted fs-1 d-block mb-3"></i>
+                                <h5 class="text-muted">Aucun projet trouvé</h5>
+                                <p class="text-muted mb-3">
+                                    {% if request.GET.search or request.GET.statut or request.GET.type_projet %}
+                                        Essayez de modifier vos critères de recherche
+                                    {% else %}
+                                        Commencez par créer votre premier projet
+                                    {% endif %}
+                                </p>
+                                <a href="{% url 'projets:projet_create' %}" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-1"></i> Créer un projet
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer bg-white">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="text-muted small">
+                    Affichage de
+                    <strong>{{ page_obj.start_index }}</strong> à
+                    <strong>{{ page_obj.end_index }}</strong> sur
+                    <strong>{{ page_obj.paginator.count }}</strong> projets
+                </div>
+                <nav aria-label="Pagination des projets">
+                    <ul class="pagination pagination-sm mb-0">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.statut %}&statut={{ request.GET.statut }}{% endif %}{% if request.GET.type_projet %}&type_projet={{ request.GET.type_projet }}{% endif %}">
+                                <i class="bi bi-chevron-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.statut %}&statut={{ request.GET.statut }}{% endif %}{% if request.GET.type_projet %}&type_projet={{ request.GET.type_projet }}{% endif %}">
+                                <i class="bi bi-chevron-left"></i> Précédent
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="bi bi-chevron-double-left"></i></span>
+                        </li>
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="bi bi-chevron-left"></i> Précédent</span>
+                        </li>
+                        {% endif %}
+
+                        <li class="page-item disabled">
+                            <span class="page-link fw-bold">
+                                Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.statut %}&statut={{ request.GET.statut }}{% endif %}{% if request.GET.type_projet %}&type_projet={{ request.GET.type_projet }}{% endif %}">
+                                Suivant <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.statut %}&statut={{ request.GET.statut }}{% endif %}{% if request.GET.type_projet %}&type_projet={{ request.GET.type_projet }}{% endif %}">
+                                <i class="bi bi-chevron-double-right"></i>
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">Suivant <i class="bi bi-chevron-right"></i></span>
+                        </li>
+                        <li class="page-item disabled">
+                            <span class="page-link"><i class="bi bi-chevron-double-right"></i></span>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Initialisation de DataTables
+        $('#projetsTable').DataTable({
+            language: {
+                url: '{% static "datatables/i18n/fr-FR.json" %}'
+            },
+            paging: false,
+            searching: false,
+            info: false,
+            order: [[0, 'desc']],
+            columnDefs: [
+                { orderable: false, targets: [7] },
+                { width: '120px', targets: [0, 6, 7] },
+                { width: '150px', targets: [2, 4] },
+                { width: '180px', targets: [5] }
+            ],
+            stateSave: true,
+            stateDuration: 60 * 60 * 24 // 1 jour
+        });
+
+        // Activation des tooltips Bootstrap
+        var tooltipTriggerList = [].slice.call(
+            document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        );
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

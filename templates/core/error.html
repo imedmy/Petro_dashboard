@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="text-center mt-5">
+    <h1 class="text-danger">⚠️ {% trans "حدث خطأ" %}</h1>
+    <p>{% trans "عذرًا، حدث خطأ غير متوقع أثناء تحميل الصفحة." %}</p>
+    <a href="{% url 'core:dashboard' %}" class="btn btn-primary">
+        {% trans "العودة إلى لوحة التحكم" %}
+    </a>
+</div>
+{% endblock %}

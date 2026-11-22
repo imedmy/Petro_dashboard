@@ -1,0 +1,535 @@
+{% extends 'base.html' %}
+{% load static i18n projet_extras %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #fff;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #e9ecef;
+    }
+    .form-section-title {
+        color: #6f42c1;
+        font-weight: 600;
+        font-size: 1.1rem;
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.25rem;
+        border-bottom: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+    }
+    .form-section-title i {
+        margin-right: 0.5rem;
+        font-size: 1.25rem;
+    }
+    .required-star {
+        color: #dc3545;
+        font-weight: bold;
+    }
+    .form-help {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+    .form-card {
+        border: none;
+        border-radius: 0.75rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
+    }
+    .form-header {
+        background: linear-gradient(135deg, #6f42c1 0%, #0d6efd 100%);
+        color: white;
+        border-radius: 0.75rem 0.75rem 0 0;
+        padding: 1.25rem 1.5rem;
+    }
+    .form-header h4 {
+        color: white;
+        margin: 0;
+    }
+    .form-header .subtitle {
+        opacity: 0.9;
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+    }
+    .lot-context {
+        background: #f8f9fa;
+        border-left: 4px solid #6f42c1;
+        padding: 1rem 1.25rem;
+        border-radius: 0 0.5rem 0.5rem 0;
+        margin-bottom: 1.5rem;
+    }
+    .lot-context .label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+    }
+    .lot-context .value {
+        font-weight: 600;
+        color: #212529;
+    }
+    .montant-preview {
+        background: linear-gradient(135deg, #e7f1ff 0%, #f3e8ff 100%);
+        border: 2px dashed #6f42c1;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        text-align: center;
+    }
+    .montant-preview .amount {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #6f42c1;
+        margin: 0.5rem 0;
+    }
+    .montant-preview .formula {
+        font-size: 0.85rem;
+        color: #6c757d;
+        font-family: 'Courier New', monospace;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_list' %}">
+                    <i class="bi bi-kanban"></i> Projets
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_detail' projet.pk %}">
+                    {{ projet.reference }}
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:lot_detail' lot.pk %}">
+                    Lot {{ lot.numero }}
+                </a>
+            </li>
+            {% if ouvrage %}
+                <li class="breadcrumb-item active" aria-current="page">
+                    <i class="bi bi-pencil"></i> Modifier {{ ouvrage.code }}
+                </li>
+            {% else %}
+                <li class="breadcrumb-item active" aria-current="page">
+                    <i class="bi bi-building"></i> Nouvel ouvrage
+                </li>
+            {% endif %}
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Lot Context -->
+            <div class="lot-context">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="label">Projet</div>
+                        <div class="value">
+                            <i class="bi bi-folder2-open text-primary"></i>
+                            {{ projet.reference }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="label">Lot</div>
+                        <div class="value">
+                            <i class="bi bi-box-seam text-success"></i>
+                            Lot {{ lot.numero }} - {{ lot.designation|truncatechars:30 }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="label">Montant du lot</div>
+                        <div class="value text-primary">
+                            {{ lot.montant|floatformat:3 }} {{ projet.devise }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="label">Ouvrages existants</div>
+                        <div class="value">
+                            <span class="badge bg-success">{{ lot.ouvrages.count }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Card -->
+            <div class="card form-card shadow-sm">
+                <div class="form-header">
+                    <h4>
+                        <i class="bi {% if ouvrage %}bi-pencil-square{% else %}bi-building{% endif %} me-2"></i>
+                        {{ title }}
+                    </h4>
+                    <div class="subtitle">
+                        {% if ouvrage %}
+                            Modification de l'ouvrage <strong>{{ ouvrage.code }}</strong> - {{ ouvrage.designation }}
+                        {% else %}
+                            Définissez les informations du nouvel ouvrage du lot
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+
+                        <!-- Erreurs globales -->
+                        {% if form.errors %}
+                        <div class="alert alert-danger d-flex align-items-start mb-4" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
+                            <div class="flex-grow-1">
+                                <strong>Erreur de validation !</strong>
+                                Veuillez corriger les erreurs ci-dessous.
+                                <ul class="mb-0 mt-2 small">
+                                    {% for field, errors in form.errors.items %}
+                                        {% for error in errors %}
+                                            <li><strong>{{ field }}:</strong> {{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 1: IDENTIFICATION DE L'OUVRAGE -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-tag-fill"></i>
+                                Identification de l'ouvrage
+                            </div>
+                            <div class="row g-3">
+                                <!-- Code -->
+                                <div class="col-md-3">
+                                    <label for="{{ form.code.id_for_label }}" class="form-label">
+                                        Code <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.code }}
+                                    <div class="form-help">
+                                        Ex: OV-001, GC-01, STR-02
+                                    </div>
+                                    {% if form.code.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.code.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Désignation -->
+                                <div class="col-md-9">
+                                    <label for="{{ form.designation.id_for_label }}" class="form-label">
+                                        Désignation <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.designation }}
+                                    {% if form.designation.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.designation.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Type d'ouvrage -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.type_ouvrage.id_for_label }}" class="form-label">
+                                        Type d'ouvrage
+                                    </label>
+                                    {{ form.type_ouvrage }}
+                                    <div class="form-help">
+                                        Ex: Génie civil, Structure, Électricité...
+                                    </div>
+                                </div>
+
+                                <!-- Description -->
+                                <div class="col-md-6">
+                                    <label class="form-label">&nbsp;</label>
+                                    <div class="form-help mt-2">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Le code doit être unique au sein du lot.
+                                        La désignation décrit la nature des travaux.
+                                    </div>
+                                </div>
+
+                                <!-- Description détaillée -->
+                                <div class="col-12">
+                                    <label for="{{ form.description.id_for_label }}" class="form-label">
+                                        Description détaillée
+                                    </label>
+                                    {{ form.description }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 2: INFORMATIONS TECHNIQUES & FINANCIÈRES -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-rulers"></i>
+                                Informations techniques & financières
+                            </div>
+                            <div class="row g-3">
+                                <!-- Quantité -->
+                                <div class="col-md-3">
+                                    <label for="{{ form.quantite.id_for_label }}" class="form-label">
+                                        Quantité
+                                    </label>
+                                    {{ form.quantite }}
+                                    <div class="form-help">
+                                        Quantité totale de l'ouvrage
+                                    </div>
+                                    {% if form.quantite.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.quantite.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Unité -->
+                                <div class="col-md-3">
+                                    <label for="{{ form.unite.id_for_label }}" class="form-label">
+                                        Unité
+                                    </label>
+                                    {{ form.unite }}
+                                    <div class="form-help">
+                                        Unité de mesure
+                                    </div>
+                                </div>
+
+                                <!-- Prix unitaire -->
+                                <div class="col-md-3">
+                                    <label for="{{ form.prix_unitaire.id_for_label }}" class="form-label">
+                                        Prix unitaire
+                                    </label>
+                                    <div class="input-group">
+                                        {{ form.prix_unitaire }}
+                                        <span class="input-group-text">{{ projet.devise }}</span>
+                                    </div>
+                                    <div class="form-help">
+                                        Prix par unité
+                                    </div>
+                                    {% if form.prix_unitaire.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.prix_unitaire.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Montant calculé -->
+                                <div class="col-md-3">
+                                    <label class="form-label">Montant</label>
+                                    <div class="input-group">
+                                        <input type="text" 
+                                               class="form-control fw-bold text-primary" 
+                                               id="montantCalc" 
+                                               readonly
+                                               value="{% if ouvrage %}{{ ouvrage.montant|floatformat:3 }}{% else %}0.000{% endif %}">
+                                        <span class="input-group-text">{{ projet.devise }}</span>
+                                    </div>
+                                    <div class="form-help">
+                                        Calculé automatiquement
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Montant Preview -->
+                            <div class="montant-preview mt-4">
+                                <div class="formula">
+                                    Quantité × Prix unitaire = Montant
+                                </div>
+                                <div class="amount" id="montantPreview">
+                                    {% if ouvrage %}
+                                        {{ ouvrage.montant|floatformat:3 }} {{ projet.devise }}
+                                    {% else %}
+                                        0.000 {{ projet.devise }}
+                                    {% endif %}
+                                </div>
+                                {% if lot.montant > 0 %}
+                                <div class="small text-muted">
+                                    <i class="bi bi-pie-chart me-1"></i>
+                                    Part du lot : 
+                                    <strong id="pourcentageLot">
+                                        {% if ouvrage %}
+                                            {% widthratio ouvrage.montant lot.montant 100 as pct %}
+                                            {{ pct|floatformat:2 }}
+                                        {% else %}
+                                            0.00
+                                        {% endif %}
+                                    </strong>%
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 3: PLANIFICATION -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-calendar-event-fill"></i>
+                                Planification
+                            </div>
+                            <div class="row g-3">
+                                <!-- Date début -->
+                                <div class="col-md-4">
+                                    <label for="{{ form.date_debut.id_for_label }}" class="form-label">
+                                        Date début
+                                    </label>
+                                    {{ form.date_debut }}
+                                </div>
+
+                                <!-- Date fin -->
+                                <div class="col-md-4">
+                                    <label for="{{ form.date_fin.id_for_label }}" class="form-label">
+                                        Date fin
+                                    </label>
+                                    {{ form.date_fin }}
+                                </div>
+
+                                <!-- Durée -->
+                                <div class="col-md-4">
+                                    <label class="form-label">Durée</label>
+                                    <div class="input-group">
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="dureeCalc" 
+                                               readonly>
+                                        <span class="input-group-text">jours</span>
+                                    </div>
+                                    <div class="form-help">
+                                        Calculée automatiquement
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- BOUTONS D'ACTION -->
+                        <!-- ============================================================ -->
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                            <a href="{% url 'projets:lot_detail' lot.pk %}" 
+                               class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i> Annuler
+                            </a>
+                            <div class="d-flex gap-2">
+                                <button type="reset" class="btn btn-outline-warning">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Réinitialiser
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle me-1"></i> 
+                                    {% if ouvrage %}Enregistrer les modifications{% else %}Créer l'ouvrage{% endif %}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Info Box -->
+            <div class="alert alert-light border mt-3" role="alert">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-info-circle-fill text-primary me-2 mt-1"></i>
+                    <div class="small">
+                        <strong>Informations utiles :</strong>
+                        <ul class="mb-0 mt-1">
+                            <li>Les champs marqués d'un <span class="required-star">*</span> sont obligatoires.</li>
+                            <li>Le <strong>code</strong> doit être unique au sein du lot.</li>
+                            <li>Le <strong>montant</strong> est calculé automatiquement (quantité × prix unitaire).</li>
+                            <li>Après la création de l'ouvrage, vous pourrez ajouter des <strong>tâches</strong> et des <strong>articles de bordereau</strong>.</li>
+                            <li>Le <strong>type d'ouvrage</strong> est libre (ex: Génie civil, Structure, Électricité, Plomberie...).</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Éléments du formulaire
+        const quantiteInput = document.getElementById('{{ form.quantite.id_for_label }}');
+        const prixInput = document.getElementById('{{ form.prix_unitaire.id_for_label }}');
+        const montantCalc = document.getElementById('montantCalc');
+        const montantPreview = document.getElementById('montantPreview');
+        const pourcentageLot = document.getElementById('pourcentageLot');
+        const dateDebut = document.getElementById('{{ form.date_debut.id_for_label }}');
+        const dateFin = document.getElementById('{{ form.date_fin.id_for_label }}');
+        const dureeInput = document.getElementById('dureeCalc');
+
+        // Montant du lot (depuis le contexte Django)
+        const montantLot = {{ lot.montant|default:0 }};
+        const devise = '{{ projet.devise }}';
+
+        // Formatage du montant
+        function formatMontant(value) {
+            return parseFloat(value || 0).toFixed(3).replace('.', ',');
+        }
+
+        // Calcul du montant
+        function calculateMontant() {
+            const qte = parseFloat(quantiteInput.value) || 0;
+            const prix = parseFloat(prixInput.value) || 0;
+            const montant = qte * prix;
+
+            // Mise à jour des champs
+            montantCalc.value = formatMontant(montant);
+            montantPreview.textContent = `${formatMontant(montant)} ${devise}`;
+
+            // Calcul du pourcentage du lot
+            if (montantLot > 0 && pourcentageLot) {
+                const pct = (montant / montantLot) * 100;
+                pourcentageLot.textContent = pct.toFixed(2);
+            }
+        }
+
+        // Calcul de la durée en jours
+        function calculateDuree() {
+            if (dateDebut.value && dateFin.value) {
+                const debut = new Date(dateDebut.value);
+                const fin = new Date(dateFin.value);
+                const diffTime = Math.abs(fin - debut);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                dureeInput.value = diffDays;
+            } else {
+                dureeInput.value = '';
+            }
+        }
+
+        // Événements
+        if (quantiteInput) {
+            quantiteInput.addEventListener('input', calculateMontant);
+        }
+        if (prixInput) {
+            prixInput.addEventListener('input', calculateMontant);
+        }
+        if (dateDebut) {
+            dateDebut.addEventListener('change', calculateDuree);
+        }
+        if (dateFin) {
+            dateFin.addEventListener('change', calculateDuree);
+        }
+
+        // Calcul initial si en mode édition
+        calculateMontant();
+        calculateDuree();
+
+        // Confirmation avant réinitialisation
+        const resetButton = document.querySelector('button[type="reset"]');
+        if (resetButton) {
+            resetButton.addEventListener('click', function(e) {
+                if (!confirm('Êtes-vous sûr de vouloir réinitialiser le formulaire ?')) {
+                    e.preventDefault();
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}			

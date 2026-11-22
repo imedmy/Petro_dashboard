@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="p-4">
+    <h2><i class="bi bi-upc"></i> Famille Codification des Articles</h2>
+
+    <!-- Recherche -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-8">
+                    <input type="text" name="q" class="form-control" value="{{ query }}" placeholder="Rechercher par nom ou segment de code...">
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">Rechercher</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Ajouter une famille -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h5>{% if form.instance.pk %}Modifier la famille{% else %}Ajouter une famille{% endif %}</h5>
+            <form method="post" class="row g-3" id="familyForm">
+                {% csrf_token %}
+                {{ form.non_field_errors }}
+
+                <div class="col-md-6">
+                    {{ form.name.label_tag }}
+                    {{ form.name }}
+                    {{ form.name.errors }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.code_segment.label_tag }}
+                    {{ form.code_segment }}
+                    {{ form.code_segment.errors }}
+                </div>
+
+                <div class="col-md-6">
+                    {{ form.parent_name.label_tag }}
+                    {{ form.parent_name }}
+                    <button type="button" class="btn btn-outline-secondary mt-1" onclick="openLookupPanel()">
+                        <i class="bi bi-search"></i> Choisir une famille
+                    </button>
+                    {{ form.parent_id }}
+                </div>
+
+                <div class="col-md-6">
+                    {{ form.description.label_tag }}
+                    {{ form.description }}
+                    {{ form.description.errors }}
+                </div>
+
+                <div class="col-12">
+                    <button type="submit" class="btn btn-success">
+                        {% if form.instance.pk %}Modifier{% else %}Ajouter{% endif %}
+                    </button>
+                    {% if form.instance.pk %}
+                        <a href="{% url 'core:gestion_famille_codification' %}" class="btn btn-secondary">Annuler</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Arborescence des familles -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h5>Hiérarchie des familles</h5>
+            <ul class="list-group">
+                {% for root in roots %}
+                    {% include 'core/famille_tree_item.html' with item=root %}
+                {% empty %}
+                    <li class="list-group-item text-muted">Aucune famille trouvée.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Explication du codage -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h5>Structure du code (9 chiffres)</h5>
+            <p>Les 3 premiers chiffres = Code famille (défini ci-dessus).</p>
+            <p>Les 6 chiffres suivants (positions 4 à 9) sont flexibles et définis par le codificateur.</p>
+        </div>
+    </div>
+</div>
+
+<!-- نافذة اختيار العائلة (Modal) -->
+<div class="modal fade" id="lookupModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Choisir une Famille Parente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" id="lookup-search" class="form-control" placeholder="Rechercher une famille...">
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Famille</th>
+                                <th>Code Complet</th>
+                                <th>Segment</th>
+                                <th>Choisir</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lookup-results">
+                            <!-- سيتم التعبئة بالـ AJAX -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" onclick="confirmSelection()">Confirmer</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedFamilyId = null;
+let selectedFamilyName = null;
+let selectedFamilyFullCode = null;
+
+// فتح نافذة اختيار العائلة
+function openLookupPanel() {
+    selectedFamilyId = null;
+    selectedFamilyName = null;
+    document.getElementById('lookup-search').value = '';
+    fetchFamilies();
+    const modal = new bootstrap.Modal(document.getElementById('lookupModal'));
+    modal.show();
+}
+
+// جلب العائلات من API وعرضها كشجرة
+function fetchFamilies() {
+    const query = document.getElementById('lookup-search').value;
+
+    fetch(`{% url 'core:api_article_families' %}?q=${encodeURIComponent(query)}`)
+        .then(response => {
+            if (!response.ok) throw new Error('Erreur réseau');
+            return response.json();
+        })
+        .then(data => {
+            const tbody = document.getElementById('lookup-results');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="4" class="text-center text-muted">Aucune famille trouvée</td>';
+                tbody.appendChild(row);
+                return;
+            }
+
+            // بناء الخريطة
+            const treeMap = new Map();
+            const roots = [];
+
+            data.forEach(family => {
+                treeMap.set(family.id, { ...family, children: [] });
+            });
+
+            data.forEach(family => {
+                if (family.parent && family.parent.id && treeMap.has(family.parent.id)) {
+                    treeMap.get(family.parent.id).children.push(treeMap.get(family.id));
+                } else {
+                    roots.push(treeMap.get(family.id));
+                }
+            });
+
+            // إضافة السطر مع التوسيع/الطي
+            function addRow(family, level = 0) {
+                const row = document.createElement('tr');
+                const indent = '&nbsp;'.repeat(level * 6) + (level > 0 ? '|— ' : '');
+                const collapseId = `modal-children-${family.id}`;
+
+                row.innerHTML = `
+                    <td>
+                        <div class="d-flex align-items-center clickable-row"
+                             role="button"
+                             onclick="toggleCollapse(this)">
+                            <i class="bi bi-plus-square me-2 toggle-icon"
+                               data-target="#${collapseId}"></i>
+                            <span>${indent}${family.name}</span>
+                        </div>
+                    </td>
+                    <td><strong>${family.full_code}</strong></td>
+                    <td class="text-muted">${family.code_segment}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary"
+                                data-id="${family.id}"
+                                data-name="${escapeHtml(family.name)}"
+                                data-full-code="${family.full_code}"
+                                onclick="selectFamily(this)">
+                            Choisir
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+
+                if (family.children && family.children.length > 0) {
+                    const collapseRow = document.createElement('tr');
+                    collapseRow.innerHTML = `
+                        <td colspan="4" class="p-0 border-0">
+                            <div class="collapse" id="${collapseId}">
+                                <table class="table table-sm mb-0 ms-4">
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(collapseRow);
+
+                    const childBody = collapseRow.querySelector('tbody');
+                    family.children.forEach(child => addRow(child, level + 1));
+                }
+            }
+
+            roots.forEach(root => addRow(root));
+
+            // تحديث الأيقونات بعد البناء
+            setTimeout(updateCollapseIcons, 100);
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            const tbody = document.getElementById('lookup-results');
+            tbody.innerHTML = '<tr><td colspan="4" class="text-danger">Erreur de chargement</td></tr>';
+        });
+}
+
+// اختيار عائلة
+function selectFamily(button) {
+    const btn = button.tagName === 'BUTTON' ? button : button.closest('button');
+    if (!btn) return;
+
+    const id = btn.getAttribute('data-id');
+    const name = btn.getAttribute('data-name');
+    const fullCode = btn.getAttribute('data-full-code');
+
+    selectedFamilyId = parseInt(id);
+    selectedFamilyName = name;
+    selectedFamilyFullCode = fullCode;
+
+    document.querySelectorAll('#lookup-results .btn-primary').forEach(b => {
+        b.classList.remove('btn-primary');
+        b.classList.add('btn-outline-primary');
+    });
+
+    btn.classList.remove('btn-outline-primary');
+    btn.classList.add('btn-primary');
+}
+
+// تأكيد الاختيار
+function confirmSelection() {
+    if (!selectedFamilyId) {
+        alert('Veuillez choisir une famille.');
+        return;
+    }
+
+    const nameField = document.getElementById('id_parent_name');
+    const idField = document.getElementById('id_parent_id');
+
+    if (!nameField || !idField) {
+        console.error("❌ الحقول غير موجودة");
+        return;
+    }
+
+    idField.value = selectedFamilyId;
+    nameField.value = `${selectedFamilyFullCode} - ${selectedFamilyName}`;
+    bootstrap.Modal.getInstance(document.getElementById('lookupModal')).hide();
+}
+
+// دالة لتجنب مشاكل الترميز
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// البحث عند الكتابة
+document.getElementById('lookup-search').addEventListener('input', function() {
+    clearTimeout(this.searchTimeout);
+    this.searchTimeout = setTimeout(fetchFamilies, 300);
+});
+
+// تحميل القائمة عند فتح النافذة
+document.getElementById('lookupModal').addEventListener('shown.bs.modal', fetchFamilies);
+
+// التحكم اليدوي في التوسيع/الطي
+function toggleCollapse(row) {
+    const icon = row.querySelector('.toggle-icon');
+    const targetId = icon.getAttribute('data-target');
+    const target = document.querySelector(targetId);
+
+    if (!target) return;
+
+    const collapse = bootstrap.Collapse.getInstance(target) || new bootstrap.Collapse(target);
+    const isShown = target.classList.contains('show');
+
+    if (isShown) {
+        collapse.hide();
+    } else {
+        collapse.show();
+    }
+
+    // تحديث الأيقونة
+    setTimeout(() => {
+        if (target.classList.contains('show')) {
+            icon.classList.replace('bi-plus-square', 'bi-dash-square');
+        } else {
+            icon.classList.replace('bi-dash-square', 'bi-plus-square');
+        }
+    }, 100);
+}
+
+// تحديث الأيقونات بعد البناء (للحالة المبدئية)
+function updateCollapseIcons() {
+    document.querySelectorAll('#lookupModal .toggle-icon').forEach(icon => {
+        const targetId = icon.getAttribute('data-target');
+        const target = document.querySelector(targetId);
+        if (target && target.classList.contains('show')) {
+            icon.classList.replace('bi-plus-square', 'bi-dash-square');
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,633 @@
+{% extends "base.html" %}
+{% load static i18n %}
+
+{% block title %}Tableau de bord - Pétro Dashboard{% endblock %}
+
+{# ✅ جعل الشريط الأيمن مرئيًا افتراضيًا في لوحة التحكم فقط #}
+{% block has_right_sidebar %}with-right-sidebar{% endblock %}
+
+{# ✅ جعل الشريط الأيمن مرئيًا افتراضيًا في لوحة التحكم فقط #}
+{% block right_sidebar_container %}
+<aside class="sidebar-right show" id="sidebarTasks">
+    <div class="sidebar-header">
+        <h6><i class="bi bi-journal-check"></i><span>{% trans "Panel d'information" %}</span></h6>
+        <button class="btn btn-sm btn-link text-white p-0" id="closeSidebarRight" title="Fermer"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="sidebar-body">
+        {% block right_sidebar_content %}
+            <h5 class="text-warning border-bottom pb-2 mb-3 d-flex align-items-center">
+                <i class="bi bi-clock-history me-2"></i>
+                <span>Dossiers en instance / litige</span>
+            </h5>
+            
+            {% if commandes_en_retard and commandes_en_retard|length > 0 %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm table-dark table-striped align-middle">
+                        <thead class="table-secondary">
+                            <tr>
+                                <th scope="col" class="small">N° Bon</th>
+                                <th scope="col" class="small">État</th>
+                                <th scope="col" class="small">Depuis</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cmd in commandes_en_retard %}
+                            <tr class="{% if cmd.influence == 'Litige' %}table-danger{% else %}table-warning{% endif %} 
+                                       {% if not cmd.is_read %}fw-bold{% endif %}" 
+                                onclick="window.location='{% url 'core:bons_commande' %}?num_com={{ cmd.numero_com }}';" 
+                                style="cursor: pointer;"
+                                title="Cliquez pour voir les détails">
+                                <td class="small">
+                                    <strong>{{ cmd.numero_com }}</strong>
+                                </td>
+                                <td class="small">
+                                    {% if cmd.influence == "Instance" %}
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="bi bi-hourglass-split me-1"></i>Ins
+                                        </span>
+                                    {% elif cmd.influence == "Litige" %}
+                                        <span class="badge bg-danger">
+                                            <i class="bi bi-exclamation-triangle me-1"></i>Lit
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-question-circle me-1"></i>{{ cmd.influence }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="small" title="{{ cmd.duree_texte }}">
+                                    <i class="bi bi-calendar-event me-1"></i>
+                                    {{ cmd.date_etape|date:"d/m/Y" }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-2 text-center">
+                    <small class="text-white-50">
+                        <i class="bi bi-info-circle me-1"></i>
+                        {{ commandes_en_retard|length }} dossier(s) en attente
+                    </small>
+                </div>
+            {% else %}
+                <div class="alert alert-success small mb-0">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    <strong>Excellent !</strong><br>
+                    Aucun dossier en retard ou en litige.
+                </div>
+            {% endif %}
+            
+            <hr class="border-secondary my-3">
+            
+            <h6 class="text-light mb-3">
+                <i class="bi bi-lightning-charge me-2"></i>
+                Actions rapides
+            </h6>
+            <div class="d-grid gap-2">
+                <a href="{% url 'articles:list' %}" class="btn btn-outline-light btn-sm text-start">
+                    <i class="bi bi-search me-2"></i>Rechercher un article
+                </a>
+                <a href="{% url 'articles:gestion_caracteristiques' %}" class="btn btn-outline-light btn-sm text-start">
+                    <i class="bi bi-plus-circle me-2"></i>Ajouter caractéristique
+                </a>
+                <a href="{% url 'core:avis_arrivee_list_page' %}" class="btn btn-outline-light btn-sm text-start">
+                    <i class="bi bi-truck me-2"></i>Nouvel avis d'arrivée
+                </a>
+                <a href="{% url 'core:tache_create' %}" class="btn btn-outline-light btn-sm text-start">
+                    <i class="bi bi-check2-circle me-2"></i>Créer une tâche
+                </a>
+            </div>
+        {% endblock %}
+    </div>
+</aside>
+{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    /* ======================================== */
+    /* ✅ تحسينات خاصة بلوحة التحكم */
+    /* ======================================== */
+    
+    /* بطاقات لوحة التحكم - تحسينات شاملة */
+    .dashboard-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+        border: none !important;
+        border-radius: 12px !important;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08) !important;
+    }
+    .dashboard-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+    }
+    
+    /* ======================================== */
+    /* ✅ عناوين البطاقات - وضوح تام وألوان متباينة */
+    /* ======================================== */
+    .dashboard-card .card-header {
+        font-weight: 700 !important;
+        font-size: 1.05rem !important;
+        padding: 0.9rem 1.25rem !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        position: relative;
+        border-bottom: 2px solid rgba(0,0,0,0.1) !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        color: #fff !important;
+    }
+    
+    .dashboard-card .card-header i {
+        font-size: 1.2rem !important;
+        width: 24px !important;
+        text-align: center !important;
+        color: #fff !important;
+        filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
+    }
+    
+    .dashboard-card .card-header span {
+        color: #fff !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+    
+    /* ألوان العناوين حسب نوع البطاقة - مع ضمان التباين العالي */
+    .dashboard-card.border-primary .card-header {
+        background: linear-gradient(135deg, #0d6efd 0%, #084298 100%) !important;
+    }
+    
+    .dashboard-card.border-secondary .card-header {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%) !important;
+    }
+    
+    .dashboard-card.border-success .card-header {
+        background: linear-gradient(135deg, #198754 0%, #146c43 100%) !important;
+    }
+    
+    .dashboard-card.border-info .card-header {
+        background: linear-gradient(135deg, #0dcaf0 0%, #0aa2c0 100%) !important;
+        color: #000 !important;
+        text-shadow: 0 1px 1px rgba(255,255,255,0.8);
+    }
+    .dashboard-card.border-info .card-header i,
+    .dashboard-card.border-info .card-header span {
+        color: #000 !important;
+    }
+    
+    .dashboard-card.border-warning .card-header {
+        background: linear-gradient(135deg, #ffc107 0%, #d39e00 100%) !important;
+        color: #000 !important;
+        text-shadow: 0 1px 1px rgba(255,255,255,0.8);
+    }
+    .dashboard-card.border-warning .card-header i,
+    .dashboard-card.border-warning .card-header span {
+        color: #000 !important;
+    }
+    
+    .dashboard-card.border-danger .card-header {
+        background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%) !important;
+    }
+    
+    /* ======================================== */
+    /* ✅ محتوى البطاقات - تحسين القراءة */
+    /* ======================================== */
+    .dashboard-card .card-body {
+        padding: 1rem 1.25rem !important;
+        background: #fff;
+    }
+    
+    .dashboard-card .list-unstyled {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .dashboard-card .list-unstyled li {
+        margin-bottom: 0.5rem !important;
+        padding-bottom: 0.25rem !important;
+        border-bottom: 1px dashed #e9ecef !important;
+    }
+    
+    .dashboard-card .list-unstyled li:last-child {
+        border-bottom: none !important;
+        margin-bottom: 0 !important;
+    }
+    
+    .dashboard-card .list-unstyled a {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        padding: 0.4rem 0.5rem !important;
+        border-radius: 6px !important;
+        transition: all 0.2s ease !important;
+        text-decoration: none !important;
+        color: #212529 !important;
+        font-weight: 500 !important;
+        font-size: 0.93rem !important;
+    }
+    
+    .dashboard-card .list-unstyled a:hover {
+        background: rgba(13, 110, 253, 0.08) !important;
+        color: #0d6efd !important;
+        [dir="ltr"] & { padding-left: 0.85rem !important; }
+        [dir="rtl"] & { padding-right: 0.85rem !important; }
+    }
+    
+    .dashboard-card .list-unstyled a i {
+        width: 20px !important;
+        text-align: center !important;
+        font-size: 1rem !important;
+        color: #6c757d !important;
+        transition: color 0.2s ease !important;
+    }
+    
+    .dashboard-card .list-unstyled a:hover i {
+        color: #0d6efd !important;
+    }
+    
+    /* ======================================== */
+    /* ✅ رسائل الترحيب */
+    /* ======================================== */
+    .welcome-banner {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+    }
+    .welcome-banner .user-avatar {
+        width: 60px;
+        height: 60px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+    [dir="rtl"] .welcome-banner .user-avatar {
+        margin-right: 0;
+        margin-left: 1rem;
+    }
+    
+    /* ======================================== */
+    /* ✅ تحسين جدول الشريط الجانبي الأيمن */
+    /* ======================================== */
+    .table-dark.table-striped > tbody > tr:nth-of-type(odd) {
+        --bs-table-bg-type: rgba(255,255,255,0.05);
+    }
+    .table-dark .badge {
+        font-weight: 500;
+        font-size: 0.75rem;
+        padding: 0.35rem 0.5rem;
+    }
+    
+    /* ======================================== */
+    /* ✅ دعم RTL للبطاقات */
+    /* ======================================== */
+    [dir="rtl"] .dashboard-card .list-unstyled a:hover {
+        padding-left: 0.5rem !important;
+        padding-right: 0.85rem !important;
+    }
+    
+    /* ======================================== */
+    /* ✅ تحسينات إضافية للوحة التحكم */
+    /* ======================================== */
+    .dashboard-section-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1a252f;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #667eea;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    /* رسالة التذييل */
+    .alert-info.dashboard-footer {
+        background: linear-gradient(135deg, #e7f1ff 0%, #d1e7ff 100%);
+        border: 1px solid #b6d4fe;
+        border-left: 4px solid #0d6efd;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- رسالة الترحيب -->
+<div class="welcome-banner d-flex align-items-center">
+    <div class="user-avatar">
+        <i class="bi bi-person-fill"></i>
+    </div>
+    <div>
+        <h4 class="mb-1">
+            {% if LANGUAGE_CODE == 'ar' %}
+                مرحباً، <strong>{{ user.get_full_name|default:user.username }}</strong> 👋
+            {% else %}
+                Bonjour, <strong>{{ user.get_full_name|default:user.username }}</strong> 👋
+            {% endif %}
+        </h4>
+        <p class="mb-0 opacity-90 small">
+            {% if LANGUAGE_CODE == 'ar' %}
+                استخدم القائمة الجانبية للوصول إلى جميع وظائف نظام إدارة المخزون
+            {% else %}
+                Utilisez le menu latéral pour accéder à toutes les fonctionnalités du système de gestion de stock
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<!-- المحتوى الرئيسي للوحة التحكم -->
+<div class="p-4 bg-white rounded shadow-sm">
+    <h2 class="border-bottom pb-3 mb-4">
+        <i class="bi bi-speedometer2 me-2 text-primary"></i>
+        {% if LANGUAGE_CODE == 'ar' %}لوحة التحكم{% else %}Tableau de bord{% endif %}
+    </h2>
+    
+    <div class="row g-4">
+        
+        <!-- 🔹 Gestion des articles -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-primary dashboard-card">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-box-seam"></i>
+                    <span>{% trans "Gestion des articles" %}</span>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <a href="{% url 'articles:list' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-inbox text-primary"></i>
+                                <span>{% trans "Articles en stock" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'articles:gestion_caracteristiques' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-list-task text-primary"></i>
+                                <span>{% trans "Caractéristiques techniques" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'articles:famille_codification' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-upc text-primary"></i>
+                                <span>{% trans "Famille & Codification" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'articles:recherche' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-search text-primary"></i>
+                                <span>{% trans "Recherche avancée" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'articles:statistiques' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-bar-chart-line text-primary"></i>
+                                <span>{% trans "Statistiques" %}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🔹 Paramétrage -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-secondary dashboard-card">
+                <div class="card-header bg-secondary text-white">
+                    <i class="bi bi-gear"></i>
+                    <span>{% trans "Paramétrage" %}</span>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <a href="{% url 'core:service_list' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-building text-secondary"></i>
+                                <span>{% trans "Services" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'core:personnel_list' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-people text-secondary"></i>
+                                <span>{% trans "Personnel" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'core:tiers_list' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-building text-secondary"></i>
+                                <span>{% trans "Tiers" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'core:types_mouvement' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-arrow-repeat text-secondary"></i>
+                                <span>{% trans "Types de Mouvements" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'core:nature_stock_list' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-archive text-secondary"></i>
+                                <span>{% trans "Nature du Stock" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'core:valeur_article_list' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-percent text-secondary"></i>
+                                <span>{% trans "Valeur d'Article" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'core:etape_dossier_list' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-folder-check text-secondary"></i>
+                                <span>{% trans "Étape de Dossier" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'core:db_monitor' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-server text-secondary"></i>
+                                <span>{% trans "Surveillance DB" %}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🔹 Gestion des BC -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-success dashboard-card">
+                <div class="card-header bg-success text-white">
+                    <i class="bi bi-file-earmark-text"></i>
+                    <span>{% trans "Gestion des BC" %}</span>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <a href="{% url 'core:bons_commande' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-file-text text-success"></i>
+                                <span>{% trans "Bons de Commande" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'core:avis_arrivee_list_page' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-truck text-success"></i>
+                                <span>{% trans "Avis d'Arrivée" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'core:avis_arrivee_create' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-plus-circle text-success"></i>
+                                <span>{% trans "Nouvel Avis" %}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🔹 Gestion des Tâches -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-info dashboard-card">
+                <div class="card-header bg-info text-dark">
+                    <i class="bi bi-check2-square"></i>
+                    <span>{% trans "Gestion des Tâches" %}</span>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <a href="{% url 'core:planning_referentiel_list' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-journal-bookmark text-info"></i>
+                                <span>{% trans "Planning Référentiel" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'core:tache_list' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-list-task text-info"></i>
+                                <span>{% trans "Liste des Tâches" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'core:tache_create' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-plus-circle text-info"></i>
+                                <span>{% trans "Nouvelle Tâche" %}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🔹 Station Service -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-warning dashboard-card">
+                <div class="card-header bg-warning text-dark">
+                    <i class="bi bi-fuel-pump"></i>
+                    <span>{% trans "Station Service" %} </span>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <a href="{% url 'core:citerne_list' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-list text-warning"></i>
+                                <span>{% trans "Liste des Citernes" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'core:citerne_create' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-plus-circle text-warning"></i>
+                                <span>{% trans "Ajouter Citerne" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'core:lectures_consommations' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-graph-up text-warning"></i>
+                                <span>{% trans "Lectures & Consommations" %}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🔹 Gestion des utilisateurs -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card border-danger dashboard-card">
+                <div class="card-header bg-danger text-white">
+                    <i class="bi bi-people"></i>
+                    <span>{% trans "Utilisateurs" %}</span>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <a href="{% url 'core:user_list' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-person-lines-fill text-danger"></i>
+                                <span>{% trans "Liste des utilisateurs" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'core:user_create' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-person-plus text-danger"></i>
+                                <span>{% trans "Ajouter utilisateur" %}</span>
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'core:permissions' %}" class="text-decoration-none text-dark">
+                                <i class="bi bi-shield-lock text-danger"></i>
+                                <span>{% trans "Gestion des permissions" %}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- رسالة تذييل -->
+    <div class="mt-5 alert alert-info dashboard-footer d-flex align-items-center" role="alert">
+        <i class="bi bi-info-circle-fill me-3 fs-4"></i>
+        <div>
+            <strong>
+                {% if LANGUAGE_CODE == 'ar' %}ملاحظة:{% else %}Note:{% endif %}
+            </strong>
+            {% if LANGUAGE_CODE == 'ar' %}
+            أنت متصل باسم المستخدم <strong>{{ user.username }}</strong>. لأي استفسار، يرجى التواصل مع مسؤول النظام.
+            {% else %}
+            Vous êtes connecté(e) en tant que <strong>{{ user.username }}</strong>. Pour toute question, contactez l'administrateur du système.
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ Dashboard chargé avec succès');
+    
+    // إضافة تأثيرات تفاعلية للبطاقات
+    document.querySelectorAll('.dashboard-card').forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.zIndex = '10';
+        });
+        card.addEventListener('mouseleave', function() {
+            this.style.zIndex = '1';
+        });
+    });
+    
+    // تحديث الإشعارات عند فتح لوحة التحكم
+    if (typeof fetchNotifications === 'function') {
+        fetchNotifications();
+    }
+    
+    // ⚠️ تم حذف كود toggleSidebarRight لأنه موجود في base.html
+    // الشريط الأيمن يعمل تلقائيًا عبر الكود الأساسي في base.html
+    // لا نكرر الكود هنا لتجنب التعارض
+});
+</script>
+{% endblock %}

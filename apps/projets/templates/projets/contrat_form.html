@@ -1,0 +1,638 @@
+{% extends 'base.html' %}
+{% load static i18n projet_extras %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #fff;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #e9ecef;
+    }
+    .form-section-title {
+        color: #4527a0;
+        font-weight: 600;
+        font-size: 1.1rem;
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.25rem;
+        border-bottom: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+    }
+    .form-section-title i {
+        margin-right: 0.5rem;
+        font-size: 1.25rem;
+    }
+    .required-star {
+        color: #dc3545;
+        font-weight: bold;
+    }
+    .form-help {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+    .form-card {
+        border: none;
+        border-radius: 0.75rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
+    }
+    .form-header {
+        background: linear-gradient(135deg, #1a237e 0%, #4527a0 100%);
+        color: white;
+        border-radius: 0.75rem 0.75rem 0 0;
+        padding: 1.25rem 1.5rem;
+    }
+    .form-header h4 {
+        color: white;
+        margin: 0;
+    }
+    .form-header .subtitle {
+        opacity: 0.9;
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+    }
+    .projet-context {
+        background: #f8f9fa;
+        border-left: 4px solid #4527a0;
+        padding: 1rem 1.25rem;
+        border-radius: 0 0.5rem 0.5rem 0;
+        margin-bottom: 1.5rem;
+    }
+    .projet-context .label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+    }
+    .projet-context .value {
+        font-weight: 600;
+        color: #212529;
+    }
+    .contract-type-card {
+        border: 2px solid #dee2e6;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-align: center;
+        height: 100%;
+    }
+    .contract-type-card:hover {
+        border-color: #4527a0;
+        background: #f3e5f5;
+    }
+    .contract-type-card.selected {
+        border-color: #4527a0;
+        background: #ede7f6;
+        box-shadow: 0 0 0 2px rgba(69, 39, 160, 0.2);
+    }
+    .contract-type-card i {
+        font-size: 1.75rem;
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #4527a0;
+    }
+    .contract-type-card .title {
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .contract-type-card .desc {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+    .conditions-box {
+        background: linear-gradient(135deg, #ede7f6 0%, #e8eaf6 100%);
+        border: 1px solid #d1c4e9;
+        border-radius: 0.5rem;
+        padding: 1rem;
+    }
+    .conditions-box textarea {
+        background: rgba(255, 255, 255, 0.7);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_list' %}">
+                    <i class="bi bi-kanban"></i> Projets
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_detail' projet.pk %}">
+                    {{ projet.reference }}
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+                <i class="bi bi-file-earmark-text"></i> 
+                {% if contrat %}Modifier contrat{% else %}Nouveau contrat{% endif %}
+            </li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Projet Context -->
+            <div class="projet-context">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="label">Projet</div>
+                        <div class="value">
+                            <i class="bi bi-folder2-open text-primary"></i>
+                            {{ projet.reference }} - {{ projet.nom|truncatechars:35 }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="label">Type de projet</div>
+                        <div class="value">
+                            <span class="badge bg-light text-dark border">
+                                {{ projet.type_projet.libelle }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="label">Maître d'ouvrage</div>
+                        <div class="value">
+                            <i class="bi bi-building text-info"></i>
+                            {{ projet.maitre_ouvrage.raison_sociale|truncatechars:25 }}
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="label">Statut</div>
+                        <div class="value">
+                            <span class="badge bg-{{ projet.statut|stat_badge }}">
+                                {{ projet.get_statut_display }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Card -->
+            <div class="card form-card shadow-sm">
+                <div class="form-header">
+                    <h4>
+                        <i class="bi bi-file-earmark-text me-2"></i>
+                        {{ title }}
+                    </h4>
+                    <div class="subtitle">
+                        {% if contrat %}
+                            Modification du contrat <strong>{{ contrat.numero }}</strong>
+                        {% else %}
+                            Définissez les informations du contrat du projet
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    <form method="post" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+
+                        <!-- Erreurs globales -->
+                        {% if form.errors %}
+                        <div class="alert alert-danger d-flex align-items-start mb-4" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
+                            <div class="flex-grow-1">
+                                <strong>Erreur de validation !</strong>
+                                Veuillez corriger les erreurs ci-dessous.
+                                <ul class="mb-0 mt-2 small">
+                                    {% for field, errors in form.errors.items %}
+                                        {% for error in errors %}
+                                            <li><strong>{{ field }}:</strong> {{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 1: IDENTIFICATION DU CONTRAT -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-tag-fill"></i>
+                                Identification du contrat
+                            </div>
+                            <div class="row g-3">
+                                <!-- Numéro -->
+                                <div class="col-md-4">
+                                    <label for="{{ form.numero.id_for_label }}" class="form-label">
+                                        Numéro du contrat <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.numero }}
+                                    <div class="form-help">
+                                        Ex: M-2026-001, CTR-001
+                                    </div>
+                                    {% if form.numero.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.numero.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Type de contrat -->
+                                <div class="col-md-8">
+                                    <label class="form-label">
+                                        Type de contrat <span class="required-star">*</span>
+                                    </label>
+                                    <div class="row g-2" id="typeContratCards">
+                                        <div class="col-6 col-md-3">
+                                            <div class="contract-type-card" data-value="MARCHE_PUBLIC">
+                                                <i class="bi bi-bank"></i>
+                                                <div class="title">Marché public</div>
+                                                <div class="desc">Appel d'offres</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-3">
+                                            <div class="contract-type-card" data-value="MARCHE_PRIVE">
+                                                <i class="bi bi-briefcase"></i>
+                                                <div class="title">Marché privé</div>
+                                                <div class="desc">Gré à gré</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-3">
+                                            <div class="contract-type-card" data-value="BON_COMMANDE">
+                                                <i class="bi bi-receipt"></i>
+                                                <div class="title">Bon de commande</div>
+                                                <div class="desc">Commande simple</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-3">
+                                            <div class="contract-type-card" data-value="CONVENTION">
+                                                <i class="bi bi-handshake"></i>
+                                                <div class="title">Convention</div>
+                                                <div class="desc">Accord cadre</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {{ form.type_contrat }}
+                                    {% if form.type_contrat.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.type_contrat.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Objet du contrat -->
+                                <div class="col-12">
+                                    <label for="{{ form.objet.id_for_label }}" class="form-label">
+                                        Objet du contrat <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.objet }}
+                                    <div class="form-help">
+                                        Description de l'objet du contrat
+                                    </div>
+                                    {% if form.objet.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.objet.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 2: MONTANT & DÉLAIS -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-cash-stack"></i>
+                                Montant & Délais
+                            </div>
+                            <div class="row g-3">
+                                <!-- Montant initial -->
+                                <div class="col-md-4">
+                                    <label for="{{ form.montant_initial.id_for_label }}" class="form-label">
+                                        Montant initial <span class="required-star">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        {{ form.montant_initial }}
+                                        <span class="input-group-text">{{ projet.devise }}</span>
+                                    </div>
+                                    <div class="form-help">
+                                        Montant HT du contrat initial
+                                    </div>
+                                    {% if form.montant_initial.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.montant_initial.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Délai en jours -->
+                                <div class="col-md-4">
+                                    <label for="{{ form.delai_jours.id_for_label }}" class="form-label">
+                                        Délai (jours)
+                                    </label>
+                                    {{ form.delai_jours }}
+                                    <div class="form-help">
+                                        Durée d'exécution en jours
+                                    </div>
+                                </div>
+
+                                <!-- Délai en mois -->
+                                <div class="col-md-4">
+                                    <label for="{{ form.delai_mois.id_for_label }}" class="form-label">
+                                        Délai (mois)
+                                    </label>
+                                    {{ form.delai_mois }}
+                                    <div class="form-help">
+                                        Durée d'exécution en mois
+                                    </div>
+                                </div>
+
+                                <!-- Date signature -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.date_signature.id_for_label }}" class="form-label">
+                                        Date de signature <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.date_signature }}
+                                    {% if form.date_signature.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.date_signature.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Date notification -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.date_notification.id_for_label }}" class="form-label">
+                                        Date de notification
+                                    </label>
+                                    {{ form.date_notification }}
+                                    <div class="form-help">
+                                        Date de l'Ordre de Service (OS)
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Calcul date fin prévisionnelle -->
+                            <div class="alert alert-info mt-3 mb-0 small" role="alert">
+                                <i class="bi bi-calculator me-1"></i>
+                                <strong>Date de fin prévisionnelle :</strong>
+                                <span id="dateFinPreview">
+                                    {% if contrat and contrat.date_signature and contrat.delai_jours %}
+                                        {{ contrat.date_signature|date:"d/m/Y" }} + {{ contrat.delai_jours }} jours
+                                    {% else %}
+                                        Sera calculée automatiquement après l'enregistrement
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 3: CONDITIONS DU CONTRAT -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-shield-check"></i>
+                                Conditions du contrat
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="conditions-box h-100">
+                                        <label for="{{ form.conditions_paiement.id_for_label }}" class="form-label fw-bold">
+                                            <i class="bi bi-credit-card me-1"></i>
+                                            Conditions de paiement
+                                        </label>
+                                        {{ form.conditions_paiement }}
+                                        <div class="form-help">
+                                            Ex: 30 jours fin de mois, paiement par situation...
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="conditions-box h-100">
+                                        <label for="{{ form.conditions_revision.id_for_label }}" class="form-label fw-bold">
+                                            <i class="bi bi-graph-up me-1"></i>
+                                            Conditions de révision de prix
+                                        </label>
+                                        {{ form.conditions_revision }}
+                                        <div class="form-help">
+                                            Ex: Formule de révision, index de référence...
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Retenue de garantie -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.retenue_garantie_pourcentage.id_for_label }}" class="form-label">
+                                        Retenue de garantie (%)
+                                    </label>
+                                    <div class="input-group">
+                                        {{ form.retenue_garantie_pourcentage }}
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                    <div class="form-help">
+                                        Pourcentage retenu sur chaque décompte (généralement 5% à 10%)
+                                    </div>
+                                    {% if form.retenue_garantie_pourcentage.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.retenue_garantie_pourcentage.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Pénalités de retard -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.penalites_retard_pourcentage.id_for_label }}" class="form-label">
+                                        Pénalités de retard (%/jour)
+                                    </label>
+                                    <div class="input-group">
+                                        {{ form.penalites_retard_pourcentage }}
+                                        <span class="input-group-text">%/jour</span>
+                                    </div>
+                                    <div class="form-help">
+                                        Pourcentage appliqué par jour de retard (ex: 1/2000)
+                                    </div>
+                                    {% if form.penalites_retard_pourcentage.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.penalites_retard_pourcentage.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 4: DOCUMENT DU CONTRAT -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-paperclip"></i>
+                                Document du contrat
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="{{ form.document.id_for_label }}" class="form-label">
+                                        Fichier du contrat (PDF, DOCX...)
+                                    </label>
+                                    {{ form.document }}
+                                    <div class="form-help">
+                                        Taille maximale : 10 MB. Formats acceptés : PDF, DOC, DOCX
+                                    </div>
+                                    {% if contrat and contrat.document %}
+                                        <div class="alert alert-success mt-2 mb-0 small" role="alert">
+                                            <i class="bi bi-check-circle-fill me-1"></i>
+                                            Document actuel : 
+                                            <a href="{{ contrat.document.url }}" target="_blank" class="fw-bold">
+                                                {{ contrat.document.name }}
+                                            </a>
+                                            <small class="text-muted">(cliquez pour télécharger)</small>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- BOUTONS D'ACTION -->
+                        <!-- ============================================================ -->
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                            <a href="{% url 'projets:projet_detail' projet.pk %}" 
+                               class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i> Annuler
+                            </a>
+                            <div class="d-flex gap-2">
+                                <button type="reset" class="btn btn-outline-warning">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Réinitialiser
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle me-1"></i> 
+                                    {% if contrat %}Enregistrer les modifications{% else %}Créer le contrat{% endif %}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Info Box -->
+            <div class="alert alert-light border mt-3" role="alert">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-info-circle-fill text-primary me-2 mt-1"></i>
+                    <div class="small">
+                        <strong>Informations utiles :</strong>
+                        <ul class="mb-0 mt-1">
+                            <li>Les champs marqués d'un <span class="required-star">*</span> sont obligatoires.</li>
+                            <li>Le <strong>numéro du contrat</strong> doit être unique.</li>
+                            <li>Le <strong>montant initial</strong> sera reporté automatiquement sur le projet.</li>
+                            <li>Après la création du contrat, vous pourrez ajouter des <strong>avenants</strong> pour modifier le montant ou le délai.</li>
+                            <li>La <strong>retenue de garantie</strong> sera appliquée automatiquement sur chaque décompte.</li>
+                            <li>Un projet ne peut avoir qu'<strong>un seul contrat</strong> (relation One-to-One).</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Éléments du formulaire
+        const typeContratSelect = document.getElementById('{{ form.type_contrat.id_for_label }}');
+        const typeContratCards = document.querySelectorAll('.contract-type-card');
+        const dateSignature = document.getElementById('{{ form.date_signature.id_for_label }}');
+        const delaiJours = document.getElementById('{{ form.delai_jours.id_for_label }}');
+        const dateFinPreview = document.getElementById('dateFinPreview');
+
+        // Cacher le select original (on utilise les cartes à la place)
+        if (typeContratSelect) {
+            typeContratSelect.style.display = 'none';
+        }
+
+        // Gestion des cartes de type de contrat
+        function selectTypeContrat(value) {
+            // Mettre à jour le select caché
+            if (typeContratSelect) {
+                typeContratSelect.value = value;
+            }
+            // Mettre à jour l'aspect visuel des cartes
+            typeContratCards.forEach(card => {
+                if (card.dataset.value === value) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
+        }
+
+        // Événements sur les cartes
+        typeContratCards.forEach(card => {
+            card.addEventListener('click', function() {
+                selectTypeContrat(this.dataset.value);
+            });
+        });
+
+        // Sélection initiale si en mode édition
+        if (typeContratSelect && typeContratSelect.value) {
+            selectTypeContrat(typeContratSelect.value);
+        }
+
+        // Calcul de la date de fin prévisionnelle
+        function calculateDateFin() {
+            if (dateSignature.value && delaiJours.value) {
+                const dateSig = new Date(dateSignature.value);
+                const delai = parseInt(delaiJours.value) || 0;
+                const dateFin = new Date(dateSig);
+                dateFin.setDate(dateFin.getDate() + delai);
+                
+                const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
+                const dateFinStr = dateFin.toLocaleDateString('fr-FR', options);
+                
+                dateFinPreview.innerHTML = `
+                    <strong class="text-primary">${dateSig.toLocaleDateString('fr-FR', options)}</strong>
+                    + <strong>${delai} jours</strong> = 
+                    <strong class="text-success">${dateFinStr}</strong>
+                `;
+            } else {
+                dateFinPreview.textContent = 'Sera calculée automatiquement après l\'enregistrement';
+            }
+        }
+
+        // Événements
+        if (dateSignature) {
+            dateSignature.addEventListener('change', calculateDateFin);
+        }
+        if (delaiJours) {
+            delaiJours.addEventListener('input', calculateDateFin);
+        }
+
+        // Calcul initial si en mode édition
+        calculateDateFin();
+
+        // Confirmation avant réinitialisation
+        const resetButton = document.querySelector('button[type="reset"]');
+        if (resetButton) {
+            resetButton.addEventListener('click', function(e) {
+                if (!confirm('Êtes-vous sûr de vouloir réinitialiser le formulaire ?')) {
+                    e.preventDefault();
+                } else {
+                    // Réinitialiser les cartes
+                    typeContratCards.forEach(card => card.classList.remove('selected'));
+                }
+            });
+        }
+
+        // Activation des tooltips
+        var tooltipTriggerList = [].slice.call(
+            document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        );
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

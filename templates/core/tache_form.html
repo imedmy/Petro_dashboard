@@ -1,0 +1,132 @@
+<!-- templates/core/tache_form.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid p-4">
+    <h2>{% if tache %}Modifier la tâche{% else %}Nouvelle tâche{% endif %}</h2>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label>Intitulé *</label>
+                <input type="text" name="libelle" class="form-control" value="{{ tache.libelle|default:'' }}" required>
+            </div>
+            <div class="col-md-6">
+                <label>Date prévue *</label>
+                <input type="date" name="date_prevue" class="form-control" value="{{ tache.date_prevue|date:'Y-m-d'|default:'' }}" required>
+            </div>
+            <div class="col-md-6">
+                <label>Planning Référentiel</label>
+                <select name="planning" class="form-select">
+                    <option value="">Aucun</option>
+                    {% for p in plannings_referentiel %}
+                    <option value="{{ p.id }}" {% if tache and tache.planning_id == p.id %}selected{% endif %}>
+                        {{ p.libelle|default:p.get_nature_display }} ({{ p.delai_repetition }} jours)
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label>Délai de répétition (jours)</label>
+                <input type="number" name="delai_repetition" class="form-control" value="{{ tache.delai_repetition|default:'0' }}" id="id_delai_repetition">
+            </div>
+            <div class="col-md-6">
+                <label>État</label>
+                <select name="etat" class="form-select">
+                    {% for value, label in Tache.ETAT_CHOICES %}
+                    <option value="{{ value }}" {% if tache and tache.etat == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12">
+                <label>Description</label>
+                <textarea name="description" class="form-control" rows="3">{{ tache.description|default:'' }}</textarea>
+            </div>
+            <div class="col-12">
+                <label>Observation</label>
+                <textarea name="observation" class="form-control" rows="3">{{ tache.observation|default:'' }}</textarea>
+            </div>
+        </div>
+
+        <!-- المتدخلون -->
+        <div class="card mt-4">
+            <div class="card-header">Intervenants (Personnel)</div>
+            <div class="card-body">
+                {% for personnel in personnels %}
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="intervenants" value="{{ personnel.id }}"
+                           id="personnel_{{ personnel.id }}" {% if tache and personnel in tache.intervenants.all %}checked{% endif %}>
+                    <label class="form-check-label" for="personnel_{{ personnel.id }}">
+                        {{ personnel.nom }} {{ personnel.prenom }} ({{ personnel.matricule }})
+                    </label>
+                    <input type="text" name="role_{{ personnel.id }}" class="form-control form-control-sm mt-1"
+                           placeholder="Rôle" value="{% if tache %}{% for i in tache.intervenants.through.all %}{% if i.personnel.id == personnel.id %}{{ i.role }}{% endif %}{% endfor %}{% endif %}">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- المعدات -->
+        <div class="card mt-4">
+            <div class="card-header">Engins</div>
+            <div class="card-body">
+                <div id="enginsContainer">
+                    {% if tache %}
+                        {% for engin in tache.engins.all %}
+                        <div class="input-group mb-2">
+                            <input type="text" name="engins" class="form-control" value="{{ engin.libelle }}">
+                            <button type="button" class="btn btn-outline-danger remove-engin">Supprimer</button>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                <button type="button" class="btn btn-outline-primary" id="addEnginBtn">Ajouter un engin</button>
+            </div>
+        </div>
+
+        <!-- المرفقات -->
+        <div class="card mt-4">
+            <div class="card-header">Pièces Jointes</div>
+            <div class="card-body">
+                <input type="file" name="pieces_jointes" class="form-control" multiple>
+                <input type="text" name="description_piece" class="form-control mt-2" placeholder="Description du fichier">
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <a href="{% url 'core:tache_list' %}" class="btn btn-secondary">Annuler</a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.getElementById('addEnginBtn').addEventListener('click', function() {
+    const container = document.getElementById('enginsContainer');
+    const div = document.createElement('div');
+    div.className = 'input-group mb-2';
+    div.innerHTML = `
+        <input type="text" name="engins" class="form-control" placeholder="Désignation de l'engin">
+        <button type="button" class="btn btn-outline-danger remove-engin">Supprimer</button>
+    `;
+    container.appendChild(div);
+});
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('remove-engin')) {
+        e.target.closest('.input-group').remove();
+    }
+});
+document.querySelector('select[name="planning"]').addEventListener('change', function() {
+    const planningId = this.value;
+    if (!planningId) {
+        document.getElementById('id_delai_repetition').value = '0';
+        return;
+    }
+    const selectedOption = this.options[this.selectedIndex];
+    const text = selectedOption.textContent;
+    const match = text.match(/(\d+)\s+jours/);
+    if (match) {
+        document.getElementById('id_delai_repetition').value = match[1];
+    }
+});
+</script>
+{% endblock %}

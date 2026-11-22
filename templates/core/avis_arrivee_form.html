@@ -1,0 +1,171 @@
+<!-- templates/core/avis_arrivee_form.html -->
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{% if avis %}Modifier l'Avis {{ avis.numero_avis }}{% else %}Nouvel Avis d'Arrivée{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <h2>
+        {% if avis %}
+            <i class="bi bi-pencil-square"></i> Modifier l'Avis {{ avis.numero_avis }}
+        {% else %}
+            <i class="bi bi-plus-circle"></i> Nouvel Avis d'Arrivée
+        {% endif %}
+    </h2>
+
+    {% if error %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ error }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endif %}
+
+    <form method="post" id="avisForm">
+        {% csrf_token %}
+        <div class="row g-3">
+            <!-- N° Bon de Commande مع إكمال تلقائي -->
+            <div class="col-md-6">
+                <label class="form-label">N° Bon de Commande (facultatif)</label>
+                <div class="input-group">
+                    <input type="text" id="numeroComInput" name="numero_com" class="form-control"
+                           placeholder="Taper N° Bon ou sélectionner"
+                           value="{% if avis %}{{ avis.numero_com }}{% else %}{{ form_data.numero_com|default:'' }}{% endif %}"
+                           autocomplete="off">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="toggleDropdown"
+                            data-bs-toggle="dropdown" aria-expanded="false">▼</button>
+                    <ul class="dropdown-menu w-100" id="commandeDropdown">
+                        <!-- سيتم ملؤه ديناميكيًا -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Date Bon -->
+            <div class="col-md-6">
+                <label class="form-label">Date Bon</label>
+                <input type="date" id="datComInput" name="dat_com" class="form-control"
+                       value="{% if avis %}{{ avis.dat_com|date:'Y-m-d' }}{% else %}{{ form_data.dat_com|default:'' }}{% endif %}">
+            </div>
+
+            <!-- N° Avis -->
+            <div class="col-md-4">
+                <label class="form-label">N° Avis *</label>
+                <input type="text" name="numero_avis" class="form-control"
+                       value="{% if avis %}{{ avis.numero_avis }}{% else %}{{ form_data.numero_avis|default:'' }}{% endif %}"
+                       required>
+            </div>
+            <!-- Date Avis -->
+            <div class="col-md-4">
+                <label class="form-label">Date Avis *</label>
+                <input type="date" name="date_avis" class="form-control"
+                       value="{% if avis %}{{ avis.date_avis|date:'Y-m-d' }}{% else %}{{ form_data.date_avis|default:'' }}{% endif %}"
+                       required>
+            </div>
+            <!-- N° Bordereau -->
+            <div class="col-md-4">
+                <label class="form-label">N° Bordereau</label>
+                <input type="text" name="numero_bordereau" class="form-control"
+                       value="{% if avis %}{{ avis.numero_bordereau }}{% else %}{{ form_data.numero_bordereau|default:'' }}{% endif %}">
+            </div>
+            <!-- BCT -->
+            <div class="col-md-4">
+                <label class="form-label">BCT</label>
+                <input type="text" name="bct" class="form-control"
+                       value="{% if avis %}{{ avis.bct }}{% else %}{{ form_data.bct|default:'' }}{% endif %}">
+            </div>
+            <!-- N° Facture -->
+            <div class="col-md-4">
+                <label class="form-label">N° Facture</label>
+                <input type="text" name="numero_facture" class="form-control"
+                       value="{% if avis %}{{ avis.numero_facture }}{% else %}{{ form_data.numero_facture|default:'' }}{% endif %}">
+            </div>
+            <!-- N° BL -->
+            <div class="col-md-4">
+                <label class="form-label">N° BL</label>
+                <input type="text" name="numero_bl" class="form-control"
+                       value="{% if avis %}{{ avis.numero_bl }}{% else %}{{ form_data.numero_bl|default:'' }}{% endif %}">
+            </div>
+            <!-- Observation -->
+            <div class="col-12">
+                <label class="form-label">Observation</label>
+                <textarea name="observation" class="form-control" rows="3">{% if avis %}{{ avis.observation }}{% else %}{{ form_data.observation|default:'' }}{% endif %}</textarea>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save"></i> Enregistrer
+            </button>
+            <a href="{% url 'core:avis_arrivee_list_page' %}" class="btn btn-secondary">
+                <i class="bi bi-x-circle"></i> Annuler
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const numeroComInput = document.getElementById('numeroComInput');
+    const datComInput = document.getElementById('datComInput');
+    const dropdownMenu = document.getElementById('commandeDropdown');
+
+    // عند الكتابة في حقل رقم الطلبية
+    numeroComInput.addEventListener('input', debounce(function() {
+        const query = this.value.trim();
+        if (query.length < 2) {
+            dropdownMenu.innerHTML = '';
+            dropdownMenu.classList.remove('show');
+            return;
+        }
+        fetch(`{% url 'core:api_commandes' %}?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(commandes => {
+                dropdownMenu.innerHTML = '';
+                if (commandes.length === 0) {
+                    dropdownMenu.innerHTML = '<li><a class="dropdown-item disabled">Aucun résultat</a></li>';
+                } else {
+                    commandes.forEach(cmd => {
+                        const li = document.createElement('li');
+                        const a = document.createElement('a');
+                        a.className = 'dropdown-item';
+                        a.href = '#';
+                        a.textContent = `${cmd.numero_com} - ${cmd.dat_com} - ${cmd.lib_fourn}`;
+                        a.dataset.numeroCom = cmd.numero_com;
+                        a.dataset.datCom = cmd.dat_com;
+                        a.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            numeroComInput.value = this.dataset.numeroCom;
+                            datComInput.value = this.dataset.datCom;
+                            dropdownMenu.classList.remove('show');
+                        });
+                        li.appendChild(a);
+                        dropdownMenu.appendChild(li);
+                    });
+                }
+                // إظهار القائمة
+                dropdownMenu.classList.add('show');
+            })
+            .catch(err => {
+                console.error('Erreur chargement commandes:', err);
+                dropdownMenu.innerHTML = '<li><a class="dropdown-item text-danger">Erreur</a></li>';
+                dropdownMenu.classList.add('show');
+            });
+    }, 300));
+
+    // إخفاء القائمة عند النقر خارجها
+    document.addEventListener('click', function(e) {
+        if (!numeroComInput.contains(e.target) && !dropdownMenu.contains(e.target)) {
+            dropdownMenu.classList.remove('show');
+        }
+    });
+
+    // دالة debounce لتجنب الطلبات المتكررة
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+});
+</script>
+{% endblock %}

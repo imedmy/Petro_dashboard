@@ -1,0 +1,508 @@
+{% extends 'base.html' %}
+{% load static i18n projet_extras %}
+
+{% block title %}Réunions - {{ projet.reference }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .reunion-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .reunion-header h2 {
+        color: white;
+        margin-bottom: 0.25rem;
+    }
+    .reunion-header .reference {
+        opacity: 0.9;
+        font-size: 0.9rem;
+    }
+    
+    .stat-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border-left: 4px solid;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,.1);
+    }
+    .stat-card.total    { border-left-color: #667eea; }
+    .stat-card.chantier { border-left-color: #198754; }
+    .stat-card.coord    { border-left-color: #0dcaf0; }
+    .stat-card.hse      { border-left-color: #dc3545; }
+    
+    .reunion-row {
+        transition: background-color 0.2s;
+    }
+    .reunion-row:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .reunion-number {
+        font-family: 'Courier New', monospace;
+        font-weight: 700;
+        color: #667eea;
+        font-size: 1.1rem;
+    }
+    
+    .type-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_list' %}">
+                    <i class="bi bi-kanban"></i> Projets
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_detail' projet.pk %}">
+                    {{ projet.reference }}
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+                <i class="bi bi-people"></i> Réunions
+            </li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="reunion-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="reference mb-1">
+                    <i class="bi bi-folder2-open"></i> {{ projet.reference }}
+                    <span class="mx-2">•</span>
+                    <i class="bi bi-tag"></i> {{ projet.type_projet.libelle }}
+                    <span class="mx-2">•</span>
+                    <i class="bi bi-people"></i> Suivi des réunions
+                </div>
+                <h2>{{ projet.nom }}</h2>
+                <p class="mb-0 opacity-75">
+                    <i class="bi bi-building me-1"></i> 
+                    Maître d'ouvrage : {{ projet.maitre_ouvrage.raison_sociale }}
+                </p>
+            </div>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <a href="{% url 'projets:projet_detail' projet.pk %}" 
+                   class="btn btn-light">
+                    <i class="bi bi-arrow-left me-1"></i> Retour au projet
+                </a>
+                <a href="{% url 'projets:reunion_create' projet.pk %}" 
+                   class="btn btn-outline-light ms-1">
+                    <i class="bi bi-plus-circle me-1"></i> Nouvelle réunion
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card total shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">Total réunions</div>
+                            <div class="h3 mb-0 mt-1 fw-bold" style="color: #667eea;">{{ reunions.count }}</div>
+                        </div>
+                        <i class="bi bi-people-fill fs-2 opacity-50" style="color: #667eea;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card chantier shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">Réunions chantier</div>
+                            <div class="h3 mb-0 mt-1 fw-bold text-success">
+                                {% with count=0 %}
+                                    {% for r in reunions %}
+                                        {% if r.type_reunion == 'CHANTIER' %}
+                                            {% if forloop.first %}1{% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endwith %}
+                                0
+                            </div>
+                        </div>
+                        <i class="bi bi-hard-hat fs-2 text-success opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card coord shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">Réunions coordination</div>
+                            <div class="h3 mb-0 mt-1 fw-bold text-info">
+                                {% with count=0 %}
+                                    {% for r in reunions %}
+                                        {% if r.type_reunion == 'COORDINATION' %}
+                                            {% if forloop.first %}1{% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endwith %}
+                                0
+                            </div>
+                        </div>
+                        <i class="bi bi-diagram-3-fill fs-2 text-info opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card hse shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="text-muted small text-uppercase">Réunions HSE</div>
+                            <div class="h3 mb-0 mt-1 fw-bold text-danger">
+                                {% with count=0 %}
+                                    {% for r in reunions %}
+                                        {% if r.type_reunion == 'HSE' %}
+                                            {% if forloop.first %}1{% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endwith %}
+                                0
+                            </div>
+                        </div>
+                        <i class="bi bi-shield-fill-exclamation fs-2 text-danger opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-people me-2" style="color: #667eea;"></i>
+                Liste des réunions
+                <span class="badge bg-secondary ms-2">{{ reunions.count }}</span>
+            </h5>
+            <a href="{% url 'projets:reunion_create' projet.pk %}" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Nouvelle réunion
+            </a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="reunionsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 80px;">N°</th>
+                            <th style="width: 150px;">Type</th>
+                            <th>Objet</th>
+                            <th style="width: 140px;">Date</th>
+                            <th style="width: 150px;">Lieu</th>
+                            <th style="width: 100px;">Durée</th>
+                            <th style="width: 150px;">Animateur</th>
+                            <th style="width: 100px;" class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for reunion in reunions %}
+                        <tr class="reunion-row">
+                            <td>
+                                <span class="reunion-number">
+                                    N°{{ reunion.numero }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if reunion.type_reunion == 'CHANTIER' %}
+                                    <span class="badge bg-success type-badge">
+                                        <i class="bi bi-hard-hat me-1"></i>
+                                        Chantier
+                                    </span>
+                                {% elif reunion.type_reunion == 'COORDINATION' %}
+                                    <span class="badge bg-info type-badge">
+                                        <i class="bi bi-diagram-3 me-1"></i>
+                                        Coordination
+                                    </span>
+                                {% elif reunion.type_reunion == 'AVANCEMENT' %}
+                                    <span class="badge bg-primary type-badge">
+                                        <i class="bi bi-graph-up me-1"></i>
+                                        Avancement
+                                    </span>
+                                {% elif reunion.type_reunion == 'TECHNIQUE' %}
+                                    <span class="badge bg-warning text-dark type-badge">
+                                        <i class="bi bi-gear me-1"></i>
+                                        Technique
+                                    </span>
+                                {% elif reunion.type_reunion == 'HSE' %}
+                                    <span class="badge bg-danger type-badge">
+                                        <i class="bi bi-shield-fill-exclamation me-1"></i>
+                                        HSE
+                                    </span>
+                                {% elif reunion.type_reunion == 'AUTRE' %}
+                                    <span class="badge bg-secondary type-badge">
+                                        <i class="bi bi-three-dots me-1"></i>
+                                        Autre
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="fw-semibold">{{ reunion.objet }}</div>
+                                {% if reunion.ordre_jour %}
+                                    <div class="small text-muted">
+                                        <i class="bi bi-list-ul me-1"></i>
+                                        {{ reunion.ordre_jour|truncatechars:60 }}
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>
+                                    <i class="bi bi-calendar-event text-muted me-1"></i>
+                                    {{ reunion.date_reunion|date:"d/m/Y" }}
+                                </small>
+                                <div class="small text-muted">
+                                    <i class="bi bi-clock text-muted me-1"></i>
+                                    {{ reunion.date_reunion|time:"H:i" }}
+                                </div>
+                            </td>
+                            <td>
+                                {% if reunion.lieu %}
+                                    <small>
+                                        <i class="bi bi-geo-alt text-muted me-1"></i>
+                                        {{ reunion.lieu|truncatechars:25 }}
+                                    </small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="fw-semibold">
+                                    {{ reunion.duree_heures }} h
+                                </small>
+                            </td>
+                            <td>
+                                {% if reunion.animateur %}
+                                    <small>
+                                        <i class="bi bi-person-circle text-primary me-1"></i>
+                                        {{ reunion.animateur.get_full_name|default:reunion.animateur.username|truncatechars:20 }}
+                                    </small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" 
+                                            class="btn btn-outline-primary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalReunion{{ reunion.pk }}"
+                                            title="Voir les détails">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Modal pour chaque réunion -->
+                        <div class="modal fade" id="modalReunion{{ reunion.pk }}" tabindex="-1">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                        <h5 class="modal-title">
+                                            <i class="bi bi-people me-2"></i>
+                                            Réunion N°{{ reunion.numero }}
+                                        </h5>
+                                        <button type="button" class="btn-close btn-close-white" 
+                                                data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="row g-3 mb-3">
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block">Type</small>
+                                                <strong>{{ reunion.get_type_reunion_display }}</strong>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block">Date & Heure</small>
+                                                <strong>{{ reunion.date_reunion|date:"d/m/Y à H:i" }}</strong>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block">Lieu</small>
+                                                <strong>{{ reunion.lieu|default:"Non spécifié" }}</strong>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block">Durée</small>
+                                                <strong>{{ reunion.duree_heures }} heures</strong>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block">Animateur</small>
+                                                <strong>
+                                                    {% if reunion.animateur %}
+                                                        {{ reunion.animateur.get_full_name|default:reunion.animateur.username }}
+                                                    {% else %}
+                                                        Non spécifié
+                                                    {% endif %}
+                                                </strong>
+                                            </div>
+                                        </div>
+
+                                        <hr>
+
+                                        <h6 class="fw-bold mb-2">
+                                            <i class="bi bi-chat-left-text me-1"></i>
+                                            Objet de la réunion
+                                        </h6>
+                                        <p class="text-muted">{{ reunion.objet }}</p>
+
+                                        {% if reunion.ordre_jour %}
+                                        <h6 class="fw-bold mb-2 mt-3">
+                                            <i class="bi bi-list-ul me-1"></i>
+                                            Ordre du jour
+                                        </h6>
+                                        <div class="bg-light p-3 rounded">
+                                            {{ reunion.ordre_jour|linebreaksbr }}
+                                        </div>
+                                        {% endif %}
+
+                                        {% if reunion.decisions %}
+                                        <h6 class="fw-bold mb-2 mt-3">
+                                            <i class="bi bi-check2-square me-1"></i>
+                                            Décisions prises
+                                        </h6>
+                                        <div class="bg-success bg-opacity-10 p-3 rounded border-start border-4 border-success">
+                                            {{ reunion.decisions|linebreaksbr }}
+                                        </div>
+                                        {% endif %}
+
+                                        {% if reunion.participants %}
+                                        <h6 class="fw-bold mb-2 mt-3">
+                                            <i class="bi bi-people me-1"></i>
+                                            Participants
+                                        </h6>
+                                        <div class="bg-light p-3 rounded">
+                                            <ul class="mb-0">
+                                                {% for participant in reunion.participants %}
+                                                    <li>{{ participant }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                        {% endif %}
+
+                                        {% if reunion.document %}
+                                        <div class="mt-3">
+                                            <a href="{{ reunion.document.url }}" target="_blank" 
+                                               class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-download me-1"></i>
+                                                Télécharger le document
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                            Fermer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <i class="bi bi-people text-muted fs-1 d-block mb-3"></i>
+                                <h5 class="text-muted">Aucune réunion enregistrée</h5>
+                                <p class="text-muted mb-3">
+                                    Commencez par créer la première réunion de ce projet
+                                </p>
+                                <a href="{% url 'projets:reunion_create' projet.pk %}" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-1"></i> Créer la première réunion
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="bi bi-lightning-fill me-2 text-warning"></i>
+                Actions rapides
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <a href="{% url 'projets:reunion_create' projet.pk %}" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-plus-circle me-2"></i> Nouvelle réunion
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'projets:correspondance_list' projet.pk %}" class="btn btn-outline-success w-100">
+                        <i class="bi bi-envelope me-2"></i> Correspondances
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'projets:compte_rendu_create' projet.pk %}" class="btn btn-outline-info w-100">
+                        <i class="bi bi-file-earmark-text me-2"></i> Compte rendu
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'projets:projet_detail' projet.pk %}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-arrow-left me-2"></i> Retour au projet
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Initialisation de DataTables
+        $('#reunionsTable').DataTable({
+            language: {
+                url: '{% static "datatables/i18n/fr-FR.json" %}'
+            },
+            paging: false,
+            searching: true,
+            info: false,
+            order: [[3, 'desc']],
+            columnDefs: [
+                { orderable: false, targets: [7] },
+                { width: '80px', targets: [0] },
+                { width: '150px', targets: [1, 4, 6] },
+                { width: '140px', targets: [3] },
+                { width: '100px', targets: [5, 7] }
+            ],
+            stateSave: true,
+            stateDuration: 60 * 60 * 24
+        });
+
+        // Activation des tooltips
+        var tooltipTriggerList = [].slice.call(
+            document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        );
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

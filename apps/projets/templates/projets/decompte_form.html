@@ -1,0 +1,706 @@
+{% extends 'base.html' %}
+{% load static i18n projet_extras %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #fff;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #e9ecef;
+    }
+    .form-section-title {
+        color: #0d6efd;
+        font-weight: 600;
+        font-size: 1.1rem;
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.25rem;
+        border-bottom: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+    }
+    .form-section-title i {
+        margin-right: 0.5rem;
+        font-size: 1.25rem;
+    }
+    .required-star {
+        color: #dc3545;
+        font-weight: bold;
+    }
+    .form-help {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+    .form-card {
+        border: none;
+        border-radius: 0.75rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
+    }
+    .form-header {
+        background: linear-gradient(135deg, #0d6efd 0%, #0dcaf0 100%);
+        color: white;
+        border-radius: 0.75rem 0.75rem 0 0;
+        padding: 1.25rem 1.5rem;
+    }
+    .form-header h4 {
+        color: white;
+        margin: 0;
+    }
+    .form-header .subtitle {
+        opacity: 0.9;
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+    }
+    .projet-context {
+        background: #f8f9fa;
+        border-left: 4px solid #0d6efd;
+        padding: 1rem 1.25rem;
+        border-radius: 0 0.5rem 0.5rem 0;
+        margin-bottom: 1.5rem;
+    }
+    .projet-context .label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+    }
+    .projet-context .value {
+        font-weight: 600;
+        color: #212529;
+    }
+    .calcul-preview {
+        background: linear-gradient(135deg, #e7f1ff 0%, #cff4fc 100%);
+        border: 2px dashed #0dcaf0;
+        border-radius: 0.5rem;
+        padding: 1.25rem;
+        margin-top: 1rem;
+    }
+    .calcul-preview .row-line {
+        padding: 0.5rem 0;
+        border-bottom: 1px dashed rgba(0,0,0,.1);
+    }
+    .calcul-preview .row-line:last-child {
+        border-bottom: none;
+    }
+    .calcul-preview .row-line.total {
+        background: rgba(13, 110, 253, 0.1);
+        border-radius: 0.25rem;
+        padding: 0.75rem;
+        margin-top: 0.5rem;
+        border: 2px solid #0d6efd;
+    }
+    .calcul-preview .label {
+        font-size: 0.9rem;
+        color: #495057;
+    }
+    .calcul-preview .amount {
+        font-weight: 700;
+        font-family: 'Courier New', monospace;
+        font-size: 1.1rem;
+    }
+    .calcul-preview .amount.positive { color: #198754; }
+    .calcul-preview .amount.negative { color: #dc3545; }
+    .calcul-preview .amount.total { 
+        color: #0d6efd; 
+        font-size: 1.5rem;
+    }
+    .type-decompte-card {
+        border: 2px solid #dee2e6;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-align: center;
+        height: 100%;
+    }
+    .type-decompte-card:hover {
+        border-color: #0d6efd;
+        background: #f8f9fa;
+    }
+    .type-decompte-card.selected {
+        border-color: #0d6efd;
+        background: #e7f1ff;
+        box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.2);
+    }
+    .type-decompte-card i {
+        font-size: 1.75rem;
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #0d6efd;
+    }
+    .type-decompte-card .title {
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    .type-decompte-card .desc {
+        font-size: 0.7rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+    .statut-info {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        color: #664d03;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        margin-top: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_list' %}">
+                    <i class="bi bi-kanban"></i> Projets
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_detail' projet.pk %}">
+                    {{ projet.reference }}
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:decompte_list' projet.pk %}">
+                    <i class="bi bi-cash-stack"></i> Décomptes
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+                {% if decompte %}
+                    <i class="bi bi-pencil"></i> Modifier N°{{ decompte.numero }}
+                {% else %}
+                    <i class="bi bi-plus-circle"></i> Nouveau décompte
+                {% endif %}
+            </li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Projet Context -->
+            <div class="projet-context">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="label">Projet</div>
+                        <div class="value">
+                            <i class="bi bi-folder2-open text-primary"></i>
+                            {{ projet.reference }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="label">Montant du projet</div>
+                        <div class="value text-primary">
+                            {{ projet.montant_final|floatformat:3 }} {{ projet.devise }}
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="label">Décomptes existants</div>
+                        <div class="value">
+                            <span class="badge bg-success">{{ projet.decomptes.count }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="label">Retenue de garantie</div>
+                        <div class="value text-warning">
+                            {% if projet.contrat %}
+                                {{ projet.contrat.retenue_garantie_pourcentage }}%
+                            {% else %}
+                                <span class="text-muted">Non définie</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Card -->
+            <div class="card form-card shadow-sm">
+                <div class="form-header">
+                    <h4>
+                        <i class="bi bi-cash-stack me-2"></i>
+                        {{ title }}
+                    </h4>
+                    <div class="subtitle">
+                        {% if decompte %}
+                            Modification du décompte <strong>N°{{ decompte.numero }}</strong>
+                        {% else %}
+                            Définissez les informations du décompte des travaux
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    <form method="post" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+
+                        <!-- Erreurs globales -->
+                        {% if form.errors %}
+                        <div class="alert alert-danger d-flex align-items-start mb-4" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
+                            <div class="flex-grow-1">
+                                <strong>Erreur de validation !</strong>
+                                Veuillez corriger les erreurs ci-dessous.
+                                <ul class="mb-0 mt-2 small">
+                                    {% for field, errors in form.errors.items %}
+                                        {% for error in errors %}
+                                            <li><strong>{{ field }}:</strong> {{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 1: IDENTIFICATION DU DÉCOMPTE -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-tag-fill"></i>
+                                Identification du décompte
+                            </div>
+                            <div class="row g-3">
+                                <!-- Numéro -->
+                                <div class="col-md-3">
+                                    <label for="{{ form.numero.id_for_label }}" class="form-label">
+                                        Numéro <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.numero }}
+                                    <div class="form-help">
+                                        Numéro séquentiel
+                                    </div>
+                                    {% if form.numero.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.numero.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Type de décompte -->
+                                <div class="col-md-9">
+                                    <label class="form-label">
+                                        Type de décompte <span class="required-star">*</span>
+                                    </label>
+                                    <div class="row g-2" id="typeDecompteCards">
+                                        <div class="col-6 col-md-4">
+                                            <div class="type-decompte-card" data-value="PROVISOIRE">
+                                                <i class="bi bi-file-earmark-text"></i>
+                                                <div class="title">Provisoire</div>
+                                                <div class="desc">Situation de travaux</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4">
+                                            <div class="type-decompte-card" data-value="DEFINITIF">
+                                                <i class="bi bi-file-check"></i>
+                                                <div class="title">Définitif</div>
+                                                <div class="desc">Décompte final</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6 col-md-4">
+                                            <div class="type-decompte-card" data-value="REVISION_PRIX">
+                                                <i class="bi bi-graph-up-arrow"></i>
+                                                <div class="title">Révision de prix</div>
+                                                <div class="desc">Ajustement index</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {{ form.type_decompte }}
+                                    {% if form.type_decompte.errors %}
+                                        <div class="invalid-feedback d-block mt-2">
+                                            {{ form.type_decompte.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Date -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.date_decompte.id_for_label }}" class="form-label">
+                                        Date du décompte <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.date_decompte }}
+                                    {% if form.date_decompte.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.date_decompte.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Statut (seulement en mode édition) -->
+                                {% if decompte %}
+                                <div class="col-md-6">
+                                    <label for="{{ form.statut.id_for_label }}" class="form-label">
+                                        Statut
+                                    </label>
+                                    {{ form.statut }}
+                                    <div class="statut-info">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Le statut suit le workflow de validation du décompte.
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 2: CALCUL FINANCIER -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-calculator-fill"></i>
+                                Calcul financier
+                            </div>
+                            <div class="row g-3">
+                                <!-- Montant brut -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.montant_brut.id_for_label }}" class="form-label">
+                                        Montant brut des travaux <span class="required-star">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        {{ form.montant_brut }}
+                                        <span class="input-group-text">{{ projet.devise }}</span>
+                                    </div>
+                                    <div class="form-help">
+                                        Total des travaux exécutés (HT)
+                                    </div>
+                                    {% if form.montant_brut.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.montant_brut.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- TVA taux -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.tva_taux.id_for_label }}" class="form-label">
+                                        Taux de TVA
+                                    </label>
+                                    <div class="input-group">
+                                        {{ form.tva_taux }}
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                    <div class="form-help">
+                                        Taux applicable (généralement 19% en Tunisie)
+                                    </div>
+                                </div>
+
+                                <!-- Retenue de garantie -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.retenue_garantie.id_for_label }}" class="form-label">
+                                        Retenue de garantie
+                                    </label>
+                                    <div class="input-group">
+                                        {{ form.retenue_garantie }}
+                                        <span class="input-group-text">{{ projet.devise }}</span>
+                                    </div>
+                                    <div class="form-help">
+                                        {% if projet.contrat and projet.contrat.retenue_garantie_pourcentage > 0 %}
+                                            Calcul suggéré : 
+                                            <strong id="retenueCalc">0,000</strong> {{ projet.devise }}
+                                            ({{ projet.contrat.retenue_garantie_pourcentage }}% du brut)
+                                        {% else %}
+                                            Montant retenu sur ce décompte
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- Pénalités -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.penalites.id_for_label }}" class="form-label">
+                                        Pénalités de retard
+                                    </label>
+                                    <div class="input-group">
+                                        {{ form.penalites }}
+                                        <span class="input-group-text">{{ projet.devise }}</span>
+                                    </div>
+                                    <div class="form-help">
+                                        Pénalités appliquées (le cas échéant)
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Calcul Preview -->
+                            <div class="calcul-preview">
+                                <h6 class="mb-3">
+                                    <i class="bi bi-receipt me-1"></i>
+                                    Aperçu du calcul
+                                </h6>
+                                <div class="row-line">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="label">Montant brut des travaux</span>
+                                        <span class="amount" id="previewBrut">0,000</span>
+                                    </div>
+                                </div>
+                                <div class="row-line">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="label text-danger">
+                                            <i class="bi bi-dash-circle me-1"></i>
+                                            Retenue de garantie
+                                        </span>
+                                        <span class="amount negative" id="previewRetenue">-0,000</span>
+                                    </div>
+                                </div>
+                                <div class="row-line">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="label text-danger">
+                                            <i class="bi bi-dash-circle me-1"></i>
+                                            Pénalités
+                                        </span>
+                                        <span class="amount negative" id="previewPenalites">-0,000</span>
+                                    </div>
+                                </div>
+                                <div class="row-line" style="background: rgba(0,0,0,.03); border-radius: 0.25rem; padding: 0.5rem;">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="label fw-bold">Base HT</span>
+                                        <span class="amount" id="previewBaseHT">0,000</span>
+                                    </div>
+                                </div>
+                                <div class="row-line">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="label text-success">
+                                            <i class="bi bi-plus-circle me-1"></i>
+                                            TVA (<span id="previewTvaTaux">19</span>%)
+                                        </span>
+                                        <span class="amount positive" id="previewTva">+0,000</span>
+                                    </div>
+                                </div>
+                                <div class="row-line total">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="label fw-bold fs-5">
+                                            <i class="bi bi-cash-stack me-1"></i>
+                                            MONTANT NET À PAYER
+                                        </span>
+                                        <span class="amount total" id="previewNet">0,000</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 3: OBSERVATIONS & DOCUMENT -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-chat-left-text-fill"></i>
+                                Observations & Document
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="{{ form.observations.id_for_label }}" class="form-label">
+                                        Observations
+                                    </label>
+                                    {{ form.observations }}
+                                    <div class="form-help">
+                                        Remarques, réserves, ou commentaires sur ce décompte
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <label for="{{ form.document.id_for_label }}" class="form-label">
+                                        Document du décompte (PDF, DOCX...)
+                                    </label>
+                                    {{ form.document }}
+                                    <div class="form-help">
+                                        Taille maximale : 10 MB. Formats acceptés : PDF, DOC, DOCX, XLS, XLSX
+                                    </div>
+                                    {% if decompte and decompte.document %}
+                                        <div class="alert alert-success mt-2 mb-0 small" role="alert">
+                                            <i class="bi bi-check-circle-fill me-1"></i>
+                                            Document actuel : 
+                                            <a href="{{ decompte.document.url }}" target="_blank" class="fw-bold">
+                                                {{ decompte.document.name }}
+                                            </a>
+                                            <small class="text-muted">(cliquez pour télécharger)</small>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- BOUTONS D'ACTION -->
+                        <!-- ============================================================ -->
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                            <a href="{% url 'projets:decompte_list' projet.pk %}" 
+                               class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i> Annuler
+                            </a>
+                            <div class="d-flex gap-2">
+                                <button type="reset" class="btn btn-outline-warning">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Réinitialiser
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle me-1"></i> 
+                                    {% if decompte %}Enregistrer les modifications{% else %}Créer le décompte{% endif %}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Info Box -->
+            <div class="alert alert-light border mt-3" role="alert">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-info-circle-fill text-primary me-2 mt-1"></i>
+                    <div class="small">
+                        <strong>Informations utiles :</strong>
+                        <ul class="mb-0 mt-1">
+                            <li>Les champs marqués d'un <span class="required-star">*</span> sont obligatoires.</li>
+                            <li>Le <strong>numéro du décompte</strong> doit être unique au sein du projet.</li>
+                            <li>Le <strong>montant net</strong> est calculé automatiquement selon la formule : 
+                                <code>(Brut - Retenue - Pénalités) + TVA</code></li>
+                            <li>La <strong>retenue de garantie</strong> est suggérée selon le pourcentage défini dans le contrat.</li>
+                            <li>Les <strong>types de décomptes</strong> :
+                                <ul class="mt-1">
+                                    <li><span class="badge bg-primary">Provisoire</span> - Situation de travaux périodique</li>
+                                    <li><span class="badge bg-success">Définitif</span> - Décompte final de clôture</li>
+                                    <li><span class="badge bg-warning">Révision de prix</span> - Ajustement selon index</li>
+                                </ul>
+                            </li>
+                            <li>Après l'enregistrement, le décompte suit un <strong>workflow de validation</strong> (Préparé → Soumis → Validé → Payé).</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Éléments du formulaire
+        const typeDecompteSelect = document.getElementById('{{ form.type_decompte.id_for_label }}');
+        const typeDecompteCards = document.querySelectorAll('.type-decompte-card');
+        
+        const montantBrutInput = document.getElementById('{{ form.montant_brut.id_for_label }}');
+        const tvaTauxInput = document.getElementById('{{ form.tva_taux.id_for_label }}');
+        const retenueInput = document.getElementById('{{ form.retenue_garantie.id_for_label }}');
+        const penalitesInput = document.getElementById('{{ form.penalites.id_for_label }}');
+
+        // Éléments d'affichage
+        const previewBrut = document.getElementById('previewBrut');
+        const previewRetenue = document.getElementById('previewRetenue');
+        const previewPenalites = document.getElementById('previewPenalites');
+        const previewBaseHT = document.getElementById('previewBaseHT');
+        const previewTva = document.getElementById('previewTva');
+        const previewTvaTaux = document.getElementById('previewTvaTaux');
+        const previewNet = document.getElementById('previewNet');
+        const retenueCalc = document.getElementById('retenueCalc');
+
+        // Constantes depuis le contexte Django
+		const devise = '{{ projet.devise }}';
+        const pourcentageRetenue = {% if projet.contrat %}{{ projet.contrat.retenue_garantie_pourcentage|default:0 }}{% else %}0{% endif %};
+
+        // Formatage du montant
+        function formatMontant(value) {
+            const num = parseFloat(value || 0);
+            const sign = num < 0 ? '-' : '';
+            return sign + Math.abs(num).toFixed(3).replace('.', ',');
+        }
+
+        // Gestion des cartes de type de décompte
+        function selectTypeDecompte(value) {
+            if (typeDecompteSelect) {
+                typeDecompteSelect.value = value;
+            }
+            typeDecompteCards.forEach(card => {
+                if (card.dataset.value === value) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
+        }
+
+        // Événements sur les cartes
+        typeDecompteCards.forEach(card => {
+            card.addEventListener('click', function() {
+                selectTypeDecompte(this.dataset.value);
+            });
+        });
+
+        // Sélection initiale si en mode édition
+        if (typeDecompteSelect && typeDecompteSelect.value) {
+            selectTypeDecompte(typeDecompteSelect.value);
+        } else {
+            // Sélection par défaut : PROVISOIRE
+            selectTypeDecompte('PROVISOIRE');
+        }
+
+        // Calcul du montant net
+        function calculateDecompte() {
+            const brut = parseFloat(montantBrutInput.value) || 0;
+            const tvaTaux = parseFloat(tvaTauxInput.value) || 0;
+            let retenue = parseFloat(retenueInput.value) || 0;
+            const penalites = parseFloat(penalitesInput.value) || 0;
+
+            // Calcul automatique de la retenue si vide et pourcentage défini
+            if (pourcentageRetenue > 0 && retenueInput.value === '' && brut > 0) {
+                retenue = (brut * pourcentageRetenue) / 100;
+                if (retenueCalc) {
+                    retenueCalc.textContent = formatMontant(retenue);
+                }
+            }
+
+            const baseHT = brut - retenue - penalites;
+            const tva = baseHT * (tvaTaux / 100);
+            const net = baseHT + tva;
+
+            // Mise à jour de l'aperçu
+            previewBrut.textContent = formatMontant(brut) + ' ' + devise;
+            previewRetenue.textContent = '-' + formatMontant(retenue) + ' ' + devise;
+            previewPenalites.textContent = '-' + formatMontant(penalites) + ' ' + devise;
+            previewBaseHT.textContent = formatMontant(baseHT) + ' ' + devise;
+            previewTva.textContent = '+' + formatMontant(tva) + ' ' + devise;
+            previewTvaTaux.textContent = tvaTaux;
+            previewNet.textContent = formatMontant(net) + ' ' + devise;
+
+            // Couleur du montant net
+            if (net < 0) {
+                previewNet.style.color = '#dc3545';
+            } else {
+                previewNet.style.color = '#0d6efd';
+            }
+        }
+
+        // Événements
+        if (montantBrutInput) montantBrutInput.addEventListener('input', calculateDecompte);
+        if (tvaTauxInput) tvaTauxInput.addEventListener('input', calculateDecompte);
+        if (retenueInput) retenueInput.addEventListener('input', calculateDecompte);
+        if (penalitesInput) penalitesInput.addEventListener('input', calculateDecompte);
+
+        // Calcul initial
+        calculateDecompte();
+
+        // Confirmation avant réinitialisation
+        const resetButton = document.querySelector('button[type="reset"]');
+        if (resetButton) {
+            resetButton.addEventListener('click', function(e) {
+                if (!confirm('Êtes-vous sûr de vouloir réinitialiser le formulaire ?')) {
+                    e.preventDefault();
+                } else {
+                    // Réinitialiser les cartes
+                    typeDecompteCards.forEach(card => card.classList.remove('selected'));
+                    // Réinitialiser le calcul
+                    setTimeout(calculateDecompte, 100);
+                }
+            });
+        }
+
+        // Activation des tooltips
+        var tooltipTriggerList = [].slice.call(
+            document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        );
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

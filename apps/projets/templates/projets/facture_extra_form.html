@@ -1,0 +1,536 @@
+{% extends 'base.html' %}
+{% load static i18n projet_extras %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #fff;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #e9ecef;
+    }
+    .form-section-title {
+        color: #d35400;
+        font-weight: 600;
+        font-size: 1.1rem;
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.25rem;
+        border-bottom: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+    }
+    .form-section-title i {
+        margin-right: 0.5rem;
+        font-size: 1.25rem;
+    }
+    .required-star {
+        color: #dc3545;
+        font-weight: bold;
+    }
+    .form-help {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+    .form-card {
+        border: none;
+        border-radius: 0.75rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
+    }
+    .form-header {
+        background: linear-gradient(135deg, #e67e22 0%, #e74c3c 100%);
+        color: white;
+        border-radius: 0.75rem 0.75rem 0 0;
+        padding: 1.25rem 1.5rem;
+    }
+    .form-header h4 {
+        color: white;
+        margin: 0;
+    }
+    .form-header .subtitle {
+        opacity: 0.9;
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+    }
+    .projet-context {
+        background: #fff5e6;
+        border-left: 4px solid #e67e22;
+        padding: 1rem 1.25rem;
+        border-radius: 0 0.5rem 0.5rem 0;
+        margin-bottom: 1.5rem;
+    }
+    .projet-context .label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+    }
+    .projet-context .value {
+        font-weight: 600;
+        color: #212529;
+    }
+    .calcul-preview {
+        background: linear-gradient(135deg, #fff5e6 0%, #ffe5e5 100%);
+        border: 2px dashed #e74c3c;
+        border-radius: 0.5rem;
+        padding: 1.25rem;
+        margin-top: 1rem;
+    }
+    .calcul-preview .row-line {
+        padding: 0.5rem 0;
+        border-bottom: 1px dashed rgba(0,0,0,.1);
+    }
+    .calcul-preview .row-line:last-child {
+        border-bottom: none;
+    }
+    .calcul-preview .row-line.total {
+        background: rgba(231, 76, 60, 0.1);
+        border-radius: 0.25rem;
+        padding: 0.75rem;
+        margin-top: 0.5rem;
+        border: 2px solid #e74c3c;
+    }
+    .calcul-preview .label {
+        font-size: 0.9rem;
+        color: #495057;
+    }
+    .calcul-preview .amount {
+        font-weight: 700;
+        font-family: 'Courier New', monospace;
+        font-size: 1.1rem;
+    }
+    .calcul-preview .amount.total { 
+        color: #e74c3c; 
+        font-size: 1.5rem;
+    }
+    .warning-extra {
+        background: linear-gradient(135deg, #fff3cd 0%, #ffe5e5 100%);
+        border: 1px solid #ffc107;
+        border-left: 4px solid #e74c3c;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .warning-extra i {
+        color: #e74c3c;
+    }
+    .justification-box {
+        background: #fff8e1;
+        border-left: 4px solid #ffa726;
+        padding: 1rem;
+        border-radius: 0 0.5rem 0.5rem 0;
+    }
+    .justification-box textarea {
+        background: rgba(255, 255, 255, 0.7);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_list' %}">
+                    <i class="bi bi-kanban"></i> Projets
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_detail' projet.pk %}">
+                    {{ projet.reference }}
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+                <i class="bi bi-receipt"></i> Nouvelle facture extra
+            </li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Warning Box -->
+            <div class="warning-extra">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-exclamation-triangle-fill me-2 mt-1 fs-4"></i>
+                    <div>
+                        <strong class="d-block mb-1">Facture Extra - Travaux hors contrat</strong>
+                        <p class="mb-0 small">
+                            Cette facture concerne des travaux <strong>non prévus au contrat initial</strong>.
+                            Elle doit être <strong>impérativement justifiée</strong> et approuvée par la direction
+                            avant d'être soumise au client.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Projet Context -->
+            <div class="projet-context">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="label">Projet</div>
+                        <div class="value">
+                            <i class="bi bi-folder2-open text-primary"></i>
+                            {{ projet.reference }}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="label">Montant du contrat</div>
+                        <div class="value text-primary">
+                            {{ projet.montant_final|floatformat:3 }} {{ projet.devise }}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="label">Factures extra existantes</div>
+                        <div class="value">
+                            <span class="badge bg-warning text-dark">
+                                {{ projet.factures_extra.count }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Card -->
+            <div class="card form-card shadow-sm">
+                <div class="form-header">
+                    <h4>
+                        <i class="bi bi-receipt me-2"></i>
+                        {{ title }}
+                    </h4>
+                    <div class="subtitle">
+                        Enregistrez une facture pour des travaux supplémentaires non prévus au contrat
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    <form method="post" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+
+                        <!-- Erreurs globales -->
+                        {% if form.errors %}
+                        <div class="alert alert-danger d-flex align-items-start mb-4" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
+                            <div class="flex-grow-1">
+                                <strong>Erreur de validation !</strong>
+                                Veuillez corriger les erreurs ci-dessous.
+                                <ul class="mb-0 mt-2 small">
+                                    {% for field, errors in form.errors.items %}
+                                        {% for error in errors %}
+                                            <li><strong>{{ field }}:</strong> {{ error }}</li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 1: IDENTIFICATION DE LA FACTURE -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-tag-fill"></i>
+                                Identification de la facture
+                            </div>
+                            <div class="row g-3">
+                                <!-- Numéro -->
+                                <div class="col-md-4">
+                                    <label for="{{ form.numero.id_for_label }}" class="form-label">
+                                        Numéro de facture <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.numero }}
+                                    <div class="form-help">
+                                        Ex: FE-2026-001, EXTRA-001
+                                    </div>
+                                    {% if form.numero.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.numero.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Référence OS -->
+                                <div class="col-md-4">
+                                    <label for="{{ form.reference_os.id_for_label }}" class="form-label">
+                                        Référence Ordre de Service (OS)
+                                    </label>
+                                    {{ form.reference_os }}
+                                    <div class="form-help">
+                                        N° de l'OS qui a autorisé les travaux
+                                    </div>
+                                </div>
+
+                                <!-- Date -->
+                                <div class="col-md-4">
+                                    <label for="{{ form.date_facture.id_for_label }}" class="form-label">
+                                        Date de la facture <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.date_facture }}
+                                    {% if form.date_facture.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.date_facture.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Description -->
+                                <div class="col-12">
+                                    <label for="{{ form.description.id_for_label }}" class="form-label">
+                                        Description des travaux <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.description }}
+                                    <div class="form-help">
+                                        Description synthétique des travaux supplémentaires réalisés
+                                    </div>
+                                    {% if form.description.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.description.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 2: JUSTIFICATION -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-shield-exclamation"></i>
+                                Justification des travaux extra
+                            </div>
+                            <div class="justification-box">
+                                <div class="alert alert-warning small mb-3" role="alert">
+                                    <i class="bi bi-info-circle-fill me-1"></i>
+                                    <strong>Important :</strong> La justification est obligatoire pour toute facture extra.
+                                    Elle doit expliquer pourquoi ces travaux n'étaient pas prévus au contrat initial.
+                                </div>
+                                <label for="{{ form.justification.id_for_label }}" class="form-label fw-bold">
+                                    <i class="bi bi-chat-left-quote me-1"></i>
+                                    Justification détaillée
+                                </label>
+                                {{ form.justification }}
+                                <div class="form-help">
+                                    Ex: Travaux imprévus suite à découverte de... / 
+                                    Modification demandée par le client le... / 
+                                    Urgence technique nécessitant...
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 3: CALCUL FINANCIER -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-calculator-fill"></i>
+                                Calcul financier
+                            </div>
+                            <div class="row g-3">
+                                <!-- Montant HT -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.montant_ht.id_for_label }}" class="form-label">
+                                        Montant HT <span class="required-star">*</span>
+                                    </label>
+                                    <div class="input-group">
+                                        {{ form.montant_ht }}
+                                        <span class="input-group-text">{{ projet.devise }}</span>
+                                    </div>
+                                    <div class="form-help">
+                                        Montant hors taxes des travaux supplémentaires
+                                    </div>
+                                    {% if form.montant_ht.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.montant_ht.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- TVA taux -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.tva_taux.id_for_label }}" class="form-label">
+                                        Taux de TVA
+                                    </label>
+                                    <div class="input-group">
+                                        {{ form.tva_taux }}
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                    <div class="form-help">
+                                        Taux applicable (généralement 19% en Tunisie)
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Calcul Preview -->
+                            <div class="calcul-preview">
+                                <h6 class="mb-3">
+                                    <i class="bi bi-receipt me-1"></i>
+                                    Aperçu du calcul
+                                </h6>
+                                <div class="row-line">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="label">Montant HT des travaux</span>
+                                        <span class="amount" id="previewHT">0,000</span>
+                                    </div>
+                                </div>
+                                <div class="row-line">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="label text-success">
+                                            <i class="bi bi-plus-circle me-1"></i>
+                                            TVA (<span id="previewTvaTaux">19</span>%)
+                                        </span>
+                                        <span class="amount" style="color: #198754;" id="previewTva">+0,000</span>
+                                    </div>
+                                </div>
+                                <div class="row-line total">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="label fw-bold fs-5">
+                                            <i class="bi bi-cash-stack me-1"></i>
+                                            MONTANT TTC À FACTURER
+                                        </span>
+                                        <span class="amount total" id="previewTTC">0,000</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 4: DOCUMENT -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-paperclip"></i>
+                                Documents justificatifs
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <label for="{{ form.document.id_for_label }}" class="form-label">
+                                        Document de la facture (PDF, DOCX...)
+                                    </label>
+                                    {{ form.document }}
+                                    <div class="form-help">
+                                        Taille maximale : 10 MB. Formats acceptés : PDF, DOC, DOCX, XLS, XLSX, JPG, PNG
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- BOUTONS D'ACTION -->
+                        <!-- ============================================================ -->
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                            <a href="{% url 'projets:projet_detail' projet.pk %}" 
+                               class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i> Annuler
+                            </a>
+                            <div class="d-flex gap-2">
+                                <button type="reset" class="btn btn-outline-warning">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Réinitialiser
+                                </button>
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="bi bi-check-circle me-1"></i> Créer la facture extra
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Info Box -->
+            <div class="alert alert-light border mt-3" role="alert">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-info-circle-fill text-danger me-2 mt-1"></i>
+                    <div class="small">
+                        <strong>Informations importantes :</strong>
+                        <ul class="mb-0 mt-1">
+                            <li>Les champs marqués d'un <span class="required-star">*</span> sont obligatoires.</li>
+                            <li>Le <strong>numéro de facture</strong> doit être unique.</li>
+                            <li>Le <strong>montant TTC</strong> est calculé automatiquement : 
+                                <code>HT + (HT × TVA%)</code></li>
+                            <li>La <strong>justification</strong> est <strong>obligatoire</strong> pour toute facture extra.</li>
+                            <li>La <strong>référence OS</strong> est fortement recommandée (Ordre de Service du client).</li>
+                            <li>Après l'enregistrement, la facture suit un <strong>workflow d'approbation</strong> :
+                                <span class="badge bg-secondary">Brouillon</span> →
+                                <span class="badge bg-primary">Soumise</span> →
+                                <span class="badge bg-success">Approuvée</span> →
+                                <span class="badge bg-info">Payée</span>
+                            </li>
+                            <li>Les factures extra sont <strong>comptabilisées séparément</strong> des décomptes contractuels.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Éléments du formulaire
+        const montantHTInput = document.getElementById('{{ form.montant_ht.id_for_label }}');
+        const tvaTauxInput = document.getElementById('{{ form.tva_taux.id_for_label }}');
+
+        // Éléments d'affichage
+        const previewHT = document.getElementById('previewHT');
+        const previewTva = document.getElementById('previewTva');
+        const previewTvaTaux = document.getElementById('previewTvaTaux');
+        const previewTTC = document.getElementById('previewTTC');
+
+        // Constantes depuis le contexte Django
+        const devise = '{{ projet.devise }}';
+
+        // Formatage du montant
+        function formatMontant(value) {
+            const num = parseFloat(value || 0);
+            return num.toFixed(3).replace('.', ',');
+        }
+
+        // Calcul du montant TTC
+        function calculateFacture() {
+            const ht = parseFloat(montantHTInput.value) || 0;
+            const tvaTaux = parseFloat(tvaTauxInput.value) || 0;
+
+            const tva = ht * (tvaTaux / 100);
+            const ttc = ht + tva;
+
+            // Mise à jour de l'aperçu
+            previewHT.textContent = formatMontant(ht) + ' ' + devise;
+            previewTva.textContent = '+' + formatMontant(tva) + ' ' + devise;
+            previewTvaTaux.textContent = tvaTaux;
+            previewTTC.textContent = formatMontant(ttc) + ' ' + devise;
+        }
+
+        // Événements
+        if (montantHTInput) montantHTInput.addEventListener('input', calculateFacture);
+        if (tvaTauxInput) tvaTauxInput.addEventListener('input', calculateFacture);
+
+        // Calcul initial
+        calculateFacture();
+
+        // Confirmation avant réinitialisation
+        const resetButton = document.querySelector('button[type="reset"]');
+        if (resetButton) {
+            resetButton.addEventListener('click', function(e) {
+                if (!confirm('Êtes-vous sûr de vouloir réinitialiser le formulaire ?')) {
+                    e.preventDefault();
+                } else {
+                    setTimeout(calculateFacture, 100);
+                }
+            });
+        }
+
+        // Activation des tooltips
+        var tooltipTriggerList = [].slice.call(
+            document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        );
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}			

@@ -1,0 +1,55 @@
+{% load famille_extras %}
+
+<li class="list-group-item family-item">
+    <div class="d-flex justify-content-between align-items-center clickable-row"
+         role="button"
+         data-bs-toggle="collapse"
+         data-bs-target="#children-{{ item.family.id }}"
+         aria-expanded="false">
+        <div class="d-flex align-items-center flex-grow-1">
+            <!-- المسافة البصرية حسب المستوى الهرمي -->
+            {% for i in item.family.get_hierarchy_level|get_range %}
+                <span class="mx-1 text-muted">|&mdash;</span>
+            {% endfor %}
+
+            <!-- أيقونة التوسيع/الطي -->
+            <i class="bi bi-plus-square me-2 toggle-icon"
+               data-target="#children-{{ item.family.id }}"></i>
+
+            <!-- معلومات العائلة -->
+            <div>
+                <strong>{{ item.family.code_segment }}</strong>
+                <small class="text-muted ms-1">({{ item.family.full_code }})</small>
+                &nbsp;-&nbsp;{{ item.family.name }}
+                {% if item.family.description %}
+                    <div class="text-muted small mt-1">{{ item.family.description }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- أزرار التعديل والحذف -->
+        <div class="btn-group btn-group-sm">
+            <a href="?edit={{ item.family.id }}" class="btn btn-outline-primary">
+                <i class="bi bi-pencil"></i>
+            </a>
+            <form method="post" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette famille ?')">
+                {% csrf_token %}
+                <input type="hidden" name="delete_id" value="{{ item.family.id }}">
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- الأبناء (يظهر عند التوسيع) -->
+    {% if item.children %}
+        <div class="collapse" id="children-{{ item.family.id }}">
+            <ul class="list-group mt-1 ms-4">
+                {% for child in item.children %}
+                    {% include 'core/famille_tree_item.html' with item=child %}
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+</li>

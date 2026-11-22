@@ -1,0 +1,47 @@
+<!-- templates/core/equipement_list.html -->
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Liste des Équipements</h2>
+        <a href="{% url 'core:equipement_create' %}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Ajouter un équipement
+        </a>
+    </div>
+    <table class="table table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Désignation</th>
+                <th>Type</th>
+                <th>N° Série</th>
+                <th>Numéro BP</th>
+                <th>Statut</th>
+				<th>َAction</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in equipements %}
+            <tr>
+                <td>{{ e.libelle }}</td>
+                <td>{{ e.get_type_equipement_display }}</td>
+                <td>{{ e.numero_serie|default:"—" }}</td>
+                <td>{{ e.numero_bp|default:"—" }}</td>
+                <td>
+                    {% if e.actif %}<span class="badge bg-success">Actif</span>{% else %}<span class="badge bg-danger">Inactif</span>{% endif %}
+                </td>
+				<td>
+					<a href="{% url 'core:equipement_update' e.pk %}" class="btn btn-sm btn-warning">
+						<i class="bi bi-pencil"></i>
+					</a>
+					<!-- زر الحذف الجديد -->
+					<a href="{% url 'core:equipement_delete' e.pk %}" class="btn btn-sm btn-danger"
+					   onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet équipement ?');">
+						<i class="bi bi-trash"></i>
+					</a>
+				</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

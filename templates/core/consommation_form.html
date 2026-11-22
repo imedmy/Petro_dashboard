@@ -1,0 +1,55 @@
+<!-- templates/core/consommation_form.html -->
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ title }}</h2>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">{{ form.engin.label }}</label>
+                {{ form.engin }}
+                {% if form.engin.errors %}
+                    <div class="text-danger">{{ form.engin.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.date_ravitaillement.label }}</label>
+                {{ form.date_ravitaillement }}
+                {% if form.date_ravitaillement.errors %}
+                    <div class="text-danger">{{ form.date_ravitaillement.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.volume_l.label }}</label>
+                {{ form.volume_l }}
+                {% if form.volume_l.errors %}
+                    <div class="text-danger">{{ form.volume_l.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.type_carburant.label }}</label>
+                {{ form.type_carburant }}
+                {% if form.type_carburant.errors %}
+                    <div class="text-danger">{{ form.type_carburant.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-12">
+                <label class="form-label">{{ form.observation.label }}</label>
+                {{ form.observation }}
+                {% if form.observation.errors %}
+                    <div class="text-danger">{{ form.observation.errors }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">{{ title }}</button>
+            <a href="{% url 'core:consommation_list' %}" class="btn btn-secondary">Annuler</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

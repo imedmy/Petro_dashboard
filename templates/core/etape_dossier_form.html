@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-file-earmark-plus"></i> {{ title }}</h2>
+        <a href="{% url 'core:etape_dossier_list' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Retour à la liste
+        </a>
+    </div>
+
+    <div class="col-md-6">
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label">Code Étape *</label>
+                {{ form.code_etape }}
+                {% if form.code_etape.errors %}
+                    <div class="text-danger">{{ form.code_etape.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Libellé de l'Étape *</label>
+                {{ form.libelle_etape }}
+                {% if form.libelle_etape.errors %}
+                    <div class="text-danger">{{ form.libelle_etape.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Influence sur le dossier *</label>
+                {{ form.influence }}
+                {% if form.influence.errors %}
+                    <div class="text-danger">{{ form.influence.errors }}</div>
+                {% endif %}
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save"></i> Enregistrer
+            </button>
+            <a href="{% url 'core:etape_dossier_list' %}" class="btn btn-secondary">Annuler</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

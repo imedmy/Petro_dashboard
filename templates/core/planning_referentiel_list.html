@@ -1,0 +1,51 @@
+<!-- templates/core/planning_referentiel_list.html -->
+{% extends "base.html" %}
+{% block title %}Planning Référentiel{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Planning Référentiel des Tâches</h2>
+        <a href="{% url 'core:planning_referentiel_create' %}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Nouveau Planning
+        </a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Libellé</th>
+                    <th>Nature</th>
+                    <th>Délai (jours)</th>
+                    <th>Observation</th>
+                    <th>Créé le</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in plannings %}
+                <tr>
+                    <td>{{ p.libelle|default:"-" }}</td>
+                    <td>
+                        {% if p.nature == 'repetitive' %}
+                            <span class="badge bg-primary">Répétitive</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Ponctuelle</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ p.delai_repetition }}</td>
+                    <td>{{ p.observation|default:"-" }}</td>
+                    <td>{{ p.created_at|date:"d/m/Y à H:i" }}</td>
+                    <td>
+                        <a href="{% url 'core:planning_referentiel_update' p.pk %}" class="btn btn-sm btn-warning">Modifier</a>
+                        <a href="{% url 'core:planning_referentiel_delete' p.pk %}" class="btn btn-sm btn-danger">Supprimer</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center">Aucun planning référentiel</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

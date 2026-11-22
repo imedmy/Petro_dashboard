@@ -1,0 +1,504 @@
+{% extends 'base.html' %}
+{% load static i18n projet_extras %}
+
+{% block title %}Lot {{ lot.numero }} - {{ lot.designation }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .lot-header {
+        background: linear-gradient(135deg, #198754 0%, #20c997 100%);
+        color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .lot-header h2 {
+        color: white;
+        margin-bottom: 0.25rem;
+    }
+    .lot-header .reference {
+        opacity: 0.9;
+        font-size: 0.9rem;
+    }
+    
+    .info-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border-left: 4px solid;
+    }
+    .info-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,.08);
+    }
+    .info-card.montant    { border-left-color: #0d6efd; }
+    .info-card.avancement { border-left-color: #ffc107; }
+    .info-card.statut     { border-left-color: #198754; }
+    .info-card.periode    { border-left-color: #6f42c1; }
+    
+    .ouvrage-row {
+        transition: background-color 0.2s;
+    }
+    .ouvrage-row:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .ouvrage-code {
+        font-family: 'Courier New', monospace;
+        font-weight: 600;
+        color: #0d6efd;
+    }
+    
+    .mini-stat {
+        text-align: center;
+        padding: 1rem 0.5rem;
+        background: #f8f9fa;
+        border-radius: 0.5rem;
+    }
+    .mini-stat .value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    .mini-stat .label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        margin-top: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_list' %}">
+                    <i class="bi bi-kanban"></i> Projets
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_detail' lot.projet.pk %}">
+                    {{ lot.projet.reference }}
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+                Lot {{ lot.numero }}
+            </li>
+        </ol>
+    </nav>
+
+    <!-- Lot Header -->
+    <div class="lot-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="reference mb-1">
+                    <i class="bi bi-hash"></i> Lot n°{{ lot.numero }}
+                    <span class="mx-2">•</span>
+                    <i class="bi bi-folder2-open"></i> {{ lot.projet.reference }}
+                    {% if lot.date_debut or lot.date_fin %}
+                        <span class="mx-2">•</span>
+                        <i class="bi bi-calendar-event"></i>
+                        {{ lot.date_debut|date:"d/m/Y"|default:"-" }} 
+                        <i class="bi bi-arrow-right mx-1"></i> 
+                        {{ lot.date_fin|date:"d/m/Y"|default:"-" }}
+                    {% endif %}
+                </div>
+                <h2>{{ lot.designation }}</h2>
+                {% if lot.description %}
+                    <p class="mb-0 opacity-75">
+                        {{ lot.description|truncatechars:150 }}
+                    </p>
+                {% endif %}
+            </div>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <a href="{% url 'projets:lot_update' lot.pk %}" 
+                   class="btn btn-light">
+                    <i class="bi bi-pencil me-1"></i> Modifier
+                </a>
+                <a href="{% url 'projets:ouvrage_create' lot.pk %}" 
+                   class="btn btn-outline-light ms-1">
+                    <i class="bi bi-plus-circle me-1"></i> Nouvel ouvrage
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card info-card montant shadow-sm h-100">
+                <div class="card-body">
+                    <small class="text-muted text-uppercase d-block">Montant du lot</small>
+                    <div class="h4 mb-0 mt-1 fw-bold text-primary">
+                        {{ lot.montant|floatformat:3 }}
+                        <small class="text-muted">{{ lot.projet.devise }}</small>
+                    </div>
+                    {% if lot.projet.montant_final > 0 %}
+                        <small class="text-muted d-block mt-2">
+                            {% widthratio lot.montant lot.projet.montant_final 100 as pct %}
+                            {{ pct|floatformat:1 }}% du montant total
+                        </small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card info-card avancement shadow-sm h-100">
+                <div class="card-body">
+                    <small class="text-muted text-uppercase d-block">Avancement</small>
+                    <div class="d-flex align-items-center mt-2">
+                        <div class="progress flex-grow-1 me-2" style="height: 14px;">
+                            <div class="progress-bar 
+                                {% if lot.pourcentage_avancement >= 100 %}bg-success
+                                {% elif lot.pourcentage_avancement >= 75 %}bg-primary
+                                {% elif lot.pourcentage_avancement >= 50 %}bg-info
+                                {% elif lot.pourcentage_avancement >= 25 %}bg-warning
+                                {% else %}bg-danger{% endif %}"
+                                style="width: {{ lot.pourcentage_avancement }}%">
+                            </div>
+                        </div>
+                        <strong class="fs-5">{{ lot.pourcentage_avancement|floatformat:0 }}%</strong>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        {{ lot.ouvrages.count }} ouvrage(s)
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card info-card statut shadow-sm h-100">
+                <div class="card-body">
+                    <small class="text-muted text-uppercase d-block">Statut</small>
+                    <div class="mt-2">
+                        {% if lot.statut == 'EN_COURS' %}
+                            <span class="badge bg-success fs-6">
+                                <i class="bi bi-play-circle-fill me-1"></i>En cours
+                            </span>
+                        {% elif lot.statut == 'NON_COMMENCE' %}
+                            <span class="badge bg-secondary fs-6">
+                                <i class="bi bi-clock-fill me-1"></i>Non commencé
+                            </span>
+                        {% elif lot.statut == 'SUSPENDU' %}
+                            <span class="badge bg-warning text-dark fs-6">
+                                <i class="bi bi-pause-circle-fill me-1"></i>Suspendu
+                            </span>
+                        {% elif lot.statut == 'ACHEVE' %}
+                            <span class="badge bg-info fs-6">
+                                <i class="bi bi-check-circle-fill me-1"></i>Achevé
+                            </span>
+                        {% endif %}
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        Ordre: {{ lot.ordre_execution }}
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card info-card periode shadow-sm h-100">
+                <div class="card-body">
+                    <small class="text-muted text-uppercase d-block">Période</small>
+                    <div class="mt-1">
+                        <div class="d-flex align-items-center mb-1">
+                            <i class="bi bi-calendar-check text-success me-2"></i>
+                            <div>
+                                <small class="text-muted d-block">Début</small>
+                                <strong>{{ lot.date_debut|date:"d/m/Y"|default:"-" }}</strong>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-calendar-x text-danger me-2"></i>
+                            <div>
+                                <small class="text-muted d-block">Fin</small>
+                                <strong>{{ lot.date_fin|date:"d/m/Y"|default:"-" }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="mini-stat">
+                <div class="value text-primary">{{ lot.ouvrages.count }}</div>
+                <div class="label">Ouvrages</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="mini-stat">
+                <div class="value text-info">
+                    {% with total_taches=0 %}
+                        {% for ouvrage in ouvrages %}
+                            {% with taches_count=ouvrage.taches.count %}
+                                {% if forloop.first %}
+                                    {{ taches_count }}
+                                {% endif %}
+                            {% endwith %}
+                        {% endfor %}
+                    {% endwith %}
+                    0
+                </div>
+                <div class="label">Tâches</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="mini-stat">
+                <div class="value text-warning">
+                    {% with total_articles=0 %}
+                        {% for ouvrage in ouvrages %}
+                            {% with articles_count=ouvrage.articles.count %}
+                                {% if forloop.first %}
+                                    {{ articles_count }}
+                                {% endif %}
+                            {% endwith %}
+                        {% endfor %}
+                    {% endwith %}
+                    0
+                </div>
+                <div class="label">Articles</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="mini-stat">
+                <div class="value text-success">
+                    {% with acheves=0 %}
+                        {% for ouvrage in ouvrages %}
+                            {% if ouvrage.statut == 'ACHEVE' %}
+                                {% if forloop.first %}1{% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endwith %}
+                    0
+                </div>
+                <div class="label">Ouvrages achevés</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ouvrages Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-building me-2 text-primary"></i>
+                Ouvrages du lot
+                <span class="badge bg-secondary ms-2">{{ ouvrages.count }}</span>
+            </h5>
+            <a href="{% url 'projets:ouvrage_create' lot.pk %}" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Nouvel ouvrage
+            </a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="ouvragesTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 100px;">Code</th>
+                            <th>Désignation</th>
+                            <th style="width: 120px;">Type</th>
+                            <th style="width: 100px;">Quantité</th>
+                            <th style="width: 120px;">PU</th>
+                            <th style="width: 140px;">Montant</th>
+                            <th style="width: 180px;">Avancement</th>
+                            <th style="width: 120px;">Statut</th>
+                            <th style="width: 100px;" class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ouvrage in ouvrages %}
+                        <tr class="ouvrage-row">
+                            <td>
+                                <span class="ouvrage-code">{{ ouvrage.code }}</span>
+                            </td>
+                            <td>
+                                <a href="{% url 'projets:ouvrage_detail' ouvrage.pk %}" 
+                                   class="text-decoration-none fw-semibold">
+                                    {{ ouvrage.designation }}
+                                </a>
+                                {% if ouvrage.description %}
+                                    <div class="small text-muted">
+                                        {{ ouvrage.description|truncatechars:60 }}
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if ouvrage.type_ouvrage %}
+                                    <span class="badge bg-light text-dark border">
+                                        {{ ouvrage.type_ouvrage|truncatechars:20 }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ ouvrage.quantite|floatformat:2 }}
+                                {% if ouvrage.unite %}
+                                    <small class="text-muted">{{ ouvrage.unite.symbole|default:ouvrage.unite.code }}</small>
+                                {% endif %}
+                            </td>
+                            <td>{{ ouvrage.prix_unitaire|floatformat:3 }}</td>
+                            <td class="fw-semibold">
+                                {{ ouvrage.montant|floatformat:3 }}
+                                <small class="text-muted">{{ lot.projet.devise }}</small>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress flex-grow-1 me-2" style="height: 8px;">
+                                        <div class="progress-bar 
+                                            {% if ouvrage.pourcentage_avancement >= 100 %}bg-success
+                                            {% elif ouvrage.pourcentage_avancement >= 75 %}bg-primary
+                                            {% elif ouvrage.pourcentage_avancement >= 50 %}bg-info
+                                            {% elif ouvrage.pourcentage_avancement >= 25 %}bg-warning
+                                            {% else %}bg-danger{% endif %}"
+                                            style="width: {{ ouvrage.pourcentage_avancement }}%"></div>
+                                    </div>
+                                    <small class="fw-bold text-nowrap">
+                                        {{ ouvrage.pourcentage_avancement|floatformat:0 }}%
+                                    </small>
+                                </div>
+                            </td>
+                            <td>
+                                {% if ouvrage.statut == 'EN_COURS' %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-play-circle-fill me-1"></i>En cours
+                                    </span>
+                                {% elif ouvrage.statut == 'NON_COMMENCE' %}
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-clock-fill me-1"></i>Non commencé
+                                    </span>
+                                {% elif ouvrage.statut == 'SUSPENDU' %}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="bi bi-pause-circle-fill me-1"></i>Suspendu
+                                    </span>
+                                {% elif ouvrage.statut == 'ACHEVE' %}
+                                    <span class="badge bg-info">
+                                        <i class="bi bi-check-circle-fill me-1"></i>Achevé
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'projets:ouvrage_detail' ouvrage.pk %}" 
+                                       class="btn btn-outline-primary"
+                                       title="Voir les détails"
+                                       data-bs-toggle="tooltip">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'projets:tache_create' ouvrage.pk %}" 
+                                       class="btn btn-outline-success"
+                                       title="Ajouter une tâche"
+                                       data-bs-toggle="tooltip">
+                                        <i class="bi bi-plus-circle"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center py-5">
+                                <i class="bi bi-building text-muted fs-1 d-block mb-3"></i>
+                                <h5 class="text-muted">Aucun ouvrage défini</h5>
+                                <p class="text-muted mb-3">
+                                    Commencez par créer le premier ouvrage de ce lot
+                                </p>
+                                <a href="{% url 'projets:ouvrage_create' lot.pk %}" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-1"></i> Créer le premier ouvrage
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    {% if ouvrages %}
+                    <tfoot class="table-light">
+                        <tr class="fw-bold">
+                            <td colspan="5" class="text-end">TOTAL :</td>
+                            <td>
+                                {% with total=0 %}
+                                    {% for ouvrage in ouvrages %}
+                                        {% if forloop.first %}
+                                            {{ ouvrage.montant|floatformat:3 }}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endwith %}
+                                <small class="text-muted">{{ lot.projet.devise }}</small>
+                            </td>
+                            <td colspan="3"></td>
+                        </tr>
+                    </tfoot>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="bi bi-lightning-fill me-2 text-warning"></i>
+                Actions rapides
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <a href="{% url 'projets:ouvrage_create' lot.pk %}" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-building me-2"></i> Nouvel ouvrage
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'projets:lot_update' lot.pk %}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-pencil me-2"></i> Modifier le lot
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'projets:projet_detail' lot.projet.pk %}" class="btn btn-outline-info w-100">
+                        <i class="bi bi-arrow-left me-2"></i> Retour au projet
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'projets:ged_upload' lot.projet.pk %}" class="btn btn-outline-success w-100">
+                        <i class="bi bi-upload me-2"></i> Upload document
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Initialisation de DataTables
+        $('#ouvragesTable').DataTable({
+            language: {
+                url: '{% static "datatables/i18n/fr-FR.json" %}'
+            },
+            paging: false,
+            searching: true,
+            info: false,
+            order: [[0, 'asc']],
+            columnDefs: [
+                { orderable: false, targets: [8] },
+                { width: '100px', targets: [0, 3] },
+                { width: '120px', targets: [2, 5] },
+                { width: '180px', targets: [6] }
+            ],
+            stateSave: true,
+            stateDuration: 60 * 60 * 24
+        });
+
+        // Activation des tooltips
+        var tooltipTriggerList = [].slice.call(
+            document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        );
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

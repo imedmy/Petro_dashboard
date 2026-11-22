@@ -1,0 +1,481 @@
+{% extends 'base.html' %}
+{% load static i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #fff;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid #e9ecef;
+    }
+    .form-section-title {
+        color: #0d6efd;
+        font-weight: 600;
+        font-size: 1.1rem;
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.25rem;
+        border-bottom: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+    }
+    .form-section-title i {
+        margin-right: 0.5rem;
+        font-size: 1.25rem;
+    }
+    .required-star {
+        color: #dc3545;
+        font-weight: bold;
+    }
+    .form-help {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+    .form-card {
+        border: none;
+        border-radius: 0.75rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,.075);
+    }
+    .form-header {
+        background: linear-gradient(135deg, #0d6efd 0%, #0dcaf0 100%);
+        color: white;
+        border-radius: 0.75rem 0.75rem 0 0;
+        padding: 1.25rem 1.5rem;
+    }
+    .form-header h4 {
+        color: white;
+        margin: 0;
+    }
+    .form-header .subtitle {
+        opacity: 0.9;
+        font-size: 0.9rem;
+        margin-top: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_list' %}">
+                    <i class="bi bi-kanban"></i> Projets
+                </a>
+            </li>
+            {% if projet %}
+                <li class="breadcrumb-item">
+                    <a href="{% url 'projets:projet_detail' projet.pk %}">
+                        {{ projet.reference }}
+                    </a>
+                </li>
+                <li class="breadcrumb-item active" aria-current="page">
+                    <i class="bi bi-pencil"></i> Modifier
+                </li>
+            {% else %}
+                <li class="breadcrumb-item active" aria-current="page">
+                    <i class="bi bi-plus-circle"></i> Nouveau projet
+                </li>
+            {% endif %}
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Form Card -->
+            <div class="card form-card shadow-sm">
+                <div class="form-header">
+                    <h4>
+                        <i class="bi {% if projet %}bi-pencil-square{% else %}bi-folder-plus{% endif %} me-2"></i>
+                        {{ title }}
+                    </h4>
+                    <div class="subtitle">
+                        {% if projet %}
+                            Modification du projet <strong>{{ projet.reference }}</strong>
+                        {% else %}
+                            Remplissez les informations pour créer un nouveau projet
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="card-body p-4">
+                    <form method="post" enctype="multipart/form-data" novalidate>
+                        {% csrf_token %}
+
+                        <!-- Erreurs globales du formulaire -->
+                        {% if form.errors %}
+                        <div class="alert alert-danger d-flex align-items-start mb-4" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2 mt-1"></i>
+                            <div class="flex-grow-1">
+                                <strong>Erreur de validation !</strong>
+                                Veuillez corriger les erreurs ci-dessous avant de continuer.
+                                <ul class="mb-0 mt-2 small">
+                                    {% for field, errors in form.errors.items %}
+                                        {% for error in errors %}
+                                            <li>
+                                                <strong>{{ field }}:</strong> {{ error }}
+                                            </li>
+                                        {% endfor %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 1: INFORMATIONS GÉNÉRALES -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-info-circle-fill"></i>
+                                Informations générales
+                            </div>
+                            <div class="row g-3">
+                                <!-- Référence -->
+                                <div class="col-md-4">
+                                    <label for="{{ form.reference.id_for_label }}" class="form-label">
+                                        Référence <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.reference }}
+                                    <div class="form-help">
+                                        Ex: PRJ-2026-001 (identifiant unique)
+                                    </div>
+                                    {% if form.reference.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.reference.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Nom du projet -->
+                                <div class="col-md-8">
+                                    <label for="{{ form.nom.id_for_label }}" class="form-label">
+                                        Nom du projet <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.nom }}
+                                    {% if form.nom.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.nom.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Type de projet -->
+                                <div class="col-md-4">
+                                    <label for="{{ form.type_projet.id_for_label }}" class="form-label">
+                                        Type de projet <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.type_projet }}
+                                    {% if form.type_projet.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.type_projet.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Statut -->
+                                <div class="col-md-4">
+                                    <label for="{{ form.statut.id_for_label }}" class="form-label">
+                                        Statut <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.statut }}
+                                    {% if form.statut.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.statut.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Priorité -->
+                                <div class="col-md-4">
+                                    <label for="{{ form.priorite.id_for_label }}" class="form-label">
+                                        Priorité <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.priorite }}
+                                    {% if form.priorite.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.priorite.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Description -->
+                                <div class="col-12">
+                                    <label for="{{ form.description.id_for_label }}" class="form-label">
+                                        Description
+                                    </label>
+                                    {{ form.description }}
+                                    <div class="form-help">
+                                        Description détaillée du projet, objectifs, contexte...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 2: PARTIES PRENANTES -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-people-fill"></i>
+                                Parties prenantes
+                            </div>
+                            <div class="row g-3">
+                                <!-- Maître d'ouvrage -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.maitre_ouvrage.id_for_label }}" class="form-label">
+                                        Maître d'ouvrage <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.maitre_ouvrage }}
+                                    <div class="form-help">
+                                        Client ou propriétaire du projet
+                                    </div>
+                                    {% if form.maitre_ouvrage.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.maitre_ouvrage.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Maître d'oeuvre -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.maitre_oeuvre.id_for_label }}" class="form-label">
+                                        Maître d'oeuvre
+                                    </label>
+                                    {{ form.maitre_oeuvre }}
+                                    <div class="form-help">
+                                        Bureau d'études ou superviseur (optionnel)
+                                    </div>
+                                </div>
+
+                                <!-- Entreprise principale -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.entreprise_principale.id_for_label }}" class="form-label">
+                                        Entreprise principale <span class="required-star">*</span>
+                                    </label>
+                                    {{ form.entreprise_principale }}
+                                    <div class="form-help">
+                                        Entreprise chargée de l'exécution
+                                    </div>
+                                    {% if form.entreprise_principale.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.entreprise_principale.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Chef de projet -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.chef_projet.id_for_label }}" class="form-label">
+                                        Chef de projet
+                                    </label>
+                                    {{ form.chef_projet }}
+                                    <div class="form-help">
+                                        Responsable interne du projet
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 3: DATES & DÉLAIS -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-calendar-event-fill"></i>
+                                Dates & Délais
+                            </div>
+                            <div class="row g-3">
+                                <!-- Date début prévue -->
+                                <div class="col-md-3">
+                                    <label for="{{ form.date_debut_prevue.id_for_label }}" class="form-label">
+                                        Date début prévue
+                                    </label>
+                                    {{ form.date_debut_prevue }}
+                                </div>
+
+                                <!-- Date fin prévue -->
+                                <div class="col-md-3">
+                                    <label for="{{ form.date_fin_prevue.id_for_label }}" class="form-label">
+                                        Date fin prévue
+                                    </label>
+                                    {{ form.date_fin_prevue }}
+                                </div>
+
+                                <!-- Délai -->
+                                <div class="col-md-3">
+                                    <label for="{{ form.delai_jours.id_for_label }}" class="form-label">
+                                        Délai (jours)
+                                    </label>
+                                    {{ form.delai_jours }}
+                                    <div class="form-help">
+                                        Durée totale du projet
+                                    </div>
+                                </div>
+
+                                <!-- Lieu -->
+                                <div class="col-md-3">
+                                    <label for="{{ form.lieu.id_for_label }}" class="form-label">
+                                        Lieu
+                                    </label>
+                                    {{ form.lieu }}
+                                    <div class="form-help">
+                                        Localisation du projet
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- SECTION 4: FINANCES -->
+                        <!-- ============================================================ -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-cash-stack"></i>
+                                Informations financières
+                            </div>
+                            <div class="row g-3">
+                                <!-- Montant initial -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.montant_initial.id_for_label }}" class="form-label">
+                                        Montant initial
+                                    </label>
+                                    <div class="input-group">
+                                        {{ form.montant_initial }}
+                                        <span class="input-group-text">TND</span>
+                                    </div>
+                                    <div class="form-help">
+                                        Montant du contrat initial (hors avenants)
+                                    </div>
+                                    {% if form.montant_initial.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.montant_initial.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Devise -->
+                                <div class="col-md-6">
+                                    <label for="{{ form.devise.id_for_label }}" class="form-label">
+                                        Devise
+                                    </label>
+                                    {{ form.devise }}
+                                    <div class="form-help">
+                                        Devise utilisée pour le projet (TND, EUR, USD...)
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% if projet %}
+                            <!-- Affichage des montants calculés (en mode édition) -->
+                            <div class="alert alert-info mt-3 mb-0" role="alert">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <small class="text-muted d-block">Montant initial</small>
+                                        <strong>{{ projet.montant_initial|floatformat:3 }} TND</strong>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted d-block">Montant avenants</small>
+                                        <strong class="text-success">+{{ projet.montant_avenants|floatformat:3 }} TND</strong>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted d-block">Montant final</small>
+                                        <strong class="text-primary">{{ projet.montant_final|floatformat:3 }} TND</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- ============================================================ -->
+                        <!-- BOUTONS D'ACTION -->
+                        <!-- ============================================================ -->
+                        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+                            <a href="{% if projet %}{% url 'projets:projet_detail' projet.pk %}{% else %}{% url 'projets:projet_list' %}{% endif %}" 
+                               class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i> Annuler
+                            </a>
+                            <div class="d-flex gap-2">
+                                <button type="reset" class="btn btn-outline-warning">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Réinitialiser
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle me-1"></i> {{ action }}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Info Box -->
+            <div class="alert alert-light border mt-3" role="alert">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-info-circle-fill text-primary me-2 mt-1"></i>
+                    <div class="small">
+                        <strong>Informations utiles :</strong>
+                        <ul class="mb-0 mt-1">
+                            <li>Les champs marqués d'un <span class="required-star">*</span> sont obligatoires.</li>
+                            <li>Le <strong>montant final</strong> est calculé automatiquement (montant initial + avenants).</li>
+                            <li>Après la création du projet, vous pourrez ajouter des <strong>lots</strong>, <strong>ouvrages</strong>, et <strong>tâches</strong>.</li>
+                            <li>Le <strong>contrat</strong> et les <strong>avenants</strong> peuvent être ajoutés depuis la page de détails du projet.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Activation des tooltips
+        var tooltipTriggerList = [].slice.call(
+            document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        );
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // Calcul automatique du délai en jours
+        const dateDebut = document.getElementById('{{ form.date_debut_prevue.id_for_label }}');
+        const dateFin = document.getElementById('{{ form.date_fin_prevue.id_for_label }}');
+        const delaiInput = document.getElementById('{{ form.delai_jours.id_for_label }}');
+
+        function calculateDelai() {
+            if (dateDebut.value && dateFin.value) {
+                const debut = new Date(dateDebut.value);
+                const fin = new Date(dateFin.value);
+                const diffTime = Math.abs(fin - debut);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                if (delaiInput && !delaiInput.value) {
+                    delaiInput.value = diffDays;
+                }
+            }
+        }
+
+        if (dateDebut && dateFin) {
+            dateDebut.addEventListener('change', calculateDelai);
+            dateFin.addEventListener('change', calculateDelai);
+        }
+
+        // Confirmation avant réinitialisation
+        const form = document.querySelector('form');
+        const resetButton = document.querySelector('button[type="reset"]');
+        if (resetButton) {
+            resetButton.addEventListener('click', function(e) {
+                if (!confirm('Êtes-vous sûr de vouloir réinitialiser le formulaire ?')) {
+                    e.preventDefault();
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

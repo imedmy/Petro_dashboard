@@ -1,0 +1,56 @@
+<!-- templates/core/lecture_index_list.html -->
+{% extends 'base.html' %}
+{% block title %}Lectures d'index{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Lectures d'index</h2>
+        <a href="{% url 'core:lecture_index_create' %}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Nouvelle lecture
+        </a>
+    </div>
+
+    {% if lectures %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Engin</th>
+                        <th>Date</th>
+                        <th>Index courant</th>
+                        <th>Consommation depuis dernière</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in lectures %}
+                    <tr>
+                        <td>{{ l.engin.libelle }} ({{ l.engin.get_type_engin_display }})</td>
+                        <td>{{ l.date_lecture|date:"d/m/Y" }}</td>
+                        <td>{{ l.index_courant }}</td>
+                        <td>
+                            {% if l.consommation_depuis_derniere_lecture is not None %}
+                                {{ l.consommation_depuis_derniere_lecture }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            <!-- يمكنك إضافة زر تعديل لاحقًا إذا أردت -->
+                            <a href="#" class="btn btn-sm btn-info disabled" aria-disabled="true">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> Aucune lecture enregistrée pour le moment.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

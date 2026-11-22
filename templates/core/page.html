@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="bg-white p-5 rounded shadow-sm">
+    <h2>{{ page.name_fr }} / {{ page.name_ar }}</h2>
+    <p>هذا هو المحتوى الفعلي للصفحة.</p>
+
+    <!-- يمكنك لاحقًا تحميل محتوى ديناميكي حسب page.url_name -->
+    {% if page.url_name == 'reports' %}
+        <div class="alert alert-info">عرض التقارير هنا...</div>
+    {% elif page.url_name == 'dashboard' %}
+        <div class="alert alert-success">مرحبًا بك في لوحة التحكم</div>
+    {% else %}
+        <div class="alert alert-light">محتوى الصفحة قيد التطوير</div>
+    {% endif %}
+</div>
+{% endblock %}

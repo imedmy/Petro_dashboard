@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}Barremage - {{ citerne.code_citerne }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Tableau de Barremage — {{ citerne.code_citerne }}</h2>
+        <a href="{% url 'core:citerne_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Retour à la liste
+        </a>
+    </div>
+
+    <!-- نموذج إضافة نقطة -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            Ajouter un point de barremage
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label">Hauteur (cm)</label>
+                        <input type="number" step="0.01" name="hauteur_cm" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Volume (L)</label>
+                        <input type="number" step="0.001" name="volume_litres" class="form-control" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-info mt-2">
+                    <i class="bi bi-plus-lg"></i> Ajouter
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- جدول النقاط -->
+    {% if barremages %}
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Hauteur (cm)</th>
+                        <th>Volume (L)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in barremages %}
+                    <tr>
+                        <td>{{ b.hauteur_cm }}</td>
+                        <td>{{ b.volume_litres }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i> Aucun point de barremage défini.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

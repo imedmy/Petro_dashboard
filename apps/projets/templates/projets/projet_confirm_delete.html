@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+{% load static i18n projet_extras %}
+
+{% block title %}Désactiver le projet - {{ projet.reference }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .delete-warning-card {
+        border: none;
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,.1);
+    }
+    .delete-warning-header {
+        background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+    }
+    .delete-warning-header i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        animation: shake 2s infinite;
+    }
+    @keyframes shake {
+        0%, 100% { transform: rotate(0deg); }
+        10%, 30%, 50%, 70%, 90% { transform: rotate(-5deg); }
+        20%, 40%, 60%, 80% { transform: rotate(5deg); }
+    }
+    .project-info-box {
+        background: #f8f9fa;
+        border-left: 4px solid #dc3545;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin: 1.5rem 0;
+    }
+    .impact-item {
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        margin-bottom: 0.5rem;
+    }
+    .impact-item i {
+        color: #856404;
+    }
+    .action-buttons {
+        padding: 1.5rem;
+        background: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_list' %}">
+                    <i class="bi bi-kanban"></i> Projets
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_detail' projet.pk %}">
+                    {{ projet.reference }}
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+                <i class="bi bi-trash text-danger"></i> Désactiver
+            </li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Warning Card -->
+            <div class="card delete-warning-card">
+                <!-- Header -->
+                <div class="delete-warning-header">
+                    <i class="bi bi-exclamation-triangle-fill d-block"></i>
+                    <h3 class="mb-2">Attention !</h3>
+                    <p class="mb-0 opacity-90">
+                        Vous êtes sur le point de désactiver un projet
+                    </p>
+                </div>
+
+                <!-- Body -->
+                <div class="card-body p-4">
+                    <!-- Project Info -->
+                    <div class="project-info-box">
+                        <h5 class="mb-3">
+                            <i class="bi bi-info-circle-fill text-danger me-2"></i>
+                            Informations du projet
+                        </h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <small class="text-muted d-block">Référence</small>
+                                <strong class="fs-5">{{ projet.reference }}</strong>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted d-block">Nom</small>
+                                <strong>{{ projet.nom }}</strong>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted d-block">Type</small>
+                                <span class="badge bg-light text-dark border">
+                                    {{ projet.type_projet.libelle }}
+                                </span>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted d-block">Statut actuel</small>
+                                <span class="badge bg-{{ projet.statut|stat_badge }}">
+                                    {{ projet.get_statut_display }}
+                                </span>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted d-block">Montant</small>
+                                <strong class="text-primary">
+                                    {{ projet.montant_final|floatformat:3 }} {{ projet.devise }}
+                                </strong>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted d-block">Avancement</small>
+                                <strong>{{ projet.pourcentage_avancement|floatformat:0 }}%</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Impact Warning -->
+                    <div class="alert alert-warning border-0 mb-3" role="alert">
+                        <h6 class="alert-heading mb-2">
+                            <i class="bi bi-exclamation-diamond-fill me-2"></i>
+                            Conséquences de la désactivation
+                        </h6>
+                        <p class="mb-2">
+                            La désactivation de ce projet aura les impacts suivants :
+                        </p>
+                        <ul class="mb-0 small">
+                            <li>Le projet ne sera plus visible dans la liste principale</li>
+                            <li>Toutes les données associées (lots, ouvrages, tâches) seront préservées</li>
+                            <li>Les documents GED liés resteront accessibles</li>
+                            <li>Les décomptes et factures resteront dans l'historique</li>
+                            <li>Les statistiques générales ne compteront plus ce projet</li>
+                        </ul>
+                    </div>
+
+                    <!-- Impact Details -->
+                    <h6 class="text-muted mb-3">
+                        <i class="bi bi-graph-up me-1"></i>
+                        Éléments associés au projet
+                    </h6>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <div class="impact-item">
+                                <i class="bi bi-box-seam me-2"></i>
+                                <strong>{{ projet.lots.count }}</strong> Lot(s)
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="impact-item">
+                                <i class="bi bi-building me-2"></i>
+                                <strong>{{ stats.ouvrages_count|default:"0" }}</strong> Ouvrage(s)
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="impact-item">
+                                <i class="bi bi-check2-square me-2"></i>
+                                <strong>{{ stats.taches_count|default:"0" }}</strong> Tâche(s)
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="impact-item">
+                                <i class="bi bi-cash-stack me-2"></i>
+                                <strong>{{ stats.decomptes_count|default:"0" }}</strong> Décompte(s)
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="impact-item">
+                                <i class="bi bi-folder me-2"></i>
+                                <strong>{{ stats.documents_count|default:"0" }}</strong> Document(s) GED
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="impact-item">
+                                <i class="bi bi-people me-2"></i>
+                                <strong>{{ projet.affectations_rh.count }}</strong> Affectation(s) RH
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Confirmation Message -->
+                    <div class="alert alert-danger border-0 mb-0" role="alert">
+                        <div class="d-flex align-items-start">
+                            <i class="bi bi-shield-exclamation fs-3 me-3"></i>
+                            <div>
+                                <h6 class="alert-heading mb-1">
+                                    Confirmez-vous la désactivation ?
+                                </h6>
+                                <p class="mb-0 small">
+                                    Cette action n'est pas définitive. Le projet pourra être 
+                                    <strong>réactivé ultérieurement</strong> depuis l'administration Django.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="action-buttons">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{% url 'projets:projet_detail' projet.pk %}" 
+                               class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-1"></i> Retour aux détails
+                            </a>
+                            <div class="d-flex gap-2">
+                                <button type="button" 
+                                        class="btn btn-outline-success"
+                                        onclick="window.location.href='{% url 'projets:projet_detail' projet.pk %}'">
+                                    <i class="bi bi-x-circle me-1"></i> Annuler
+                                </button>
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="bi bi-trash me-1"></i> 
+                                    Oui, désactiver le projet
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Info Note -->
+            <div class="alert alert-light border mt-3" role="alert">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-info-circle-fill text-primary me-2 mt-1"></i>
+                    <div class="small">
+                        <strong>Note importante :</strong>
+                        <ul class="mb-0 mt-1">
+                            <li>La désactivation est un <strong>soft delete</strong> (suppression logique).</li>
+                            <li>Le champ <code>actif</code> du projet sera mis à <code>False</code>.</li>
+                            <li>Toutes les données historiques restent intactes dans la base de données.</li>
+                            <li>Pour réactiver le projet, contactez l'administrateur ou utilisez Django Admin.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Confirmation supplémentaire au submit
+        $('form').on('submit', function(e) {
+            if (!confirm('⚠️ Êtes-vous absolument sûr de vouloir désactiver ce projet ?\n\nCette action masquera le projet de la liste principale.')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    });
+</script>
+{% endblock %}

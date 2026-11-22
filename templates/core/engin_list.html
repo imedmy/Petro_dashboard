@@ -1,0 +1,39 @@
+<!-- templates/core/engin_list.html -->
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Engins & Véhicules</h2>
+    <a href="{% url 'core:engin_create' %}" class="btn btn-success mb-3">Ajouter un engin</a>
+    <table class="table table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Désignation</th>
+                <th>Type</th>
+                <th>Immatriculation</th>
+                <th>Carburant</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in engins %}
+            <tr>
+                <td>{{ e.libelle }}</td>
+                <td>{{ e.get_type_engin_display }}</td>
+                <td>{{ e.immatriculation|default:"—" }}</td>
+                <td>{{ e.get_type_carburant_display }}</td>
+                <td>
+					<a href="{% url 'core:engin_update' e.pk %}" class="btn btn-sm btn-warning">
+						<i class="bi bi-pencil"></i>
+					</a>
+					<!-- زر الحذف الجديد -->
+					<a href="{% url 'core:engin_delete' e.pk %}" class="btn btn-sm btn-danger" 
+					   onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet engin ?');">
+						<i class="bi bi-trash"></i>
+					</a>
+				</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

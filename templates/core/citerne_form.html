@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ title }}</h2>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">{{ form.code_citerne.label }}</label>
+                {{ form.code_citerne }}
+                {% if form.code_citerne.errors %}
+                    <div class="text-danger">{{ form.code_citerne.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.nom.label }}</label>
+                {{ form.nom }}
+                {% if form.nom.errors %}
+                    <div class="text-danger">{{ form.nom.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.type_citerne.label }}</label>
+                {{ form.type_citerne }}
+                {% if form.type_citerne.errors %}
+                    <div class="text-danger">{{ form.type_citerne.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">{{ form.cod_art_fluide.label }}</label>
+                {{ form.cod_art_fluide }}
+                <div class="form-text">أدخل كود السائل من قاعدة SQL Server (مثل: GASOIL، DIESEL)</div>
+                {% if form.cod_art_fluide.errors %}
+                    <div class="text-danger">{{ form.cod_art_fluide.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.diametre_cm.label }} (cm)</label>
+                {{ form.diametre_cm }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.longueur_cm.label }} (cm)</label>
+                {{ form.longueur_cm }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.epaisseur_cm.label }} (cm)</label>
+                {{ form.epaisseur_cm }}
+            </div>
+            <div class="col-12">
+                <div class="form-check">
+                    {{ form.actif }}
+                    <label class="form-check-label" for="{{ form.actif.id_for_label }}">
+                        {{ form.actif.label }}
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">{{ title }}</button>
+            <a href="{% url 'core:citerne_list' %}" class="btn btn-secondary">Annuler</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

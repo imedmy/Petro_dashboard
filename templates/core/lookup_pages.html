@@ -1,0 +1,117 @@
+<!-- templates/core/lookup_pages.html -->
+<div class="modal fade" id="lookupModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">اختيار الصفحة</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body">
+                <!-- شريط البحث -->
+                <div class="mb-3">
+                    <input type="text" id="lookup-search" class="form-control" placeholder="ابحث عن صفحة (الاسم، الرابط...)" autofocus>
+                </div>
+
+                <!-- جدول النتائج -->
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>الاسم (FR)</th>
+                                <th>الاسم (AR)</th>
+                                <th>اسم الرابط</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lookup-results">
+                            <!-- سيتم تعبئتها ديناميكيًا عبر JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-outline-warning" onclick="resetLookup()">إعادة تهيئة</button>
+                <button type="button" class="btn btn-primary" onclick="confirmSelection()">موافق</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- النصوص المعتمدة على JavaScript -->
+<script>
+let selectedPageId = null;
+
+// جلب النتائج من API
+function fetchPages() {
+    const query = document.getElementById('lookup-search').value;
+    fetch('{% url "core:api_pages" %}' + (query ? `?q=${query}` : ''))
+        .then(response => response.json())
+        .then(pages => {
+            const tbody = document.getElementById('lookup-results');
+            tbody.innerHTML = '';
+            if (pages.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">لا توجد نتائج</td></tr>';
+                return;
+            }
+            pages.forEach(page => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${page.name_fr}</td>
+                    <td>${page.name_ar}</td>
+                    <td><code>${page.url_name}</code></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="selectPage(${page.id}, '${page.name_fr}')">
+                            اختيار
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        })
+        .catch(err => {
+            console.error('Error fetching pages:', err);
+            document.getElementById('lookup-results').innerHTML = '<tr><td colspan="4" class="text-danger">خطأ في جلب البيانات</td></tr>';
+        });
+}
+
+// اختيار صفحة
+function selectPage(pageId, pageName) {
+    selectedPageId = pageId;
+    document.querySelectorAll('#lookup-results button').forEach(btn => {
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-outline-primary');
+    });
+    event.target.classList.remove('btn-outline-primary');
+    event.target.classList.add('btn-primary');
+    // يمكنك إظهار اسم الصفحة المختارة
+    console.log('تم اختيار الصفحة:', pageId, pageName);
+}
+
+// تأكيد الاختيار
+function confirmSelection() {
+    if (!selectedPageId) {
+        alert('يرجى اختيار صفحة من القائمة.');
+        return;
+    }
+    // أعد القيمة إلى النموذج الرئيسي (سيتم معالجتها هناك)
+    window.opener ? window.opener.receiveSelectedPage(selectedPageId) : receiveSelectedPage(selectedPageId);
+    window.close(); // إذا كان في نافذة منفصلة
+    bootstrap.Modal.getInstance(document.getElementById('lookupModal')).hide();
+}
+
+// إعادة تهيئة البحث
+function resetLookup() {
+    document.getElementById('lookup-search').value = '';
+    selectedPageId = null;
+    fetchPages();
+}
+
+// استجابة لضغط Enter في حقل البحث
+document.getElementById('lookup-search').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') fetchPages();
+});
+
+// تحميل النتائج عند فتح النافذة
+document.addEventListener('DOMContentLoaded', fetchPages);
+</script>

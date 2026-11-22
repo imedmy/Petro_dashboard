@@ -1,0 +1,60 @@
+<!-- templates/core/tiers_form.html -->
+{% extends "base.html" %}
+{% block title %}{% if tiers %}Modifier le tiers{% else %}Ajouter un tiers{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <h2>{% if tiers %}Modifier le tiers{% else %}Ajouter un tiers{% endif %}</h2>
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label>Code Tiers *</label>
+                <input type="text" name="code_tiers" class="form-control"
+                       value="{{ tiers.code_tiers|default:'' }}" required>
+            </div>
+            <div class="col-md-6">
+                <label>Raison Sociale *</label>
+                <input type="text" name="raison_sociale" class="form-control"
+                       value="{{ tiers.raison_sociale|default:'' }}" required>
+            </div>
+            <div class="col-md-6">
+                <label>Contact</label>
+                <input type="text" name="contact" class="form-control"
+                       value="{{ tiers.contact|default:'' }}">
+            </div>
+            <div class="col-md-6">
+                <label>Téléphone</label>
+                <input type="text" name="telephone" class="form-control"
+                       value="{{ tiers.telephone|default:'' }}">
+            </div>
+            <div class="col-md-6">
+                <label>Email</label>
+                <input type="email" name="email" class="form-control"
+                       value="{{ tiers.email|default:'' }}">
+            </div>
+            <div class="col-md-6">
+                <label>Type *</label>
+                <select name="type_tiers" class="form-select" required>
+                    <option value="">Sélectionner un type</option>
+                    <option value="fournisseur" {% if tiers.type_tiers == 'fournisseur' %}selected{% endif %}>Fournisseur</option>
+                    <option value="prestataire" {% if tiers.type_tiers == 'prestataire' %}selected{% endif %}>Prestataire</option>
+                    <option value="autre" {% if tiers.type_tiers == 'autre' %}selected{% endif %}>Autre</option>
+                </select>
+            </div>
+            <div class="col-12">
+                <div class="form-check mt-2">
+                    <input type="checkbox" name="actif" class="form-check-input" id="actifCheck"
+                           {% if not tiers or tiers.actif %}checked{% endif %}>
+                    <label class="form-check-label" for="actifCheck">Actif</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <a href="{% url 'core:tiers_list' %}" class="btn btn-secondary">Annuler</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

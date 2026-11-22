@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Gestion des Valeurs d'Article{% endblock %}
+
+{% block content %}
+<div class="p-4 bg-white rounded shadow-sm">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-percent"></i> Gestion des Valeurs d'Article</h2>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#valeurModal">
+            <i class="bi bi-plus-circle"></i> Ajouter une valeur
+        </button>
+    </div>
+
+    <!-- Barre de recherche -->
+    <div class="mb-4">
+        <form method="get" class="row g-3">
+            <div class="col-md-6">
+                <input type="text" name="q" class="form-control" 
+                       placeholder="Rechercher par libellé..." 
+                       value="{{ query }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-search"></i> Rechercher
+                </button>
+            </div>
+            {% if query %}
+            <div class="col-md-4">
+                <a href="{% url 'core:valeur_article_list' %}" class="btn btn-outline-secondary w-100">
+                    <i class="bi bi-x-circle"></i> Annuler la recherche
+                </a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Tableau des données -->
+    {% if valeurs %}
+    <div class="table-responsive">
+        <table class="table table-hover table-bordered" id="valeurTable">
+            <thead class="table-light">
+                <tr>
+                    <th>Code Valeur</th>
+                    <th>Libellé de la Valeur</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for valeur in valeurs %}
+                <tr data-id="{{ valeur.pk }}">
+                    <td>{{ valeur.code_valeur }}</td>
+                    <td>{{ valeur.libelle_valeur }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning edit-btn"
+                                data-bs-toggle="modal" 
+                                data-bs-target="#valeurModal"
+                                data-id="{{ valeur.pk }}"
+                                data-code="{{ valeur.code_valeur }}"
+                                data-libelle="{{ valeur.libelle_valeur }}">
+                            <i class="bi bi-pencil"></i> Modifier
+                        </button>
+                        <button class="btn btn-sm btn-danger delete-btn"
+                                data-id="{{ valeur.pk }}"
+                                data-libelle="{{ valeur.libelle_valeur }}">
+                            <i class="bi bi-trash"></i> Supprimer
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        {% if query %}
+            Aucune valeur d'article trouvée pour "{{ query }}".
+        {% else %}
+            Aucune valeur d'article enregistrée.
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal pour Ajouter/Modifier -->
+<div class="modal fade" id="valeurModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="valeurForm" method="post">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Ajouter une valeur d'article</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="valeurId" name="id">
+                    <div class="mb-3">
+                        <label for="code_valeur" class="form-label">Code Valeur *</label>
+                        <input type="number" class="form-control" id="code_valeur" name="code_valeur" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="libelle_valeur" class="form-label">Libellé de la Valeur *</label>
+                        <input type="text" class="form-control" id="libelle_valeur" name="libelle_valeur" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmation de suppression -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmer la suppression</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Voulez-vous vraiment supprimer la valeur d'article : 
+                   <strong id="deleteLibelle"></strong> ?
+                </p>
+                <p class="text-danger">Cette action est irréversible.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">Supprimer</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const valeurForm = document.getElementById('valeurForm');
+    const deleteBtns = document.querySelectorAll('.delete-btn');
+    const editBtns = document.querySelectorAll('.edit-btn');
+    const confirmDeleteBtn = document.getElementById('confirmDelete');
+    let currentDeleteId = null;
+
+    // Réinitialiser le formulaire
+    document.getElementById('valeurModal').addEventListener('show.bs.modal', function () {
+        valeurForm.reset();
+        document.getElementById('modalTitle').textContent = 'Ajouter une valeur d\'article';
+        document.getElementById('valeurId').value = '';
+    });
+
+    // Remplir pour modification
+    editBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.getElementById('modalTitle').textContent = 'Modifier la valeur d\'article';
+            document.getElementById('valeurId').value = this.dataset.id;
+            document.getElementById('code_valeur').value = this.dataset.code;
+            document.getElementById('libelle_valeur').value = this.dataset.libelle;
+        });
+    });
+
+    // Soumission AJAX
+    valeurForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const isUpdate = formData.get('id') !== '';
+        const url = isUpdate ? 
+            `{% url 'core:valeur_article_update' 0 %}`.replace('/0/', `/${formData.get('id')}/`) :
+            '{% url "core:valeur_article_create" %}';
+        
+        fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.ok ? response.json() : response.json().then(err => { throw err; }))
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('valeurModal')).hide();
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fade show fixed-top m-3';
+                alertDiv.style.zIndex = '2000';
+                alertDiv.innerHTML = 'Opération réussie ! <button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                document.body.appendChild(alertDiv);
+                setTimeout(() => alertDiv.remove(), 3000);
+                setTimeout(() => location.reload(), 500);
+            } else {
+                let msg = 'Erreur lors de la sauvegarde.';
+                if (data.errors) {
+                    msg = Object.values(data.errors).flat().join('\n');
+                }
+                alert(msg);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Erreur de connexion au serveur.');
+        });
+    });
+
+    // Suppression
+    deleteBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentDeleteId = this.dataset.id;
+            document.getElementById('deleteLibelle').textContent = this.dataset.libelle;
+            bootstrap.Modal.getInstance(document.getElementById('deleteModal')).show();
+        });
+    });
+
+    confirmDeleteBtn.addEventListener('click', function() {
+        fetch(`{% url 'core:valeur_article_delete' 0 %}`.replace('/0/', `/${currentDeleteId}/`), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fade show fixed-top m-3';
+                alertDiv.style.zIndex = '2000';
+                alertDiv.innerHTML = 'Supprimé avec succès ! <button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                document.body.appendChild(alertDiv);
+                setTimeout(() => alertDiv.remove(), 3000);
+                setTimeout(() => location.reload(), 500);
+            } else {
+                alert('Erreur lors de la suppression.');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Erreur de connexion au serveur.');
+        });
+    });
+});
+</script>
+{% endblock %}

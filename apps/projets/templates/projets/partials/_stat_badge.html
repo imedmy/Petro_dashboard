@@ -1,0 +1,37 @@
+{# apps/projets/templates/projets/partials/_stat_badge.html #}
+{# Statut badge component réutilisable #}
+{# Usage: {% render_stat_badge projet.statut %} #}
+{# Exemple: {% render_stat_badge 'EN_COURS' %} #}
+
+{% load projet_extras %}
+
+{% with color=statut|stat_badge label=statut|stat_label %}
+<span class="badge bg-{{ color }} 
+    {% if color == 'warning' %}text-dark{% endif %}
+    {% if size == 'lg' %}fs-6 px-3 py-2
+    {% elif size == 'sm' %}fs-7
+    {% else %}fs-8{% endif %}"
+    title="{{ label }}"
+    data-bs-toggle="tooltip">
+    
+    {% if show_icon %}
+        {% if statut == 'EN_COURS' or statut == 'TERMINEE' or statut == 'ACHEVE' or statut == 'PAYE' or statut == 'VALIDE' or statut == 'SIGNE' or statut == 'APPROUVE' or statut == 'ACTIVE' or statut == 'LIVRE' %}
+            <i class="bi bi-check-circle-fill me-1"></i>
+        {% elif statut == 'PLANIFIE' or statut == 'NON_COMMENCE' or statut == 'A_FAIRE' or statut == 'PREPARE' or statut == 'BROUILLON' or statut == 'EN_PREPARATION' %}
+            <i class="bi bi-clock-fill me-1"></i>
+        {% elif statut == 'SUSPENDU' or statut == 'BLOQUEE' %}
+            <i class="bi bi-pause-circle-fill me-1"></i>
+        {% elif statut == 'RESILIE' or statut == 'REJETE' or statut == 'REFUSE' or statut == 'ANNULEE' %}
+            <i class="bi bi-x-circle-fill me-1"></i>
+        {% elif statut == 'SOUMIS' or statut == 'SOUMISE' or statut == 'EN_REVIEW' %}
+            <i class="bi bi-hourglass-split me-1"></i>
+        {% elif statut == 'EXPIREE' or statut == 'OBSOLETE' %}
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+        {% else %}
+            <i class="bi bi-info-circle-fill me-1"></i>
+        {% endif %}
+    {% endif %}
+    
+    {{ label }}
+</span>
+{% endwith %}

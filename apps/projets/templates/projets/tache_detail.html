@@ -1,0 +1,790 @@
+{% extends 'base.html' %}
+{% load static i18n projet_extras %}
+
+{% block title %}{{ tache.code }} - {{ tache.designation }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tache-header {
+        background: linear-gradient(135deg, #fd7e14 0%, #ffc107 100%);
+        color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .tache-header h2 {
+        color: white;
+        margin-bottom: 0.25rem;
+    }
+    .tache-header .reference {
+        opacity: 0.9;
+        font-size: 0.9rem;
+    }
+    
+    .info-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border-left: 4px solid;
+    }
+    .info-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,.08);
+    }
+    .info-card.priorite  { border-left-color: #dc3545; }
+    .info-card.resp      { border-left-color: #0d6efd; }
+    .info-card.avancement{ border-left-color: #ffc107; }
+    .info-card.periode   { border-left-color: #198754; }
+    
+    .sous-tache-row, .article-row {
+        transition: background-color 0.2s;
+    }
+    .sous-tache-row:hover, .article-row:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .code-mono {
+        font-family: 'Courier New', monospace;
+        font-weight: 600;
+        color: #fd7e14;
+    }
+    
+    .mini-stat {
+        text-align: center;
+        padding: 1rem 0.5rem;
+        background: #f8f9fa;
+        border-radius: 0.5rem;
+    }
+    .mini-stat .value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    .mini-stat .label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        margin-top: 0.5rem;
+    }
+    
+    .retard-alert {
+        background: linear-gradient(135deg, #f8d7da 0%, #fff3cd 100%);
+        border: 2px solid #dc3545;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .nav-tabs .nav-link {
+        color: #495057;
+        font-weight: 500;
+        border: none;
+        border-bottom: 3px solid transparent;
+    }
+    .nav-tabs .nav-link.active {
+        color: #fd7e14;
+        border-bottom-color: #fd7e14;
+        background: transparent;
+    }
+    
+    .description-box {
+        background: #fff8e1;
+        border-left: 4px solid #ffc107;
+        padding: 1rem 1.25rem;
+        border-radius: 0 0.5rem 0.5rem 0;
+        margin-bottom: 1.5rem;
+    }
+    
+    .heures-info {
+        background: linear-gradient(135deg, #e7f1ff 0%, #f3e8ff 100%);
+        border-radius: 0.5rem;
+        padding: 1rem;
+    }
+    .heures-info .heures-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_list' %}">
+                    <i class="bi bi-kanban"></i> Projets
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:projet_detail' tache.ouvrage.lot.projet.pk %}">
+                    {{ tache.ouvrage.lot.projet.reference }}
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:lot_detail' tache.ouvrage.lot.pk %}">
+                    Lot {{ tache.ouvrage.lot.numero }}
+                </a>
+            </li>
+            <li class="breadcrumb-item">
+                <a href="{% url 'projets:ouvrage_detail' tache.ouvrage.pk %}">
+                    {{ tache.ouvrage.code }}
+                </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">
+                {{ tache.code }}
+            </li>
+        </ol>
+    </nav>
+
+    <!-- Retard Alert (si applicable) -->
+    {% if tache.date_fin_prevue|is_retarde and tache.statut != 'TERMINEE' and tache.statut != 'ANNULEE' %}
+    <div class="retard-alert">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-exclamation-triangle-fill text-danger fs-2 me-3"></i>
+            <div class="flex-grow-1">
+                <h5 class="mb-1 text-danger">
+                    <i class="bi bi-clock-history"></i>
+                    Cette tâche est en retard !
+                </h5>
+                <p class="mb-0 small">
+                    Date de fin prévue : <strong>{{ tache.date_fin_prevue|date:"d/m/Y" }}</strong>
+                    • Jours de retard : <strong class="text-danger">
+                        {{ tache.date_fin_prevue|jours_restants|cut:"-" }}
+                    </strong>
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tâche Header -->
+    <div class="tache-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="reference mb-1">
+                    <i class="bi bi-hash"></i> {{ tache.code }}
+                    <span class="mx-2">•</span>
+                    <i class="bi bi-building"></i> {{ tache.ouvrage.code }} - {{ tache.ouvrage.designation }}
+                    <span class="mx-2">•</span>
+                    <i class="bi bi-flag-fill"></i> {{ tache.get_priorite_display }}
+                </div>
+                <h2>{{ tache.designation }}</h2>
+                {% if tache.description %}
+                    <p class="mb-0 opacity-75">
+                        {{ tache.description|truncatechars:150 }}
+                    </p>
+                {% endif %}
+            </div>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <span class="badge fs-5 mb-2 
+                    {% if tache.statut == 'EN_COURS' %}bg-success
+                    {% elif tache.statut == 'TERMINEE' %}bg-info
+                    {% elif tache.statut == 'BLOQUEE' %}bg-danger
+                    {% elif tache.statut == 'A_FAIRE' %}bg-secondary
+                    {% elif tache.statut == 'EN_REVIEW' %}bg-primary
+                    {% else %}bg-dark{% endif %}">
+                    {% if tache.statut == 'EN_COURS' %}
+                        <i class="bi bi-play-circle-fill me-1"></i>
+                    {% elif tache.statut == 'TERMINEE' %}
+                        <i class="bi bi-check-circle-fill me-1"></i>
+                    {% elif tache.statut == 'BLOQUEE' %}
+                        <i class="bi bi-pause-circle-fill me-1"></i>
+                    {% elif tache.statut == 'A_FAIRE' %}
+                        <i class="bi bi-clock-fill me-1"></i>
+                    {% elif tache.statut == 'EN_REVIEW' %}
+                        <i class="bi bi-hourglass-split me-1"></i>
+                    {% else %}
+                        <i class="bi bi-x-circle-fill me-1"></i>
+                    {% endif %}
+                    {{ tache.get_statut_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Description détaillée (si existe) -->
+    {% if tache.description %}
+    <div class="description-box">
+        <h6 class="mb-2">
+            <i class="bi bi-card-text text-warning me-1"></i>
+            Description détaillée
+        </h6>
+        <p class="mb-0">{{ tache.description|linebreaksbr }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Info Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card info-card priorite shadow-sm h-100">
+                <div class="card-body">
+                    <small class="text-muted text-uppercase d-block">Priorité</small>
+                    <div class="mt-2">
+                        <span class="badge fs-6 bg-{{ tache.priorite|priorite_badge }}">
+                            <i class="bi {{ tache.priorite|priorite_icon }} me-1"></i>
+                            {{ tache.get_priorite_display }}
+                        </span>
+                    </div>
+                    {% if tache.tache_parente %}
+                        <small class="text-muted d-block mt-2">
+                            <i class="bi bi-diagram-2"></i>
+                            Sous-tâche de : <strong>{{ tache.tache_parente.code }}</strong>
+                        </small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card info-card resp shadow-sm h-100">
+                <div class="card-body">
+                    <small class="text-muted text-uppercase d-block">Responsable</small>
+                    <div class="mt-1">
+                        {% if tache.responsable %}
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-person-circle text-primary fs-4 me-2"></i>
+                                <div>
+                                    <strong class="d-block">
+                                        {{ tache.responsable.get_full_name|default:tache.responsable.username }}
+                                    </strong>
+                                    <small class="text-muted">Utilisateur système</small>
+                                </div>
+                            </div>
+                        {% elif tache.personnel_responsable %}
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-person-badge text-success fs-4 me-2"></i>
+                                <div>
+                                    <strong class="d-block">
+                                        {{ tache.personnel_responsable.nom }} {{ tache.personnel_responsable.prenom }}
+                                    </strong>
+                                    <small class="text-muted">
+                                        {{ tache.personnel_responsable.poste|default:"Personnel" }}
+                                    </small>
+                                </div>
+                            </div>
+                        {% else %}
+                            <span class="text-muted">
+                                <i class="bi bi-person-x"></i> Non assigné
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card info-card avancement shadow-sm h-100">
+                <div class="card-body">
+                    <small class="text-muted text-uppercase d-block">Avancement</small>
+                    <div class="d-flex align-items-center mt-2">
+                        <div class="progress flex-grow-1 me-2" style="height: 14px;">
+                            <div class="progress-bar 
+                                {% if tache.pourcentage_avancement >= 100 %}bg-success
+                                {% elif tache.pourcentage_avancement >= 75 %}bg-primary
+                                {% elif tache.pourcentage_avancement >= 50 %}bg-info
+                                {% elif tache.pourcentage_avancement >= 25 %}bg-warning
+                                {% else %}bg-danger{% endif %}"
+                                style="width: {{ tache.pourcentage_avancement }}%">
+                            </div>
+                        </div>
+                        <strong class="fs-5">{{ tache.pourcentage_avancement|floatformat:0 }}%</strong>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        {{ sous_taches.count }} sous-tâche(s)
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card info-card periode shadow-sm h-100">
+                <div class="card-body">
+                    <small class="text-muted text-uppercase d-block">Période</small>
+                    <div class="mt-1">
+                        <div class="d-flex align-items-center mb-1">
+                            <i class="bi bi-calendar-check text-success me-2"></i>
+                            <div>
+                                <small class="text-muted d-block">Début prévu</small>
+                                <strong>{{ tache.date_debut_prevue|date:"d/m/Y"|default:"-" }}</strong>
+                                {% if tache.date_debut_reelle %}
+                                    <small class="text-success d-block">
+                                        <i class="bi bi-check-circle"></i> Réel: {{ tache.date_debut_reelle|date:"d/m/Y" }}
+                                    </small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-calendar-x text-danger me-2"></i>
+                            <div>
+                                <small class="text-muted d-block">Fin prévue</small>
+                                <strong class="{% if tache.date_fin_prevue|is_retarde %}text-danger{% endif %}">
+                                    {{ tache.date_fin_prevue|date:"d/m/Y"|default:"-" }}
+                                </strong>
+                                {% if tache.date_fin_reelle %}
+                                    <small class="text-success d-block">
+                                        <i class="bi bi-check-circle"></i> Réel: {{ tache.date_fin_reelle|date:"d/m/Y" }}
+                                    </small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Heures Info -->
+    <div class="heures-info mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-3 text-center">
+                <small class="text-muted d-block">Heures prévues</small>
+                <div class="heures-value text-primary">{{ tache.heures_prevues }} h</div>
+            </div>
+            <div class="col-md-3 text-center">
+                <small class="text-muted d-block">Heures réelles</small>
+                <div class="heures-value text-success">{{ tache.heures_reelles }} h</div>
+            </div>
+            <div class="col-md-3 text-center">
+                <small class="text-muted d-block">Écart</small>
+                {% with ecart=tache.heures_reelles|add:tache.heures_prevues %}
+                    <div class="heures-value {% if ecart > 0 %}text-danger{% else %}text-success{% endif %}">
+                        {{ ecart }} h
+                    </div>
+                {% endwith %}
+            </div>
+            <div class="col-md-3 text-center">
+                <small class="text-muted d-block">Productivité</small>
+                {% if tache.heures_prevues > 0 %}
+                    {% widthratio tache.heures_reelles tache.heures_prevues 100 as ratio %}
+                    <div class="heures-value 
+                        {% if ratio > 120 %}text-danger
+                        {% elif ratio > 100 %}text-warning
+                        {% else %}text-success{% endif %}">
+                        {{ ratio }}%
+                    </div>
+                {% else %}
+                    <div class="heures-value text-muted">-</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="mini-stat">
+                <div class="value text-primary">{{ sous_taches.count }}</div>
+                <div class="label">Sous-tâches</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="mini-stat">
+                <div class="value text-success">{{ articles.count }}</div>
+                <div class="label">Articles</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="mini-stat">
+                <div class="value text-warning">
+                    {{ tache.dependances.count }}
+                </div>
+                <div class="label">Dépendances</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="mini-stat">
+                <div class="value text-info">
+                    {{ tache.affectations_rh.count }}
+                </div>
+                <div class="label">Affectations RH</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-3" id="tacheTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="sous-taches-tab" data-bs-toggle="tab" 
+                    data-bs-target="#tab-sous-taches" type="button" role="tab">
+                <i class="bi bi-diagram-2 me-1"></i> Sous-tâches
+                <span class="badge bg-secondary ms-1">{{ sous_taches.count }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="articles-tab" data-bs-toggle="tab" 
+                    data-bs-target="#tab-articles" type="button" role="tab">
+                <i class="bi bi-list-check me-1"></i> Articles
+                <span class="badge bg-secondary ms-1">{{ articles.count }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="dependances-tab" data-bs-toggle="tab" 
+                    data-bs-target="#tab-dependances" type="button" role="tab">
+                <i class="bi bi-link-45deg me-1"></i> Dépendances
+                <span class="badge bg-secondary ms-1">{{ tache.dependances.count }}</span>
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="tacheTabsContent">
+        
+        <!-- Tab: Sous-tâches -->
+        <div class="tab-pane fade show active" id="tab-sous-taches" role="tabpanel">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-diagram-2 me-2 text-primary"></i>
+                        Sous-tâches
+                    </h5>
+                    <a href="{% url 'projets:tache_create' tache.ouvrage.pk %}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i> Nouvelle sous-tâche
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="sousTachesTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 100px;">Code</th>
+                                    <th>Désignation</th>
+                                    <th style="width: 120px;">Priorité</th>
+                                    <th style="width: 120px;">Fin prévue</th>
+                                    <th style="width: 180px;">Avancement</th>
+                                    <th style="width: 120px;">Statut</th>
+                                    <th style="width: 100px;" class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for st in sous_taches %}
+                                <tr class="sous-tache-row">
+                                    <td>
+                                        <span class="code-mono">{{ st.code }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'projets:tache_detail' st.pk %}" 
+                                           class="text-decoration-none fw-semibold">
+                                            {{ st.designation }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ st.priorite|priorite_badge }}">
+                                            {{ st.get_priorite_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small>
+                                            {% if st.date_fin_prevue|is_retarde %}
+                                                <span class="text-danger">
+                                                    <i class="bi bi-exclamation-triangle-fill"></i>
+                                                    {{ st.date_fin_prevue|date:"d/m/Y" }}
+                                                </span>
+                                            {% else %}
+                                                {{ st.date_fin_prevue|date:"d/m/Y"|default:"-" }}
+                                            {% endif %}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="progress flex-grow-1 me-2" style="height: 8px;">
+                                                <div class="progress-bar 
+                                                    {% if st.pourcentage_avancement >= 100 %}bg-success
+                                                    {% elif st.pourcentage_avancement >= 50 %}bg-primary
+                                                    {% else %}bg-warning{% endif %}"
+                                                    style="width: {{ st.pourcentage_avancement }}%"></div>
+                                            </div>
+                                            <small class="fw-bold text-nowrap">
+                                                {{ st.pourcentage_avancement|floatformat:0 }}%
+                                            </small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if st.statut == 'EN_COURS' %}
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-play-circle-fill me-1"></i>En cours
+                                            </span>
+                                        {% elif st.statut == 'A_FAIRE' %}
+                                            <span class="badge bg-secondary">
+                                                <i class="bi bi-clock-fill me-1"></i>À faire
+                                            </span>
+                                        {% elif st.statut == 'BLOQUEE' %}
+                                            <span class="badge bg-danger">
+                                                <i class="bi bi-pause-circle-fill me-1"></i>Bloquée
+                                            </span>
+                                        {% elif st.statut == 'TERMINEE' %}
+                                            <span class="badge bg-info">
+                                                <i class="bi bi-check-circle-fill me-1"></i>Terminée
+                                            </span>
+                                        {% elif st.statut == 'EN_REVIEW' %}
+                                            <span class="badge bg-primary">
+                                                <i class="bi bi-hourglass-split me-1"></i>Révision
+                                            </span>
+                                        {% elif st.statut == 'ANNULEE' %}
+                                            <span class="badge bg-dark">
+                                                <i class="bi bi-x-circle-fill me-1"></i>Annulée
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <a href="{% url 'projets:tache_detail' st.pk %}" 
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="Voir" data-bs-toggle="tooltip">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-5 text-muted">
+                                        <i class="bi bi-diagram-2 fs-1 d-block mb-2"></i>
+                                        Aucune sous-tâche définie
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Articles -->
+        <div class="tab-pane fade" id="tab-articles" role="tabpanel">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-check me-2 text-success"></i>
+                        Articles de bordereau liés
+                    </h5>
+                    <a href="{% url 'projets:article_create' tache.ouvrage.pk %}" class="btn btn-sm btn-success">
+                        <i class="bi bi-plus-circle me-1"></i> Nouvel article
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="articlesTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 120px;">Code</th>
+                                    <th>Désignation</th>
+                                    <th style="width: 120px;">Type</th>
+                                    <th style="width: 80px;">Unité</th>
+                                    <th style="width: 100px;">Q. prévue</th>
+                                    <th style="width: 100px;">Q. réalisée</th>
+                                    <th style="width: 120px;">PU</th>
+                                    <th style="width: 140px;">Montant</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for article in articles %}
+                                <tr class="article-row">
+                                    <td>
+                                        <span class="code-mono">{{ article.code_bordereau }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold">{{ article.designation }}</div>
+                                        {% if article.description %}
+                                            <div class="small text-muted">
+                                                {{ article.description|truncatechars:50 }}
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ article.type_article|stat_badge }}">
+                                            {{ article.get_type_article_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small>{{ article.unite.code }}</small>
+                                    </td>
+                                    <td>{{ article.quantite_prevue|floatformat:2 }}</td>
+                                    <td>
+                                        <strong>{{ article.quantite_realisee|floatformat:2 }}</strong>
+                                    </td>
+                                    <td>{{ article.prix_unitaire|floatformat:3 }}</td>
+                                    <td class="fw-semibold">
+                                        {{ article.montant_partiel|floatformat:3 }}
+                                        <small class="text-muted">{{ tache.ouvrage.lot.projet.devise }}</small>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center py-5 text-muted">
+                                        <i class="bi bi-list-check fs-1 d-block mb-2"></i>
+                                        Aucun article de bordereau lié à cette tâche
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            {% if articles %}
+                            <tfoot class="table-light">
+                                <tr class="fw-bold">
+                                    <td colspan="7" class="text-end">TOTAL :</td>
+                                    <td>
+                                        {% with total=0 %}
+                                            {% for article in articles %}
+                                                {% if forloop.first %}
+                                                    {{ article.montant_partiel|floatformat:3 }}
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endwith %}
+                                        <small class="text-muted">{{ tache.ouvrage.lot.projet.devise }}</small>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Dépendances -->
+        <div class="tab-pane fade" id="tab-dependances" role="tabpanel">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-link-45deg me-2 text-info"></i>
+                        Dépendances de la tâche
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if tache.dependances.all %}
+                        <div class="alert alert-info" role="alert">
+                            <i class="bi bi-info-circle-fill me-1"></i>
+                            Cette tâche dépend de <strong>{{ tache.dependances.count }}</strong> autre(s) tâche(s).
+                            Elle ne peut pas commencer tant que ces tâches ne sont pas terminées.
+                        </div>
+                        <div class="list-group">
+                            {% for dep in tache.dependances.all %}
+                            <a href="{% url 'projets:tache_detail' dep.pk %}" 
+                               class="list-group-item list-group-item-action">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="code-mono">{{ dep.code }}</span>
+                                        <strong class="ms-2">{{ dep.designation }}</strong>
+                                    </div>
+                                    <div>
+                                        <span class="badge bg-{{ dep.statut|stat_badge }}">
+                                            {{ dep.get_statut_display }}
+                                        </span>
+                                        <span class="badge bg-light text-dark ms-1">
+                                            {{ dep.pourcentage_avancement|floatformat:0 }}%
+                                        </span>
+                                    </div>
+                                </div>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-link-45deg fs-1 d-block mb-2"></i>
+                            <p class="mb-0">Aucune dépendance définie</p>
+                            <small>Cette tâche peut être exécutée indépendamment</small>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="bi bi-lightning-fill me-2 text-warning"></i>
+                Actions rapides
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <a href="{% url 'projets:tache_create' tache.ouvrage.pk %}" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-plus-circle me-2"></i> Nouvelle sous-tâche
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'projets:article_create' tache.ouvrage.pk %}" class="btn btn-outline-success w-100">
+                        <i class="bi bi-list-check me-2"></i> Nouvel article
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'projets:ouvrage_detail' tache.ouvrage.pk %}" class="btn btn-outline-info w-100">
+                        <i class="bi bi-arrow-left me-2"></i> Retour à l'ouvrage
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'projets:ged_upload' tache.ouvrage.lot.projet.pk %}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-upload me-2"></i> Upload document
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Initialisation de DataTables pour les sous-tâches
+        $('#sousTachesTable').DataTable({
+            language: {
+                url: '{% static "datatables/i18n/fr-FR.json" %}'
+            },
+            paging: false,
+            searching: true,
+            info: false,
+            order: [[0, 'asc']],
+            columnDefs: [
+                { orderable: false, targets: [6] },
+                { width: '100px', targets: [0, 6] },
+                { width: '120px', targets: [2, 3, 5] },
+                { width: '180px', targets: [4] }
+            ],
+            stateSave: true,
+            stateDuration: 60 * 60 * 24
+        });
+
+        // Initialisation de DataTables pour les articles
+        $('#articlesTable').DataTable({
+            language: {
+                url: '{% static "datatables/i18n/fr-FR.json" %}'
+            },
+            paging: false,
+            searching: true,
+            info: false,
+            order: [[0, 'asc']],
+            columnDefs: [
+                { width: '120px', targets: [0, 2, 6, 7] },
+                { width: '80px', targets: [3] },
+                { width: '100px', targets: [4, 5] }
+            ],
+            stateSave: true,
+            stateDuration: 60 * 60 * 24
+        });
+
+        // Activation des tooltips
+        var tooltipTriggerList = [].slice.call(
+            document.querySelectorAll('[data-bs-toggle="tooltip"]')
+        );
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        // Persistance de l'onglet actif dans l'URL
+        const hash = window.location.hash;
+        if (hash) {
+            const tabTrigger = new bootstrap.Tab(
+                document.querySelector(`button[data-bs-target="${hash}"]`)
+            );
+            if (tabTrigger) tabTrigger.show();
+        }
+
+        // Mise à jour de l'URL lors du changement d'onglet
+        document.querySelectorAll('#tacheTabs button').forEach(tab => {
+            tab.addEventListener('shown.bs.tab', (e) => {
+                window.location.hash = e.target.getAttribute('data-bs-target');
+            });
+        });
+    });
+</script>
+{% endblock %}		
+		
