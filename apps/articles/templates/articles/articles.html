@@ -1008,6 +1008,71 @@ tr.shown td.details-control::before {
         display: none;
     }
 }
+
+/* ======================================== */
+/* ✅ v2 : سطر مخدوش للمقالات déclassés      */
+/* ======================================== */
+#articlesTable tbody tr.declasse-row > td {
+    text-decoration: line-through;
+    text-decoration-color: #dc3545;
+    text-decoration-thickness: 1.5px;
+    color: #8a8f98 !important;
+    box-shadow: inset 0 0 0 9999px rgba(220, 53, 69, 0.07) !important;
+    background-image: repeating-linear-gradient(135deg, rgba(220,53,69,0.07) 0, rgba(220,53,69,0.07) 6px, transparent 6px, transparent 12px);
+}
+#articlesTable tbody tr.declasse-row > td:first-child {
+    border-left: 4px solid #dc3545;
+}
+#articlesTable tbody tr.declasse-row > td.details-control {
+    text-decoration: none;
+}
+#articlesTable tbody tr.declasse-row code,
+#articlesTable tbody tr.declasse-row span,
+#articlesTable tbody tr.declasse-row .badge {
+    text-decoration: line-through;
+    text-decoration-color: #dc3545;
+    opacity: 0.8;
+}
+#articlesTable tbody tr.declasse-row.selected > td {
+    box-shadow: inset 0 0 0 9999px rgba(220, 53, 69, 0.18) !important;
+}
+
+/* ======================================== */
+/* ✅ v2 : تبويب Codification                */
+/* ======================================== */
+.codif-boxes { display: flex; flex-wrap: wrap; gap: 6px; }
+.codif-char {
+    --c: #6c757d;
+    width: 44px; border: 2px solid var(--c); border-radius: 8px; overflow: hidden;
+    text-align: center; background: #fff;
+}
+.codif-char-val {
+    display: block; font-family: 'Courier New', monospace; font-size: 1.4rem; font-weight: 700;
+    color: var(--c); padding: 4px 0 2px;
+}
+.codif-char-pos { display: block; background: var(--c); color: #fff; font-size: 0.65rem; padding: 1px 0; }
+.codif-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+.codif-legend th { font-size: 0.75rem; text-transform: uppercase; color: #6c757d; }
+.codif-tree ul { list-style: none; padding-left: 1.5rem; margin: 0; border-left: 1px dashed #ced4da; }
+.codif-tree > ul { border-left: none; padding-left: 0; }
+.codif-node { padding: 3px 8px; border-radius: 6px; margin: 2px 0; display: inline-block; }
+.codif-node.on-path { background: rgba(13,110,253,0.08); font-weight: 600; }
+.codif-node.is-current { background: rgba(13,110,253,0.2); border: 1px solid #0d6efd; }
+
+/* ======================================== */
+/* ✅ v2 : تبويب Détails (article déclassé)  */
+/* ======================================== */
+#declasse-tab { color: #dc3545; }
+#declasse-tab.active { background: #dc3545; color: #fff; }
+.declasse-banner {
+    background: linear-gradient(135deg, #fff5f5 0%, #ffe0e0 100%);
+    border-left: 4px solid #dc3545; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;
+}
+.declasse-strike { text-decoration: line-through; text-decoration-color: #dc3545; }
+.declasse-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 0.75rem; }
+.declasse-item { background: #f8f9fa; border-radius: 8px; padding: 0.75rem 1rem; border-top: 3px solid #dc3545; }
+.declasse-item-label { font-size: 0.75rem; text-transform: uppercase; color: #6c757d; font-weight: 600; }
+.declasse-item-value { font-size: 1.15rem; font-weight: 700; }
 </style>
 {% endblock %}
 
@@ -1016,32 +1081,9 @@ tr.shown td.details-control::before {
     <div class="row">
         
         <!-- ======================================== -->
-        <!-- ✅ المستوى 1: Sidebar عمودي مع نصوص عمودية -->
-        <!-- ======================================== -->
-        <div class="col-lg-1 col-md-2">
-            <div class="main-sidebar">
-                <h6 class="text-muted small text-uppercase fw-bold mb-3 px-2 text-center">Nav</h6>
-                <div class="nav flex-column" id="mainSidebar" role="tablist">
-                    <button class="nav-link active" data-tab="stock" data-bs-toggle="tab" data-bs-target="#stockContent" type="button">
-                        <i class="bi bi-box-seam"></i>
-                        <span>Article en Stock</span>
-                    </button>
-                    <button class="nav-link" data-tab="general" data-bs-toggle="tab" data-bs-target="#generalStatsContent" type="button">
-                        <i class="bi bi-bar-chart-line"></i>
-                        <span>Statistique Générale</span>
-                    </button>
-                    <button class="nav-link" data-tab="dashboard" data-bs-toggle="tab" data-bs-target="#dashboardContent" type="button">
-                        <i class="bi bi-speedometer2"></i>
-                        <span>Tableau de Bord</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- ======================================== -->
         <!-- ✅ المحتوى الرئيسي -->
         <!-- ======================================== -->
-        <div class="col-lg-11 col-md-10">
+        <div class="col-12">
             <div class="tab-content" id="mainTabContent">
                 
                 <!-- ======================================== -->
@@ -1070,6 +1112,16 @@ tr.shown td.details-control::before {
                             <li class="nav-item">
                                 <button class="nav-link" id="caract-tab" data-bs-toggle="tab" data-bs-target="#caract" type="button" disabled>
                                     <i class="bi bi-tags"></i>Caractéristiques
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" id="codification-tab" data-bs-toggle="tab" data-bs-target="#codification" type="button" disabled>
+                                    <i class="bi bi-upc-scan"></i>Codification
+                                </button>
+                            </li>
+                            <li class="nav-item d-none">
+                                <button class="nav-link" id="declasse-tab" data-bs-toggle="tab" data-bs-target="#declasse" type="button" disabled>
+                                    <i class="bi bi-slash-circle"></i>Détails (Déclassé)
                                 </button>
                             </li>
                             <li class="nav-item">
@@ -1228,7 +1280,6 @@ tr.shown td.details-control::before {
                                             <th>{% trans "VAL_ART" %}</th>
                                             <th>{% trans "Nature Stock" %}</th>
                                             <th>{% trans "Désignation" %}</th>
-                                            <th class="no-sort">{% trans "Actions" %}</th>
                                         </tr>
                                     </thead>
                                     <tbody class="text-center">
@@ -1352,6 +1403,33 @@ tr.shown td.details-control::before {
                             </div>
                         </div>
                         
+                        <!-- ✅ v2 : تبويب Codification -->
+                        <div class="tab-pane fade" id="codification">
+                            <div id="codifLoading" class="loading-spinner">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-3">Chargement de la codification...</p>
+                            </div>
+                            <div id="codifHeader" class="alert alert-light mb-3">
+                                <strong>Article:</strong>
+                                <span id="codifArticleCode" class="article-code"></span>
+                                <span id="codifArticleLib" class="text-muted ms-2"></span>
+                            </div>
+                            <div id="codifContent" style="display:none;"></div>
+                            <div id="codifEmpty" class="empty-state">
+                                <i class="bi bi-upc-scan"></i>
+                                <p>Sélectionnez un article dans la liste pour voir l'explication de son code.</p>
+                            </div>
+                        </div>
+
+                        <!-- ✅ v2 : تبويب Détails (article déclassé uniquement) -->
+                        <div class="tab-pane fade" id="declasse">
+                            <div id="declasseContent" style="display:none;"></div>
+                            <div id="declasseEmpty" class="empty-state">
+                                <i class="bi bi-slash-circle"></i>
+                                <p>Sélectionnez un article déclassé (classe coût 029…) pour voir ses détails.</p>
+                            </div>
+                        </div>
+
                         <!-- ✅ تبويب Statistiques -->
                         <div class="tab-pane fade" id="stats">
                             <div id="statsLoading" class="loading-spinner show">
@@ -1520,175 +1598,6 @@ tr.shown td.details-control::before {
                         
                     </div>
                 </div>
-                
-                <!-- ======================================== -->
-                <!-- ✅ Contenu Statistique Générale -->
-                <!-- ======================================== -->
-                <div class="tab-pane fade" id="generalStatsContent">
-                    <div class="card shadow-sm mb-4">
-                        <div class="card-header bg-success text-white">
-                            <i class="bi bi-funnel me-2"></i>Filtres Avancés - Statistiques Générales
-                        </div>
-                        <div class="card-body">
-                            <form id="generalStatsFiltersForm" class="row g-3">
-                                <div class="col-md-3">
-                                    <label class="form-label small">Nature Stock</label>
-                                    <select id="genNatStock" class="form-select form-select-sm">
-                                        <option value="">Toutes</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label small">Valeur Article</label>
-                                    <select id="genValArt" class="form-select form-select-sm">
-                                        <option value="">Toutes</option>
-                                        <option value="1">1 (100%)</option>
-                                        <option value="2">2 (75%)</option>
-                                        <option value="3">3 (25%)</option>
-                                        <option value="4">4 (0%)</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label small">Classe de Coût</label>
-                                    <input type="text" id="genClasseCout" class="form-control form-control-sm" placeholder="Ex: 029">
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label small">Centre de Coût</label>
-                                    <input type="text" id="genCentreCout" class="form-control form-control-sm" placeholder="Ex: PROD">
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label small">Date Min</label>
-                                    <input type="date" id="genDateMin" class="form-control form-control-sm">
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label small">Date Max</label>
-                                    <input type="date" id="genDateMax" class="form-control form-control-sm">
-                                </div>
-                                <div class="col-12">
-                                    <div class="d-flex gap-2">
-                                        <button type="button" class="btn btn-success btn-sm" onclick="loadGeneralStats()">
-                                            <i class="bi bi-search"></i> Appliquer les filtres
-                                        </button>
-                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetGeneralStatsFilters()">
-                                            <i class="bi bi-arrow-counterclockwise"></i> Réinitialiser
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                    
-                    <div class="card shadow-sm">
-                        <div class="card-header p-0">
-                            <ul class="nav nav-pills card-header-pills" id="generalStatsTabs" role="tablist">
-                                <li class="nav-item">
-                                    <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#genEntrees" type="button" onclick="switchGeneralStatsTab('entrees')">
-                                        <i class="bi bi-arrow-down"></i> Entrées
-                                    </button>
-                                </li>
-                                <li class="nav-item">
-                                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#genSorties" type="button" onclick="switchGeneralStatsTab('sorties')">
-                                        <i class="bi bi-arrow-up"></i> Sorties
-                                    </button>
-                                </li>
-                                <li class="nav-item">
-                                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#genRetours" type="button" onclick="switchGeneralStatsTab('retours')">
-                                        <i class="bi bi-arrow-return-left"></i> Retours
-                                    </button>
-                                </li>
-                                <li class="nav-item">
-                                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#genPrestations" type="button" onclick="switchGeneralStatsTab('prestations')">
-                                        <i class="bi bi-tools"></i> Prestations
-                                    </button>
-                                </li>
-                            </ul>
-                        </div>
-                        <div class="card-body">
-                            <div class="tab-content" id="generalStatsTabsContent">
-                                <div class="tab-pane fade show active" id="genEntrees">
-                                    <div id="genEntreesLoading" class="loading-spinner show">
-                                        <div class="spinner-border text-primary" role="status"></div>
-                                        <p class="mt-3">Chargement des entrées...</p>
-                                    </div>
-                                    <div id="genEntreesContent" style="display:none;">
-                                        <div id="genEntreesSummary" class="alert alert-primary d-flex align-items-center mb-3" style="display:none;">
-                                            <i class="bi bi-currency-exchange fs-4 me-2"></i>
-                                            <div>
-                                                <h6 class="mb-0">Valeur Totale des Entrées</h6>
-                                                <p class="mb-0"><strong id="genTotalValeurEntrees">0.000 TND</strong></p>
-                                            </div>
-                                        </div>
-                                        <div class="stats-table-container">
-                                            <table id="genEntreesTable" class="table table-striped table-sm" style="width:100%"></table>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="tab-pane fade" id="genSorties">
-                                    <div id="genSortiesLoading" class="loading-spinner show">
-                                        <div class="spinner-border text-primary" role="status"></div>
-                                        <p class="mt-3">Chargement des sorties...</p>
-                                    </div>
-                                    <div id="genSortiesContent" style="display:none;">
-                                        <div id="genSortiesSummary" class="alert alert-warning d-flex align-items-center mb-3" style="display:none;">
-                                            <i class="bi bi-currency-exchange fs-4 me-2"></i>
-                                            <div>
-                                                <h6 class="mb-0">Valeur Totale des Sorties</h6>
-                                                <p class="mb-0"><strong id="genTotalValeurSorties">0.000 TND</strong></p>
-                                            </div>
-                                        </div>
-                                        <div class="stats-table-container">
-                                            <table id="genSortiesTable" class="table table-striped table-sm" style="width:100%"></table>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="tab-pane fade" id="genRetours">
-                                    <div id="genRetoursLoading" class="loading-spinner show">
-                                        <div class="spinner-border text-primary" role="status"></div>
-                                        <p class="mt-3">Chargement des retours...</p>
-                                    </div>
-                                    <div id="genRetoursContent" style="display:none;">
-                                        <div class="stats-table-container">
-                                            <table id="genRetoursTable" class="table table-striped table-sm" style="width:100%"></table>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="tab-pane fade" id="genPrestations">
-                                    <div id="genPrestationsLoading" class="loading-spinner show">
-                                        <div class="spinner-border text-primary" role="status"></div>
-                                        <p class="mt-3">Chargement des prestations...</p>
-                                    </div>
-                                    <div id="genPrestationsContent" style="display:none;">
-                                        <div class="stats-table-container">
-                                            <table id="genPrestationsTable" class="table table-striped table-sm" style="width:100%"></table>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="card mt-4">
-                                <div class="card-header">
-                                    <i class="bi bi-graph-up me-2"></i>Évolution Temporelle - Statistiques Générales
-                                </div>
-                                <div class="card-body">
-                                    <canvas id="generalStatsChart" height="300"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ======================================== -->
-                <!-- ✅ Contenu Tableau de Bord -->
-                <!-- ======================================== -->
-                <div class="tab-pane fade" id="dashboardContent">
-                    <div class="text-center py-5">
-                        <i class="bi bi-speedometer2 display-1 text-muted mb-3"></i>
-                        <h4>Tableau de Bord Stock</h4>
-                        <p class="text-muted">Cette section est en cours de développement.<br>Elle affichera les indicateurs clés de performance du stock.</p>
-                        <div class="mt-4">
-                            <span class="badge bg-warning text-dark">Prochainement</span>
-                        </div>
-                    </div>
-                </div>
 
             </div>
         </div>
@@ -1824,14 +1733,15 @@ function buildLikeCondition(value, operator) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ Page Articles chargée');
     
-    window.articlesApp = {
+    window.articlesApp = Object.assign(window.articlesApp || {}, {
+        openChildRows: {},
         currentArticle: null,
         dataTable: null,
         isLoading: false,
         currentStatsTab: 'achat',
         statsCharts: {},
         generalStatsCharts: {}
-    };
+    });
 
     const tabsEl = document.getElementById('articlesTabs');
     if (tabsEl) {
@@ -1858,6 +1768,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadArticleCaracteristiques(codArt);
             } else if (tabId === '#stats') {
                 loadStats(codArt);
+            } else if (tabId === '#codification') {
+                loadArticleCodification(codArt);
+            } else if (tabId === '#declasse') {
+                loadDeclasseDetails(window.articlesApp.currentArticle);
             }
         });
     }

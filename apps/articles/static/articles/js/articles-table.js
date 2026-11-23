@@ -1,5 +1,10 @@
 /**
-✅ articles-table.js - إدارة جدول DataTables للسلع
+✅ articles-table-v2.js - إدارة جدول DataTables للسلع (النسخة المعدلة)
+التعديلات في v2:
+- بدون عمود Actions
+- السطر مخدوش (line-through) للمقالات déclassés (CLASS_COUT يبدأ بـ 029)
+- تبويب Codification (شرح الكود)
+- تبويب Détails يظهر فقط عند اختيار مقال déclassé
 ميزات:
 Server-Side Processing مع دعم الفلاتر المتقدمة
 Child Row شامل مع إحصائيات تعمل بشكل صحيح
@@ -182,7 +187,7 @@ window.articlesApp = window.articlesApp || {};
              if (!data) return;
              const classCout = data.CLASS_COUT || '';
              const isDeclasse = String(classCout).trim().startsWith('029');
-             // ✅ استخدام CSS class بدلاً من inline styles للسطر hachuré
+             // ✅ السطر مخدوش (line-through) عبر الكلاس declasse-row (CSS في articles.html)
              if (isDeclasse) {
                  $(row).addClass('declasse-row');
              }
@@ -193,6 +198,8 @@ window.articlesApp = window.articlesApp || {};
                      return;
                  }
                  const $row = $(this);
+                 // ✅ تحديد واحد فقط في كل مرة
+                 $row.siblings('.selected').removeClass('selected');
                  const isSelected = $row.toggleClass('selected').hasClass('selected');
                  if (isSelected) {
                      window.articlesApp.currentArticle = data;
@@ -223,10 +230,11 @@ window.articlesApp = window.articlesApp || {};
          if (row.child.isShown()) {
              row.child.hide();
              tr.removeClass('shown');
-             delete window.articlesApp.openChildRows[codArt];
+             if (window.articlesApp.openChildRows) delete window.articlesApp.openChildRows[codArt];
          } else {
              row.child(formatChildRow(data)).show();
              tr.addClass('shown');
+             window.articlesApp.openChildRows = window.articlesApp.openChildRows || {};
              window.articlesApp.openChildRows[codArt] = true;
              // تحديد المقال وتفعيل التبويبات
              window.articlesApp.currentArticle = data;
@@ -295,27 +303,53 @@ window.articlesApp = window.articlesApp || {};
      const indicator = document.getElementById('loadingIndicator');
      if (indicator) indicator.style.display = 'none';
  }
+ var SECONDARY_TABS = ['#stats-tab', '#caract-tab', '#codification-tab', '#ai-tab', '#related-tab'];
+ function backToListIfNeeded(tabSelectors) {
+     // ✅ إذا كان التبويب النشط سيُعطَّل نعود إلى تبويب Liste
+     const active = document.querySelector('#articlesTabs .nav-link.active');
+     if (active && tabSelectors.some(function(s) { return active.matches(s); })) {
+         const listeTab = document.querySelector('#liste-tab');
+         if (listeTab && typeof bootstrap !== 'undefined') bootstrap.Tab.getOrCreateInstance(listeTab).show();
+     }
+ }
  function enableSecondaryTabs() {
-     // ✅ إضافة codification-tab
-     const tabs = ['#stats-tab', '#caract-tab', '#codification-tab', '#ai-tab', '#related-tab'];
-     tabs.forEach(function(tabId) {
+     SECONDARY_TABS.forEach(function(tabId) {
          const tab = document.querySelector(tabId);
          if (tab) {
              tab.disabled = false;
              tab.classList.remove('disabled');
          }
      });
+     // ✅ تبويب Détails: يظهر فقط للمقال déclassé
+     const declTab = document.querySelector('#declasse-tab');
+     if (declTab) {
+         if (window.isArticleDeclasse(window.articlesApp.currentArticle)) {
+             declTab.disabled = false;
+             declTab.classList.remove('disabled');
+             declTab.parentElement.classList.remove('d-none');
+         } else {
+             backToListIfNeeded(['#declasse-tab']);
+             declTab.disabled = true;
+             declTab.classList.add('disabled');
+             declTab.parentElement.classList.add('d-none');
+         }
+     }
  }
  function disableSecondaryTabs() {
-     // ✅ إضافة codification-tab
-     const tabs = ['#stats-tab', '#caract-tab', '#codification-tab', '#ai-tab', '#related-tab'];
-     tabs.forEach(function(tabId) {
+     backToListIfNeeded(SECONDARY_TABS.concat(['#declasse-tab']));
+     SECONDARY_TABS.forEach(function(tabId) {
          const tab = document.querySelector(tabId);
          if (tab) {
              tab.disabled = true;
              tab.classList.add('disabled');
          }
      });
+     const declTab = document.querySelector('#declasse-tab');
+     if (declTab) {
+         declTab.disabled = true;
+         declTab.classList.add('disabled');
+         declTab.parentElement.classList.add('d-none');
+     }
  }
  function bindFilterEvents() {
      const applyBtn = document.getElementById('applyFiltersBtn');
@@ -346,6 +380,235 @@ window.articlesApp = window.articlesApp || {};
          });
      }
  }
+ // =====================================================================
+ // ✅ NOUVEAU : Article déclassé (Classe Coût commençant par 029)
+ // =====================================================================
+ window.isArticleDeclasse = function(row) {
+     return !!row && String(row.CLASS_COUT || '').trim().startsWith('029');
+ };
+
+ // =====================================================================
+ // ✅ NOUVEAU : Onglet CODIFICATION - explication du code article
+ // =====================================================================
+ var CODIF_COLORS = ['#0d6efd', '#198754', '#fd7e14', '#6f42c1', '#d63384', '#20c997'];
+ var CODIF_REST_COLOR = '#6c757d';
+
+ function codifById(id) { return document.getElementById(id); }
+
+ // يجمع كل العقد في قائمة مسطحة
+ function codifFlatten(node, acc) {
+     if (!node) return acc;
+     acc.push(node);
+     (node.children || []).forEach(function(c) { codifFlatten(c, acc); });
+     return acc;
+ }
+
+ // المسار: العقد التي يكون full_code الخاص بها بادئة للكود
+ function codifComputePath(codArt, tree) {
+     if (!tree) return [];
+     return codifFlatten(tree, [])
+         .filter(function(n) { return n.full_code && codArt.indexOf(n.full_code) === 0; })
+         .sort(function(a, b) { return a.full_code.length - b.full_code.length; });
+ }
+
+ // يبني مقاطع الكود: [{label, start, end, text, node}]
+ function codifBuildSegments(codArt, path) {
+     const segments = [];
+     let pos = 0;
+     if (path.length === 0) {
+         const famLen = Math.min(3, codArt.length);
+         segments.push({ label: 'Famille (3 premiers caractères)', start: 0, end: famLen, node: null });
+         pos = famLen;
+     } else {
+         path.forEach(function(node, i) {
+             const end = Math.min(node.full_code.length, codArt.length);
+             if (end > pos) {
+                 segments.push({
+                     label: i === 0 ? 'Famille' : 'Sous-famille niveau ' + (i + 1),
+                     start: pos, end: end, node: node
+                 });
+                 pos = end;
+             }
+         });
+     }
+     if (pos < codArt.length) {
+         segments.push({ label: 'Reste du code (numéro d\'ordre / identifiant article)', start: pos, end: codArt.length, node: null, rest: true });
+     }
+     segments.forEach(function(s, i) {
+         s.text = codArt.substring(s.start, s.end);
+         s.color = s.rest ? CODIF_REST_COLOR : CODIF_COLORS[i % CODIF_COLORS.length];
+     });
+     return segments;
+ }
+
+ function codifRenderBoxes(codArt, segments) {
+     let html = '<div class="codif-boxes">';
+     for (let i = 0; i < codArt.length; i++) {
+         const seg = segments.find(function(s) { return i >= s.start && i < s.end; });
+         const color = seg ? seg.color : CODIF_REST_COLOR;
+         html += '<div class="codif-char" style="--c:' + color + '">' +
+                 '<span class="codif-char-val">' + escapeHtml(codArt.charAt(i)) + '</span>' +
+                 '<span class="codif-char-pos">' + (i + 1) + '</span></div>';
+     }
+     return html + '</div>';
+ }
+
+ function codifRenderLegend(segments) {
+     let html = '<div class="table-responsive"><table class="table table-sm align-middle codif-legend mb-0">' +
+         '<thead><tr><th>Niveau</th><th class="text-center">Positions</th><th class="text-center">Segment</th><th>Code cumulé</th><th>Signification</th></tr></thead><tbody>';
+     let cumul = '';
+     segments.forEach(function(s) {
+         cumul += s.text;
+         const name = s.node ? escapeHtml(s.node.name || '') :
+             (s.rest ? '<span class="text-muted">Partie propre à l\'article (non définie dans les familles)</span>'
+                     : '<span class="text-muted">Famille non définie dans la codification</span>');
+         html += '<tr>' +
+             '<td><span class="codif-dot" style="background:' + s.color + '"></span>' + escapeHtml(s.label) + '</td>' +
+             '<td class="text-center">' + (s.start + 1) + (s.end - s.start > 1 ? ' – ' + s.end : '') + '</td>' +
+             '<td class="text-center"><code class="article-code">' + escapeHtml(s.text) + '</code></td>' +
+             '<td><code>' + escapeHtml(cumul) + '</code></td>' +
+             '<td>' + name + '</td></tr>';
+     });
+     return html + '</tbody></table></div>';
+ }
+
+ function codifRenderTree(node, pathCodes) {
+     if (!node) return '';
+     const onPath = pathCodes.indexOf(node.full_code) !== -1;
+     const isLeafOfPath = onPath && pathCodes[pathCodes.length - 1] === node.full_code;
+     let html = '<li><div class="codif-node' + (onPath ? ' on-path' : '') + (isLeafOfPath ? ' is-current' : '') + '">' +
+         '<code>' + escapeHtml(node.full_code || '') + '</code> ' +
+         '<span>' + escapeHtml(node.name || '') + '</span>' +
+         (isLeafOfPath ? ' <i class="bi bi-geo-alt-fill ms-1"></i>' : '') + '</div>';
+     if (node.children && node.children.length) {
+         html += '<ul>' + node.children.map(function(c) { return codifRenderTree(c, pathCodes); }).join('') + '</ul>';
+     }
+     return html + '</li>';
+ }
+
+ window.loadArticleCodification = function(codArt) {
+     if (!codArt) return;
+     const loading = codifById('codifLoading');
+     const content = codifById('codifContent');
+     const empty = codifById('codifEmpty');
+     if (empty) empty.style.display = 'none';
+     if (content) content.style.display = 'none';
+     if (loading) loading.classList.add('show');
+
+     const article = window.articlesApp.currentArticle || {};
+     const codeEl = codifById('codifArticleCode');
+     const libEl = codifById('codifArticleLib');
+     if (codeEl) codeEl.textContent = codArt;
+     if (libEl) libEl.textContent = article.LIB_ART || '';
+
+     function render(tree, errorMsg) {
+         const path = codifComputePath(codArt, tree);
+         const segments = codifBuildSegments(codArt, path);
+         const pathCodes = path.map(function(n) { return n.full_code; });
+         let html = '<h6 class="text-muted small text-uppercase fw-bold mb-2"><i class="bi bi-upc-scan me-1"></i>Décomposition du code (' + codArt.length + ' caractères)</h6>';
+         html += codifRenderBoxes(codArt, segments);
+         html += '<div class="card mt-3"><div class="card-body p-2">' + codifRenderLegend(segments) + '</div></div>';
+         if (errorMsg) {
+             html += '<div class="alert alert-warning mt-3 mb-0 small"><i class="bi bi-exclamation-triangle me-1"></i>' + escapeHtml(errorMsg) +
+                     ' — décomposition par défaut affichée.</div>';
+         }
+         if (tree) {
+             html += '<h6 class="text-muted small text-uppercase fw-bold mt-4 mb-2"><i class="bi bi-diagram-3 me-1"></i>Hiérarchie de la famille</h6>' +
+                     '<div class="codif-tree"><ul>' + codifRenderTree(tree, pathCodes) + '</ul></div>';
+         }
+         if (content) { content.innerHTML = html; content.style.display = 'block'; }
+         if (loading) loading.classList.remove('show');
+     }
+
+     fetch(getArticleFamilyByCodeUrl(codArt), { credentials: 'same-origin' })
+         .then(function(r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
+         .then(function(json) { render(json.family || null, json.family ? null : (json.error || 'Famille non trouvée')); })
+         .catch(function(err) {
+             console.error('❌ Codification:', err);
+             render(null, 'Erreur de chargement (' + err.message + ')');
+         });
+ };
+
+ // =====================================================================
+ // ✅ NOUVEAU : Onglet DÉTAILS (uniquement pour un article déclassé sélectionné)
+ // =====================================================================
+ function daysSince(dateString) {
+     if (!dateString) return null;
+     const d = new Date(dateString);
+     if (isNaN(d.getTime())) return null;
+     return Math.floor((Date.now() - d.getTime()) / 86400000);
+ }
+
+ function formatDuration(days) {
+     if (days === null) return '—';
+     if (days < 31) return days + ' jour(s)';
+     if (days < 365) return Math.floor(days / 30) + ' mois';
+     const y = Math.floor(days / 365);
+     const m = Math.floor((days % 365) / 30);
+     return y + ' an(s)' + (m ? ' ' + m + ' mois' : '');
+ }
+
+ window.loadDeclasseDetails = function(article) {
+     const content = document.getElementById('declasseContent');
+     const empty = document.getElementById('declasseEmpty');
+     if (!content) return;
+     if (!article || !window.isArticleDeclasse(article)) {
+         content.style.display = 'none';
+         if (empty) empty.style.display = 'block';
+         return;
+     }
+     if (empty) empty.style.display = 'none';
+
+     const qte = parseFloat(article.QTE_SURSTK || 0);
+     const pu = parseFloat(article.PU || 0);
+     const valeur = qte * pu;
+     const joursMv = daysSince(article.DERNIER_MV);
+     const joursCreat = daysSince(article.DATE_CREAT);
+     const valMap = { '1': '100%', '2': '75%', '3': '25%', '4': '0%' };
+     const valArt = article.VAL_ART ? (valMap[String(article.VAL_ART)] || 'N/A') : 'N/A';
+
+     function item(icon, label, value, extra) {
+         return '<div class="declasse-item"><div class="declasse-item-label"><i class="bi ' + icon + ' me-1"></i>' + label + '</div>' +
+                '<div class="declasse-item-value">' + value + '</div>' + (extra ? '<small class="text-muted">' + extra + '</small>' : '') + '</div>';
+     }
+
+     let analyse;
+     if (qte > 0) {
+         analyse = '<div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle me-2"></i>' +
+             '<strong>Stock résiduel :</strong> ' + qte.toFixed(2) + ' ' + escapeHtml(article.LIB_UM || '') +
+             ' valorisé à <strong>' + valeur.toFixed(3) + ' TND</strong>. Cet article déclassé immobilise encore du stock : ' +
+             'une décision (réforme, cession, régularisation) est à envisager.</div>';
+     } else {
+         analyse = '<div class="alert alert-success mb-0"><i class="bi bi-check-circle me-2"></i>' +
+             'Aucun stock résiduel pour cet article déclassé.</div>';
+     }
+
+     content.innerHTML =
+         '<div class="declasse-banner">' +
+             '<div><span class="badge bg-danger me-2">DÉCLASSÉ</span>' +
+             '<span class="article-code declasse-strike">' + escapeHtml(article.COD_ART || '') + '</span> ' +
+             '<span class="declasse-strike ms-2">' + escapeHtml(article.LIB_ART || '') + '</span></div>' +
+             (article.DESIGNAT ? '<div class="text-muted small mt-1"><em>' + escapeHtml(article.DESIGNAT) + '</em></div>' : '') +
+         '</div>' +
+         '<div class="declasse-grid">' +
+             item('bi-tag', 'Classe Coût', '<code>' + escapeHtml(String(article.CLASS_COUT || '—')) + '</code>', 'Préfixe 029 = article déclassé') +
+             item('bi-calendar-plus', 'Date de création', formatDate(article.DATE_CREAT), joursCreat !== null ? 'Ancienneté : ' + formatDuration(joursCreat) : '') +
+             item('bi-calendar-check', 'Dernier mouvement', formatDate(article.DERNIER_MV), joursMv !== null ? 'Inactif depuis : ' + formatDuration(joursMv) : '') +
+             item('bi-geo-alt', 'Emplacement', escapeHtml(article.EMPL || '—')) +
+             item('bi-box-seam', 'Quantité en stock', qte.toFixed(2), escapeHtml(article.LIB_UM || '')) +
+             item('bi-currency-exchange', 'P.U (TND)', pu.toFixed(3)) +
+             item('bi-cash-coin', 'Valeur du stock', valeur.toFixed(3), 'TND') +
+             item('bi-percent', 'VAL_ART', valArt) +
+             item('bi-diagram-2', 'Nature du stock', escapeHtml(article.libelle_nature || article.nat_stock || '—')) +
+         '</div>' +
+         '<div class="mt-3">' + analyse + '</div>' +
+         '<div class="mt-3 d-flex gap-2 flex-wrap">' +
+             '<button type="button" class="btn btn-sm btn-outline-primary" onclick="document.getElementById(\'codification-tab\').click()"><i class="bi bi-upc-scan me-1"></i>Voir la codification</button>' +
+             '<button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById(\'stats-tab\').click()"><i class="bi bi-bar-chart-line me-1"></i>Voir les statistiques</button>' +
+         '</div>';
+     content.style.display = 'block';
+ };
+
  // ✅ دوال مساعدة
  window.formatDate = function(dateString) {
      if (!dateString) return '-';
