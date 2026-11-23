@@ -8,7 +8,7 @@
     <h1 class="text-danger">403</h1>
     <h3>{% trans "ليس لديك صلاحية للوصول إلى هذه الصفحة" %}</h3>
     <p>{% trans "يرجى الاتصال بمدير النظام إن كنت تعتقد أن هذا خطأ." %}</p>
-    <a href="{% url 'core:dashboard' %}" class="btn btn-primary">
+    <a href="{% url 'dashboard:index' %}" class="btn btn-primary">
         {% trans "العودة إلى لوحة التحكم" %}
     </a>
 </div>

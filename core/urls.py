@@ -166,6 +166,16 @@ urlpatterns = [
     # ===========================
     
     
+
+    # --- routes ajoutées (vues existantes mais non routées) ---
+    path('api/search-articles-by-caracts/', views.api_search_articles_by_caracts, name='api_search_articles_by_caracts'),
+    path('lectures-index/', views.lecture_index_list, name='lecture_index_list'),
+    path('lectures-index/create/', views.lecture_index_create, name='lecture_index_create'),
+    path('consommations/', views.consommation_list, name='consommation_list'),
+    path('consommations/create/', views.consommation_create, name='consommation_create'),
+    path('lectures-pompe/', views.lecture_pompe_list, name='lecture_pompe_list'),
+    path('lectures-pompe/create/', views.lecture_pompe_create, name='lecture_pompe_create'),
+
     # ===========================
     # 8. Notifications
     # ===========================

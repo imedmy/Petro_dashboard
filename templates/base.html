@@ -393,15 +393,14 @@
         <div class="sidebar-body">
             <nav class="sidebar-menu nav flex-column px-2">
                 <!-- Tableau de bord -->
-                <a class="nav-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}" href="{% url 'dashboard:index' %}">
+                <a class="nav-link" href="{% url 'dashboard:index' %}">
                     <i class="bi bi-house-door"></i> <span>Tableau de bord</span>
                 </a>
                 <!-- Paramétrage -->
-                <a class="nav-link dropdown-toggle {% if 'service' in request.resolver_match.url_name or 'personnel' in request.resolver_match.url_name %}active{% endif %}" 
-                   data-bs-toggle="collapse" href="#parametrageSubMenu" role="button" aria-expanded="false">
+                <a class="nav-link dropdown-toggle" data-bs-toggle="collapse" href="#parametrageSubMenu" role="button" aria-expanded="false">
                     <i class="bi bi-gear"></i> <span>Paramétrage</span>
                 </a>
-                <div class="collapse {% if 'service' in request.resolver_match.url_name or 'personnel' in request.resolver_match.url_name %}show{% endif %}" id="parametrageSubMenu">
+                <div class="collapse" id="parametrageSubMenu">
                     <nav class="nav flex-column">
                         <a class="nav-link" href="{% url 'core:service_list' %}"><i class="bi bi-building"></i> Services</a>
                         <a class="nav-link" href="{% url 'core:personnel_list' %}"><i class="bi bi-people"></i> Personnel</a>
@@ -414,59 +413,75 @@
                     </nav>
                 </div>
                 <!-- Gestion des articles -->
-                <a class="nav-link dropdown-toggle {% if 'list' in request.resolver_match.url_name or 'caracteristique' in request.resolver_match.url_name or 'famille' in request.resolver_match.url_name or 'recherche' in request.resolver_match.url_name or 'statistiques' in request.resolver_match.url_name %}active{% endif %}" 
-                   data-bs-toggle="collapse" href="#articlesSubMenu" role="button" aria-expanded="false">
+                <a class="nav-link dropdown-toggle" data-bs-toggle="collapse" href="#articlesSubMenu" role="button" aria-expanded="false">
                     <i class="bi bi-box-seam"></i> <span>Gestion des articles</span>
                 </a>
-                <div class="collapse {% if 'list' in request.resolver_match.url_name or 'caracteristique' in request.resolver_match.url_name or 'famille' in request.resolver_match.url_name or 'recherche' in request.resolver_match.url_name or 'statistiques' in request.resolver_match.url_name %}show{% endif %}" id="articlesSubMenu">
+                <div class="collapse" id="articlesSubMenu">
                     <nav class="nav flex-column">
                         <a class="nav-link" href="{% url 'articles:list' %}"><i class="bi bi-inbox"></i> Articles en stock</a>
                         <a class="nav-link" href="{% url 'articles:gestion_caracteristiques' %}"><i class="bi bi-list-task"></i> Caractéristiques</a>
                         <a class="nav-link" href="{% url 'articles:famille_codification' %}"><i class="bi bi-upc"></i> Codification</a>
+                        <a class="nav-link" href="{% url 'articles:article_caracteristiques_with_cod' %}"><i class="bi bi-tag"></i> Assigner caractéristiques</a>
                         <a class="nav-link" href="{% url 'articles:recherche' %}"><i class="bi bi-search"></i> Recherche</a>
                         <a class="nav-link" href="{% url 'articles:statistiques' %}"><i class="bi bi-bar-chart"></i> Statistiques</a>
                     </nav>
                 </div>
                 <!-- Gestion des BC -->
-                <a class="nav-link dropdown-toggle {% if 'commande' in request.resolver_match.url_name or 'avis' in request.resolver_match.url_name %}active{% endif %}" 
-                   data-bs-toggle="collapse" href="#BCSubMenu" role="button" aria-expanded="false">
+                <a class="nav-link dropdown-toggle" data-bs-toggle="collapse" href="#BCSubMenu" role="button" aria-expanded="false">
                     <i class="bi bi-file-earmark-text"></i> <span>Gestion des BC</span>
                 </a>
-                <div class="collapse {% if 'commande' in request.resolver_match.url_name or 'avis' in request.resolver_match.url_name %}show{% endif %}" id="BCSubMenu">
+                <div class="collapse" id="BCSubMenu">
                     <nav class="nav flex-column">
                         <a class="nav-link" href="{% url 'core:bons_commande' %}"><i class="bi bi-file-text"></i> Bons de Commande</a>
+                        <a class="nav-link" href="{% url 'core:suivi_etapes' %}"><i class="bi bi-signpost-split"></i> Suivi des étapes</a>
+                        <a class="nav-link" href="{% url 'core:etat_b1' %}"><i class="bi bi-clipboard-data"></i> État B1</a>
+                        <a class="nav-link" href="{% url 'core:comparaison_commande_reception' %}"><i class="bi bi-arrow-left-right"></i> Commande / Réception</a>
                         <a class="nav-link" href="{% url 'core:avis_arrivee_list_page' %}"><i class="bi bi-truck"></i> Avis d'Arrivée</a>
                     </nav>
                 </div>
+                <!-- Gestion des Projets -->
+                <a class="nav-link dropdown-toggle" data-bs-toggle="collapse" href="#projetsSubMenu" role="button" aria-expanded="false">
+                    <i class="bi bi-briefcase"></i> <span>Gestion des Projets</span>
+                </a>
+                <div class="collapse" id="projetsSubMenu">
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="{% url 'projets:dashboard' %}"><i class="bi bi-speedometer2"></i> Tableau de bord projets</a>
+                        <a class="nav-link" href="{% url 'projets:projet_list' %}"><i class="bi bi-folder2-open"></i> Liste des projets</a>
+                        <a class="nav-link" href="{% url 'projets:projet_create' %}"><i class="bi bi-plus-circle"></i> Nouveau projet</a>
+                    </nav>
+                </div>
                 <!-- Gestion des Tâches -->
-                <a class="nav-link dropdown-toggle {% if 'tache' in request.resolver_match.url_name or 'planning' in request.resolver_match.url_name %}active{% endif %}" 
-                   data-bs-toggle="collapse" href="#tachesSubMenu" role="button" aria-expanded="false">
+                <a class="nav-link dropdown-toggle" data-bs-toggle="collapse" href="#tachesSubMenu" role="button" aria-expanded="false">
                     <i class="bi bi-check2-square"></i> <span>Gestion des Tâches</span>
                 </a>
-                <div class="collapse {% if 'tache' in request.resolver_match.url_name or 'planning' in request.resolver_match.url_name %}show{% endif %}" id="tachesSubMenu">
+                <div class="collapse" id="tachesSubMenu">
                     <nav class="nav flex-column">
                         <a class="nav-link" href="{% url 'core:planning_referentiel_list' %}"><i class="bi bi-journal-bookmark"></i> Planning</a>
                         <a class="nav-link" href="{% url 'core:tache_list' %}"><i class="bi bi-list-task"></i> Liste des Tâches</a>
                     </nav>
                 </div>
                 <!-- Station Service -->
-                <a class="nav-link dropdown-toggle {% if 'citerne' in request.resolver_match.url_name or 'lecture' in request.resolver_match.url_name %}active{% endif %}" 
-                   data-bs-toggle="collapse" href="#citerneSubMenu" role="button" aria-expanded="false">
+                <a class="nav-link dropdown-toggle" data-bs-toggle="collapse" href="#citerneSubMenu" role="button" aria-expanded="false">
                     <i class="bi bi-fuel-pump"></i> <span>Station Service</span>
                 </a>
-                <div class="collapse {% if 'citerne' in request.resolver_match.url_name or 'lecture' in request.resolver_match.url_name %}show{% endif %}" id="citerneSubMenu">
+                <div class="collapse" id="citerneSubMenu">
                     <nav class="nav flex-column">
                         <a class="nav-link" href="{% url 'core:citerne_list' %}"><i class="bi bi-list"></i> Citernes</a>
-                        <a class="nav-link" href="{% url 'core:citerne_create' %}"><i class="bi bi-plus-circle"></i> Nouvelle</a>
-                        <a class="nav-link" href="{% url 'core:lectures_consommations' %}"><i class="bi bi-graph-up"></i> Lectures</a>
+                        <a class="nav-link" href="{% url 'core:citerne_create' %}"><i class="bi bi-plus-circle"></i> Nouvelle citerne</a>
+                        <a class="nav-link" href="{% url 'core:engin_list' %}"><i class="bi bi-truck-flatbed"></i> Engins</a>
+                        <a class="nav-link" href="{% url 'core:equipement_list' %}"><i class="bi bi-tools"></i> Équipements</a>
+                        <a class="nav-link" href="{% url 'core:lecture_jauge_list' %}"><i class="bi bi-speedometer"></i> Lectures jauge</a>
+                        <a class="nav-link" href="{% url 'core:lecture_index_list' %}"><i class="bi bi-123"></i> Lectures index</a>
+                        <a class="nav-link" href="{% url 'core:lecture_pompe_list' %}"><i class="bi bi-droplet"></i> Lectures pompe</a>
+                        <a class="nav-link" href="{% url 'core:consommation_list' %}"><i class="bi bi-fuel-pump-diesel"></i> Consommations</a>
+                        <a class="nav-link" href="{% url 'core:lectures_consommations' %}"><i class="bi bi-graph-up"></i> Lectures & consommations</a>
                     </nav>
                 </div>
                 <!-- Utilisateurs -->
-                <a class="nav-link dropdown-toggle mt-auto {% if 'user' in request.resolver_match.url_name or 'permission' in request.resolver_match.url_name %}active{% endif %}" 
-                   data-bs-toggle="collapse" href="#usersSubMenu" role="button" aria-expanded="false">
+                <a class="nav-link dropdown-toggle" data-bs-toggle="collapse" href="#usersSubMenu" role="button" aria-expanded="false">
                     <i class="bi bi-people"></i> <span>Utilisateurs</span>
                 </a>
-                <div class="collapse {% if 'user' in request.resolver_match.url_name or 'permission' in request.resolver_match.url_name %}show{% endif %}" id="usersSubMenu">
+                <div class="collapse" id="usersSubMenu">
                     <nav class="nav flex-column">
                         <a class="nav-link" href="{% url 'core:user_list' %}"><i class="bi bi-person-lines-fill"></i> Liste</a>
                         <a class="nav-link" href="{% url 'core:user_create' %}"><i class="bi bi-person-plus"></i> Ajouter</a>
@@ -517,7 +532,10 @@
                     {% endif %}
 
                     {% if user.is_authenticated %}
-                        <a href="{% url 'accounts:logout' %}" class="btn btn-outline-light btn-sm" title="Déconnexion"><i class="bi bi-box-arrow-right"></i><span class="d-none d-md-inline">Déconnexion</span></a>
+                        <form method="post" action="{% url 'accounts:logout' %}" class="d-inline m-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-light btn-sm" title="Déconnexion"><i class="bi bi-box-arrow-right"></i><span class="d-none d-md-inline"> Déconnexion</span></button>
+                        </form>
                     {% endif %}
                 </div>
             </div>
@@ -801,6 +819,28 @@
         
         console.log('✅ Pétro Dashboard initialized');
     });
+})();
+</script>
+
+<script>
+// ✅ تفعيل الرابط الحالي وفتح القائمة الفرعية تلقائياً (sidebar-autoactive)
+(function () {
+    var path = window.location.pathname;
+    var best = null, bestLen = -1;
+    document.querySelectorAll('#sidebarMenu a.nav-link[href]').forEach(function (a) {
+        if (a.hasAttribute('data-bs-toggle')) return;
+        var href = a.getAttribute('href');
+        if (!href || href.charAt(0) !== '/') return;
+        if ((path === href || path.indexOf(href) === 0) && href.length > bestLen) { best = a; bestLen = href.length; }
+    });
+    if (!best) return;
+    best.classList.add('active');
+    var box = best.closest('.collapse');
+    if (box) {
+        box.classList.add('show');
+        var toggle = document.querySelector('#sidebarMenu a[href="#' + box.id + '"]');
+        if (toggle) { toggle.classList.add('active'); toggle.setAttribute('aria-expanded', 'true'); }
+    }
 })();
 </script>
 {% block extra_js %}{% endblock %}

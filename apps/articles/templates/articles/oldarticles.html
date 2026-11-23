@@ -1,0 +1,3376 @@
+{% extends "base.html" %}
+{% load static i18n %}
+{% block title %}Gestion des Articles - Pétro Dashboard{% endblock %}
+{% block extra_css %}
+{{ block.super }}
+<link href="{% static 'vendor/datatables/css/dataTables.bootstrap5.min.css' %}" rel="stylesheet">
+<link href="{% static 'vendor/datatables/css/responsive.bootstrap5.min.css' %}" rel="stylesheet">
+<style>
+/* ======================================== */
+/* ✅ تحسينات خاصة بصفحة السلع */
+/* ======================================== */
+.advanced-filters-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    margin-bottom: 1.5rem;
+    background: #fff;
+}
+.filter-field {
+    flex: 1;
+    min-width: 180px;
+}
+.filter-field label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.25rem;
+}
+.filter-field select,
+.filter-field input {
+    font-size: 0.9rem;
+    padding: 0.375rem 0.75rem;
+}
+.filter-operator {
+    width: 100px !important;
+}
+.filter-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+.article-code {
+    font-family: 'Courier New', monospace;
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #d9534f;
+    background: #fff0f0;
+    padding: 4px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+}
+.val-art-badge {
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+.val-art-1 { color: #28a745; background: rgba(40, 167, 69, 0.1); }
+.val-art-2 { color: #fd7e14; background: rgba(253, 126, 20, 0.1); }
+.val-art-3 { color: #ffc107; background: rgba(255, 193, 7, 0.1); }
+.val-art-4 { color: #dc3545; background: rgba(220, 53, 69, 0.1); }
+.row-declasse {
+    background: linear-gradient(135deg, #fff5f5 0%, #ffe0e0 100%) !important;
+    border-left: 4px solid #dc3545 !important;
+    position: relative;
+}
+.row-declasse::before {
+    content: "Déclassé";
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    background: #dc3545;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    opacity: 0.85;
+    pointer-events: none;
+    z-index: 1;
+}
+.row-declasse:hover::before {
+    opacity: 1;
+}
+.action-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 2px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* ======================================== */
+/* ✅ المستوى 1: Sidebar عمودي مع نصوص عمودية */
+/* ======================================== */
+.main-sidebar {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px;
+    padding: 1rem 0.5rem;
+    min-height: 800px;
+    position: sticky;
+    top: 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+.main-sidebar .nav-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 0.5rem;
+    margin-bottom: 0.75rem;
+    border-radius: 10px;
+    color: #495057;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+    border: none;
+    text-align: center;
+    width: 100%;
+    background: transparent;
+    min-height: 140px;
+}
+.main-sidebar .nav-link i {
+    font-size: 1.5rem;
+    width: 30px;
+    text-align: center;
+    margin-bottom: 0.5rem;
+}
+/* ✅ النصوص العمودية */
+.main-sidebar .nav-link span {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    letter-spacing: 1px;
+    line-height: 1.2;
+}
+.main-sidebar .nav-link:hover {
+    background: rgba(13, 110, 253, 0.1);
+    color: #0d6efd;
+    transform: translateX(3px);
+}
+/* ✅ Article en Stock - أزرق */
+.main-sidebar .nav-link.active[data-tab="stock"] {
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.4);
+}
+/* ✅ Statistique Générale - أخضر */
+.main-sidebar .nav-link.active[data-tab="general"] {
+    background: linear-gradient(135deg, #198754 0%, #146c43 100%);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(25, 135, 84, 0.4);
+}
+/* ✅ Tableau de Bord - بنفسجي */
+.main-sidebar .nav-link.active[data-tab="dashboard"] {
+    background: linear-gradient(135deg, #6610f2 0%, #520dc2 100%);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(102, 16, 242, 0.4);
+}
+
+/* ======================================== */
+/* ✅ Child Row (السطر التكميلي الشامل) */
+/* ======================================== */
+.child-row-container {
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #f8f9ff 0%, #eef2ff 100%);
+    border-radius: 8px;
+    margin: 0.5rem 0;
+    border: 1px solid #dee2e6;
+}
+.child-row-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #dee2e6;
+}
+.child-row-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #212529;
+}
+.child-row-designation {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+.child-row-actions .btn {
+    margin-left: 0.25rem;
+}
+/* ✅ Mini-Statistiques */
+.mini-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.mini-stat-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: transform 0.2s;
+}
+.mini-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+.mini-stat-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: #6c757d;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+.mini-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+.mini-stat-card.success .mini-stat-value { color: #198754; }
+.mini-stat-card.danger .mini-stat-value { color: #dc3545; }
+.mini-stat-card.primary .mini-stat-value { color: #0d6efd; }
+.mini-stat-card.warning .mini-stat-value { color: #ffc107; }
+
+.child-stats-tabs {
+    background: #fff;
+    border-radius: 8px;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.child-stats-tabs .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    margin: 0 0.25rem;
+    border-radius: 6px;
+    color: #6c757d;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: none;
+    background: transparent;
+    white-space: nowrap;
+    font-size: 0.9rem;
+}
+.child-stats-tabs .nav-link:hover {
+    background: #e9ecef;
+    color: #0d6efd;
+}
+.child-stats-tabs .nav-link.active {
+    background: #0d6efd;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.3);
+}
+.child-stats-tabs .nav-link i {
+    font-size: 1rem;
+}
+
+td.details-control {
+    cursor: pointer;
+    text-align: center;
+    width: 30px;
+}
+td.details-control::before {
+    content: "▶";
+    font-size: 0.8rem;
+    color: #0d6efd;
+    transition: transform 0.2s;
+}
+tr.shown td.details-control::before {
+    content: "▼";
+    color: #dc3545;
+}
+
+/* ======================================== */
+/* ✅ المستوى 2: التبويبات الأفقية */
+/* ======================================== */
+.secondary-tabs {
+    background: #fff;
+    border-radius: 10px;
+    padding: 0.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.secondary-tabs .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    margin: 0 0.25rem;
+    border-radius: 8px;
+    color: #6c757d;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: none;
+    background: transparent;
+    white-space: nowrap;
+}
+.secondary-tabs .nav-link:hover {
+    background: #e9ecef;
+    color: #0d6efd;
+}
+.secondary-tabs .nav-link.active {
+    background: #0d6efd;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.3);
+}
+.secondary-tabs .nav-link:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.secondary-tabs .nav-link i {
+    font-size: 1.1rem;
+}
+
+/* ======================================== */
+/* ✅ المستوى 3: Pills العمودية الملونة */
+/* ======================================== */
+.stats-sidebar {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 0.75rem;
+    min-height: 500px;
+}
+.stats-sidebar .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 8px;
+    color: #495057;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: none;
+    background: #fff;
+    width: 100%;
+    text-align: left;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.stats-sidebar .nav-link:hover {
+    transform: translateX(3px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+.stats-sidebar .nav-link.active {
+    background: #0d6efd;
+    color: #fff;
+}
+.stats-sidebar .nav-link i {
+    font-size: 1.1rem;
+    width: 24px;
+    text-align: center;
+}
+
+/* ======================================== */
+/* ✅ محتوى التبويبات */
+/* ======================================== */
+.tab-pane {
+    min-height: 400px;
+    animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+#articlesTable thead {
+    background: linear-gradient(135deg, #1a252f 0%, #2c3e50 100%);
+    color: #fff;
+}
+#articlesTable thead th {
+    font-weight: 600;
+    border: none !important;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+}
+#articlesTable thead th:hover {
+    background: rgba(255,255,255,0.1);
+}
+#articlesTable tbody tr {
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+#articlesTable tbody tr:hover {
+    background: rgba(13, 110, 253, 0.08) !important;
+    transform: translateX(4px);
+}
+#articlesTable tbody tr.selected {
+    background: rgba(13, 110, 253, 0.15) !important;
+    border-left: 4px solid #0d6efd;
+}
+
+.related-article-item {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    background: #f8f9fa;
+    border-left: 4px solid #667eea;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.related-article-item:hover {
+    background: rgba(102, 126, 234, 0.1);
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.related-article-content {
+    flex: 1;
+}
+.related-article-code {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: #0d6efd;
+    margin-bottom: 0.25rem;
+}
+.related-article-lib {
+    font-size: 0.9rem;
+    color: #495057;
+    margin-bottom: 0.25rem;
+}
+.related-article-stats {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+.related-article-stats span {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.related-article-item .confidence {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+}
+.related-article-item.high-confidence {
+    border-left-color: #28a745;
+}
+.related-article-item.high-confidence .confidence {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}
+.related-article-item.medium-confidence {
+    border-left-color: #ffc107;
+}
+.related-article-item.medium-confidence .confidence {
+    background: rgba(255, 193, 7, 0.1);
+    color: #856404;
+}
+.related-article-item.low-confidence {
+    border-left-color: #6c757d;
+}
+.related-article-item.low-confidence .confidence {
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+}
+
+.ai-summary {
+    background: linear-gradient(135deg, #e7f1ff 0%, #d1e7ff 100%);
+    border-left: 4px solid #0d6efd;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+    font-size: 0.95rem;
+    animation: slideIn 0.3s ease;
+}
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.ai-tip {
+    padding: 0.75rem;
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+}
+.ai-tip:hover {
+    border-color: #0d6efd;
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.1);
+}
+.ai-tip i {
+    color: #0d6efd;
+    font-size: 1.2rem;
+    margin-top: 2px;
+}
+.ai-recommendation {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    transition: all 0.2s ease;
+}
+.ai-recommendation:hover {
+    border-color: #0d6efd;
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.1);
+}
+.ai-recommendation .priority-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.priority-high { background: #dc3545; color: #fff; }
+.priority-medium { background: #ffc107; color: #000; }
+.priority-low { background: #6c757d; color: #fff; }
+
+.caract-list-item {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    background: #f8f9fa;
+    border-left: 4px solid #198754;
+    transition: all 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    animation: slideIn 0.2s ease;
+}
+.caract-list-item:hover {
+    background: rgba(25, 135, 84, 0.1);
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.caract-info {
+    flex: 1;
+}
+.caract-name {
+    font-weight: 600;
+    color: #212529;
+    margin-bottom: 0.25rem;
+    font-size: 0.95rem;
+}
+.caract-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0d6efd;
+}
+.caract-unit {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-left: 0.25rem;
+}
+
+.caract-image-item {
+    position: relative;
+    display: inline-block;
+    margin: 0.25rem;
+}
+.caract-image-item img {
+    width: 70px;
+    height: 70px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 2px solid #dee2e6;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.caract-image-item:hover img {
+    border-color: #0d6efd;
+    transform: scale(1.05);
+}
+.caract-image-item .btn-delete {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    font-size: 0.75rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #dc3545;
+    color: #fff;
+    border: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+.caract-image-item:hover .btn-delete {
+    opacity: 1;
+}
+
+.loading-spinner {
+    display: none;
+    text-align: center;
+    padding: 3rem;
+    color: #6c757d;
+}
+.loading-spinner.show {
+    display: block;
+}
+.loading-spinner .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #6c757d;
+}
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+#statsChart, #generalStatsChart {
+    min-height: 300px !important;
+    height: 300px !important;
+}
+
+#summaryContent .table-responsive {
+    max-height: 600px;
+    overflow-y: auto;
+}
+#summaryContent table.dataTable thead th {
+    position: sticky;
+    top: 0;
+    background: #1a252f !important;
+    color: #fff !important;
+    z-index: 10;
+}
+#summaryContent table.dataTable {
+    min-width: 1500px;
+}
+#summaryContent .table-responsive::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+#summaryContent .table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 5px;
+}
+#summaryContent .table-responsive::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 5px;
+}
+#summaryContent .table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+.total-card {
+    transition: transform 0.2s;
+}
+.total-card:hover {
+    transform: translateY(-2px);
+}
+
+#advancedOptions {
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+@media (max-width: 991.98px) {
+    .main-sidebar {
+        min-height: auto;
+        position: relative;
+        top: 0;
+        margin-bottom: 1.5rem;
+    }
+    .main-sidebar .nav-link {
+        flex-direction: row;
+        min-height: auto;
+        padding: 0.75rem 1rem;
+    }
+    .main-sidebar .nav-link span {
+        writing-mode: horizontal-tb;
+        transform: none;
+    }
+    .main-sidebar .nav-link i {
+        margin-bottom: 0;
+        margin-right: 0.5rem;
+    }
+    .filter-field {
+        min-width: 100%;
+    }
+    #statsChart, #generalStatsChart {
+        min-height: 250px !important;
+        height: 250px !important;
+    }
+    #summaryContent table.dataTable {
+        min-width: 1200px;
+    }
+    .child-row-header {
+        flex-direction: column;
+    }
+    .child-row-actions {
+        margin-top: 1rem;
+    }
+}
+
+/* ✅ Mini Stats */
+.mini-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.mini-stat-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: transform 0.2s;
+}
+
+.mini-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.mini-stat-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: #6c757d;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.mini-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.mini-stat-card.primary .mini-stat-value { color: #0d6efd; }
+.mini-stat-card.success .mini-stat-value { color: #198754; }
+.mini-stat-card.warning .mini-stat-value { color: #ffc107; }
+.mini-stat-card.danger .mini-stat-value { color: #dc3545; }
+
+/* ✅ Movement Types - تصميم عمودي مثل الصورة */
+.movement-types-container {
+    margin: 1.5rem 0;
+}
+
+.movement-types-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.movement-type-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: #fff;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.movement-type-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    border-color: rgba(13, 110, 253, 0.2);
+}
+
+.movement-type-item.active {
+    border-color: #0d6efd;
+    background: rgba(13, 110, 253, 0.05);
+}
+
+.movement-number {
+    width: 45px;
+    height: 45px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.movement-number.bg-primary { background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); }
+.movement-number.bg-danger { background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%); }
+.movement-number.bg-success { background: linear-gradient(135deg, #198754 0%, #146c43 100%); }
+.movement-number.bg-info { background: linear-gradient(135deg, #0dcaf0 0%, #0aa2c0 100%); }
+.movement-number.bg-secondary { background: linear-gradient(135deg, #6c757d 0%, #5c636a 100%); }
+.movement-number.bg-warning { background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); color: #000 !important; }
+
+.movement-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.movement-icon i {
+    font-size: 1.5rem;
+}
+
+.movement-label {
+    flex: 1;
+}
+
+.movement-label strong {
+    display: block;
+    font-size: 0.95rem;
+    color: #212529;
+    margin-bottom: 0.15rem;
+}
+
+.movement-label small {
+    font-size: 0.75rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .mini-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+    
+    .movement-type-item {
+        padding: 0.6rem 0.8rem;
+    }
+    
+    .movement-number {
+        width: 35px;
+        height: 35px;
+        font-size: 0.8rem;
+    }
+    
+    .movement-icon {
+        width: 30px;
+        height: 30px;
+    }
+    
+    .movement-icon i {
+        font-size: 1.2rem;
+    }
+}
+/* ======================================== */
+/* ✅ جداول الإحصائيات مع scrollbar عرضي */
+/* ======================================== */
+.stats-table-container {
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    max-width: 100%;
+    background: #fff;
+}
+.stats-table-container::-webkit-scrollbar {
+    height: 10px;
+    width: 10px;
+}
+.stats-table-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 5px;
+}
+.stats-table-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 5px;
+}
+.stats-table-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+.stats-table-container table {
+    min-width: 100%;
+    margin-bottom: 0;
+}
+
+/* ======================================== */
+/* ✅ Movement Types - تصميم أفقي مختصر */
+/* ======================================== */
+.movement-types-container {
+    margin: 0 0 1.5rem 0;
+    padding: 1rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.movement-types-horizontal {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.movement-type-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid #e9ecef;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    flex: 1;
+    min-width: 130px;
+    color: #495057;
+}
+.movement-type-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    border-color: rgba(13, 110, 253, 0.3);
+    color: #0d6efd;
+}
+.movement-type-item.active {
+    border-color: #0d6efd;
+    background: rgba(13, 110, 253, 0.08);
+    color: #0d6efd;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.2);
+}
+.movement-number {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+.movement-number.bg-primary { background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); }
+.movement-number.bg-danger { background: linear-gradient(135deg, #dc3545 0%, #b02a37 100%); }
+.movement-number.bg-success { background: linear-gradient(135deg, #198754 0%, #146c43 100%); }
+.movement-number.bg-info { background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%); }
+.movement-number.bg-secondary { background: linear-gradient(135deg, #6c757d 0%, #5c636a 100%); }
+.movement-number.bg-warning { background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); color: #000 !important; }
+.movement-icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.movement-icon i {
+    font-size: 1.2rem;
+}
+.movement-label {
+    flex: 1;
+    min-width: 0;
+}
+.movement-label strong {
+    display: block;
+    font-size: 0.85rem;
+    color: #212529;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.movement-type-item.active .movement-label strong {
+    color: #0d6efd;
+}
+
+/* Responsive للحركة الأفقية */
+@media (max-width: 768px) {
+    .movement-types-horizontal {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+    }
+    .movement-type-item {
+        min-width: 110px;
+        flex: 0 0 auto;
+    }
+    .movement-icon {
+        display: none;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="row">
+        
+        <!-- ======================================== -->
+        <!-- ✅ المستوى 1: Sidebar عمودي مع نصوص عمودية -->
+        <!-- ======================================== -->
+        <div class="col-lg-1 col-md-2">
+            <div class="main-sidebar">
+                <h6 class="text-muted small text-uppercase fw-bold mb-3 px-2 text-center">Nav</h6>
+                <div class="nav flex-column" id="mainSidebar" role="tablist">
+                    <button class="nav-link active" data-tab="stock" data-bs-toggle="tab" data-bs-target="#stockContent" type="button">
+                        <i class="bi bi-box-seam"></i>
+                        <span>Article en Stock</span>
+                    </button>
+                    <button class="nav-link" data-tab="general" data-bs-toggle="tab" data-bs-target="#generalStatsContent" type="button">
+                        <i class="bi bi-bar-chart-line"></i>
+                        <span>Statistique Générale</span>
+                    </button>
+                    <button class="nav-link" data-tab="dashboard" data-bs-toggle="tab" data-bs-target="#dashboardContent" type="button">
+                        <i class="bi bi-speedometer2"></i>
+                        <span>Tableau de Bord</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================================== -->
+        <!-- ✅ المحتوى الرئيسي -->
+        <!-- ======================================== -->
+        <div class="col-lg-11 col-md-10">
+            <div class="tab-content" id="mainTabContent">
+                
+                <!-- ======================================== -->
+                <!-- ✅ محتوى Article en Stock -->
+                <!-- ======================================== -->
+                <div class="tab-pane fade show active" id="stockContent">
+                    
+                    <!-- ✅ المستوى 2: التبويبات الأفقية -->
+                    <div class="secondary-tabs">
+                        <ul class="nav nav-pills flex-nowrap overflow-auto" id="articlesTabs" role="tablist">
+                            <li class="nav-item">
+                                <button class="nav-link active" id="liste-tab" data-bs-toggle="tab" data-bs-target="#liste" type="button">
+                                    <i class="bi bi-list"></i>Liste des Articles
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" id="related-tab" data-bs-toggle="tab" data-bs-target="#related" type="button" disabled>
+                                    <i class="bi bi-link-45deg"></i>Articles Liés
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" id="ai-tab" data-bs-toggle="tab" data-bs-target="#ai" type="button" disabled>
+                                    <i class="bi bi-robot"></i>Conseils IA
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" id="caract-tab" data-bs-toggle="tab" data-bs-target="#caract" type="button" disabled>
+                                    <i class="bi bi-tags"></i>Caractéristiques
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button class="nav-link" id="stats-tab" data-bs-toggle="tab" data-bs-target="#stats" type="button" disabled>
+                                    <i class="bi bi-bar-chart-line"></i>Statistiques
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="tab-content" id="articlesTabsContent">
+                        
+                        <!-- ✅ تبويب Liste des Articles -->
+                        <div class="tab-pane fade show active" id="liste">
+                            
+                            <!-- ✅ الفلاتر الموحدة -->
+                            <div class="card advanced-filters-card mb-4">
+                                <div class="card-body">
+                                    <form id="advancedFiltersForm" class="row g-3">
+                                        <div class="col-md-3 filter-field">
+                                            <label class="form-label">Code Article</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select filter-operator" data-target="cod_art" style="max-width: 80px;">
+                                                    <option value="contains">Contient</option>
+                                                    <option value="starts" selected>Commence par</option>
+                                                    <option value="ends">Se termine par</option>
+                                                    <option value="exact">Égal à</option>
+                                                </select>
+                                                <input type="text" name="cod_art" class="form-control" placeholder="Ex: PUMP-220">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 filter-field">
+                                            <label class="form-label">Libellé Article</label>
+                                            <div class="input-group input-group-sm">
+                                                <select class="form-select filter-operator" data-target="lib_art" style="max-width: 80px;">
+                                                    <option value="contains" selected>Contient</option>
+                                                    <option value="starts">Commence par</option>
+                                                    <option value="ends">Se termine par</option>
+                                                    <option value="exact">Égal à</option>
+                                                </select>
+                                                <input type="text" name="lib_art" class="form-control" placeholder="Mots-clés">
+                                            </div>
+                                            <small class="text-muted">Séparez les mots par espace</small>
+                                        </div>
+                                        <div class="col-md-2 filter-field">
+                                            <label class="form-label">Classe de coût</label>
+                                            <input type="text" name="class_cout" class="form-control form-control-sm" placeholder="Toutes">
+                                        </div>
+                                        <div class="col-md-2 filter-field">
+                                            <label class="form-label">Unité</label>
+                                            <input type="text" name="lib_um" class="form-control form-control-sm" placeholder="Toutes">
+                                        </div>
+                                        <div class="col-md-3 filter-field">
+                                            <label class="form-label">Emplacement</label>
+                                            <input type="text" name="empl" class="form-control form-control-sm" placeholder="Tous">
+                                        </div>
+                                        <div class="col-md-3 filter-field">
+                                            <label class="form-label">Quantité</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" step="0.1" name="qte_min" class="form-control" placeholder="Min">
+                                                <span class="input-group-text">à</span>
+                                                <input type="number" step="0.1" name="qte_max" class="form-control" placeholder="Max">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3 filter-field">
+                                            <label class="form-label">Prix PU (TND)</label>
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" step="0.01" name="pu_min" class="form-control" placeholder="Min">
+                                                <span class="input-group-text">à</span>
+                                                <input type="number" step="0.01" name="pu_max" class="form-control" placeholder="Max">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2 filter-field">
+                                            <label class="form-label">VAL_ART</label>
+                                            <select name="val_art" class="form-select form-select-sm">
+                                                <option value="">Toutes</option>
+                                                <option value="1">1 (100%)</option>
+                                                <option value="2">2 (75%)</option>
+                                                <option value="3">3 (25%)</option>
+                                                <option value="4">4 (0%)</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2 filter-field">
+                                            <label class="form-label">Nature Stock</label>
+                                            <select name="nat_stock" class="form-select form-select-sm" id="natStockSelect">
+                                                <option value="">Toutes</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="filter-actions">
+                                                <button type="button" class="btn btn-primary btn-sm" id="applyFiltersBtn">
+                                                    <i class="bi bi-funnel"></i> Filtrer
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="resetFiltersBtn">
+                                                    <i class="bi bi-arrow-counterclockwise"></i> Réinitialiser
+                                                </button>
+                                                <button type="button" class="btn btn-outline-info btn-sm" id="toggleAdvancedFilters">
+                                                    <i class="bi bi-sliders"></i> Options avancées
+                                                </button>
+                                            </div>
+                                            <div id="advancedOptions" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #dee2e6;">
+                                                <div class="row g-3">
+                                                    <div class="col-md-3">
+                                                        <label class="form-label small">Date création (min)</label>
+                                                        <input type="date" name="date_min" class="form-control form-control-sm">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label small">Date création (max)</label>
+                                                        <input type="date" name="date_max" class="form-control form-control-sm">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label small">Dernier mouvement (min)</label>
+                                                        <input type="date" name="dernier_mv_min" class="form-control form-control-sm">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="form-label small">Dernier mouvement (max)</label>
+                                                        <input type="date" name="dernier_mv_max" class="form-control form-control-sm">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+							
+							<!-- ✅ زر تصدير نتائج الفلترة الجديد (فوق الجدول) -->
+							<div class="d-flex justify-content-end mb-3">
+								<button type="button" id="btnExportFilteredExcel" class="btn btn-success btn-sm shadow-sm">
+									<i class="bi bi-file-earmark-excel me-1"></i> Exporter vers Excel
+								</button>
+							</div>
+                            <!-- عدد النتائج -->
+                            <div class="mb-3 text-muted small d-flex justify-content-between align-items-center">
+                                <span id="resultsCount">Chargement...</span>
+                                <span id="loadingIndicator" class="text-primary" style="display:none;">
+                                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                    Chargement...
+                                </span>
+                            </div>
+							
+                            <!-- ✅ جدول السلع مع عمود Child Row -->
+                            <div class="table-responsive">
+                                <table id="articlesTable" class="table table-striped table-hover align-middle" style="width:100%">
+                                    <thead class="table-dark text-center">
+                                        <tr>
+                                            <th style="width: 30px;"></th>
+                                            <th>{% trans "Code" %}</th>
+                                            <th>{% trans "Libellé" %}</th>
+                                            <th>{% trans "Classe Coût" %}</th>
+                                            <th>{% trans "Création" %}</th>
+                                            <th>{% trans "Dernier MV" %}</th>
+                                            <th>{% trans "EMPL" %}</th>
+                                            <th>{% trans "PU (TND)" %}</th>
+                                            <th>{% trans "Qte Surstock" %}</th>
+                                            <th>{% trans "Unité" %}</th>
+                                            <th>{% trans "VAL_ART" %}</th>
+                                            <th>{% trans "Nature Stock" %}</th>
+                                            <th>{% trans "Désignation" %}</th>
+                                            <th class="no-sort">{% trans "Actions" %}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="text-center">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- ✅ تبويب Articles Liés -->
+                        <div class="tab-pane fade" id="related">
+                            <div id="relatedLoading" class="loading-spinner show">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-3">Chargement des corrélations...</p>
+                            </div>
+                            <div id="relatedContent" style="display:none;">
+                                <div class="alert alert-info mb-3">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    Articles corrélés avec <strong id="relatedArticleCode"></strong>
+                                    <br><small class="text-muted">Basé sur l'analyse statistique des mouvements historiques</small>
+                                </div>
+                                <div class="mb-3">
+                                    <small class="text-muted">
+                                        <i class="bi bi-calendar-check me-1"></i>
+                                        Dernière mise à jour: <span id="lastUpdateDate">-</span>
+                                    </small>
+                                </div>
+                                <div id="relatedList"></div>
+                            </div>
+                            <div id="relatedEmpty" class="empty-state" style="display:none;">
+                                <i class="bi bi-link-45deg"></i>
+                                <p>Aucune corrélation trouvée pour ce code.</p>
+                                <small class="text-muted">Les corrélations sont calculées automatiquement et mises à jour quotidiennement.</small>
+                            </div>
+                            <div id="relatedError" class="alert alert-danger" style="display:none;">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                <span id="relatedErrorMessage"></span>
+                            </div>
+                        </div>
+                        
+                        <!-- ✅ تبويب Conseils IA -->
+                        <div class="tab-pane fade" id="ai">
+                            <div id="aiLoading" class="loading-spinner show">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-3">Analyse par IA en cours...</p>
+                            </div>
+                            <div id="aiContent" style="display:none;">
+                                <div id="aiSummary" class="ai-summary"></div>
+                                <h6 class="mb-3"><i class="bi bi-stars text-warning me-2"></i>Accessoires recommandés</h6>
+                                <div id="aiRecommendations"></div>
+                                <h6 class="mt-4 mb-3"><i class="bi bi-shield-check text-success me-2"></i>Notes de sécurité</h6>
+                                <div id="aiSafety"></div>
+                            </div>
+                            <div id="aiEmpty" class="empty-state" style="display:none;">
+                                <i class="bi bi-robot"></i>
+                                <p>Aucune recommandation disponible pour cet article.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- ✅ تبويب Caractéristiques -->
+                        <div class="tab-pane fade" id="caract">
+                            <div id="caractLoading" class="loading-spinner show">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-3">Chargement des caractéristiques...</p>
+                            </div>
+                            <div id="caractContent" style="display:none;">
+                                <div class="alert alert-light mb-4">
+                                    <strong>Article:</strong>
+                                    <span id="caractArticleCode" class="article-code"></span>
+                                    <span id="caractArticleLib" class="text-muted ms-2"></span>
+                                </div>
+                                <div class="card mb-4">
+                                    <div class="card-header">
+                                        <i class="bi bi-plus-circle me-2"></i>Ajouter une caractéristique
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label">Caractéristique</label>
+                                                <div class="input-group">
+                                                    <input type="text" id="caractSearchInput" class="form-control"
+                                                           placeholder="Rechercher..." readonly>
+                                                    <input type="hidden" id="caractSearchId">
+                                                    <button class="btn btn-outline-secondary" type="button"
+                                                            onclick="openCaractLookup()">
+                                                        <i class="bi bi-search"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Valeur</label>
+                                                <input type="text" id="caractValueInput" class="form-control"
+                                                       placeholder="Entrez la valeur">
+                                            </div>
+                                            <div class="col-md-2 d-flex align-items-end">
+                                                <button class="btn btn-success w-100" onclick="addCaractToArticle()">
+                                                    <i class="bi bi-check"></i> Ajouter
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <h6 class="mb-3"><i class="bi bi-list-check me-2"></i>Caractéristiques attribuées</h6>
+                                <div id="caractList"></div>
+                                <div id="caractEmpty" class="empty-state" style="display:none;">
+                                    <i class="bi bi-tags"></i>
+                                    <p>Aucune caractéristique attribuée à cet article.</p>
+                                    <small class="text-muted">Utilisez le formulaire ci-dessus pour en ajouter.</small>
+                                </div>
+                                <div class="card mt-4">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <span><i class="bi bi-images me-2"></i>Images de l'article</span>
+                                        <button class="btn btn-sm btn-outline-primary"
+                                                onclick="document.getElementById('caractImageInput').click()">
+                                            <i class="bi bi-upload"></i> Ajouter
+                                        </button>
+                                        <input type="file" id="caractImageInput" accept="image/*" style="display:none"
+                                               onchange="uploadCaractImage(this)">
+                                    </div>
+                                    <div class="card-body" id="caractImagesList" style="min-height:80px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- ✅ تبويب Statistiques -->
+                        <div class="tab-pane fade" id="stats">
+                            <div id="statsLoading" class="loading-spinner show">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-3">Chargement des statistiques...</p>
+                            </div>
+                            <div id="statsContent" style="display:none;">
+                                <div class="alert alert-light mb-4">
+                                    <strong>Article:</strong>
+                                    <span id="statsArticleCode" class="article-code"></span>
+                                    <span id="statsArticleLib" class="text-muted ms-2"></span>
+                                </div>
+                                
+                                <!-- فلاتر الإحصائيات -->
+                                <div class="card mb-4">
+                                    <div class="card-header">
+                                        <i class="bi bi-funnel me-2"></i>Filtres
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row g-3">
+                                            <div class="col-md-2">
+                                                <label class="form-label small">Nature Stock</label>
+                                                <select id="statsNatStock" class="form-select form-select-sm">
+                                                    <option value="">Toutes</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label small">Valeur Article</label>
+                                                <select id="statsValArt" class="form-select form-select-sm">
+                                                    <option value="">Toutes</option>
+                                                    <option value="1">1 (100%)</option>
+                                                    <option value="2">2 (75%)</option>
+                                                    <option value="3">3 (25%)</option>
+                                                    <option value="4">4 (0%)</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label small">Classe de Coût</label>
+                                                <input type="text" id="statsClasseCout" class="form-control form-control-sm" placeholder="Ex: 029">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label small">Centre de Coût</label>
+                                                <input type="text" id="statsCentreCout" class="form-control form-control-sm" placeholder="Ex: PROD">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label small">Date Min</label>
+                                                <input type="date" id="statsDateMin" class="form-control form-control-sm">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label small">Date Max</label>
+                                                <input type="date" id="statsDateMax" class="form-control form-control-sm">
+                                            </div>
+                                            <div class="col-12">
+                                                <div class="d-flex gap-2">
+                                                    <button class="btn btn-primary btn-sm" onclick="loadStats(window.articlesApp.currentArticle?.COD_ART)">
+                                                        <i class="bi bi-arrow-clockwise"></i> Actualiser
+                                                    </button>
+                                                    <button class="btn btn-outline-secondary btn-sm" onclick="resetStatsFilters()">
+                                                        <i class="bi bi-arrow-counterclockwise"></i> Réinitialiser
+                                                    </button>
+                                                    <button class="btn btn-success btn-sm ms-auto" onclick="exportStatsToExcel()">
+                                                        <i class="bi bi-file-earmark-excel"></i> Export Excel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <!-- ✅ Movement Types - تصميم أفقي مختصر -->
+									<div class="movement-types-container">
+										<h6 class="text-muted small text-uppercase fw-bold mb-3">
+											<i class="bi bi-bar-chart me-1"></i>Type de Mouvement
+										</h6>
+										<div class="movement-types-horizontal" id="statsTypeTabs" role="tablist">
+											<button class="movement-type-item active" data-stat="achat" data-bs-toggle="pill" data-bs-target="#statsAchat" type="button" onclick="switchStatsTab('achat')">
+												<div class="movement-number bg-primary">01</div>
+												<div class="movement-icon"><i class="bi bi-cart text-primary"></i></div>
+												<div class="movement-label"><strong>Achat</strong></div>
+											</button>
+											<button class="movement-type-item" data-stat="consommation" data-bs-toggle="pill" data-bs-target="#statsConso" type="button" onclick="switchStatsTab('consommation')">
+												<div class="movement-number bg-danger">02</div>
+												<div class="movement-icon"><i class="bi bi-fire text-danger"></i></div>
+												<div class="movement-label"><strong>Conso</strong></div>
+											</button>
+											<button class="movement-type-item" data-stat="retours" data-bs-toggle="pill" data-bs-target="#statsRetours" type="button" onclick="switchStatsTab('retours')">
+												<div class="movement-number bg-success">03</div>
+												<div class="movement-icon"><i class="bi bi-arrow-return-left text-success"></i></div>
+												<div class="movement-label"><strong>Retours</strong></div>
+											</button>
+											<button class="movement-type-item" data-stat="prestations" data-bs-toggle="pill" data-bs-target="#statsPrestations" type="button" onclick="switchStatsTab('prestations')">
+												<div class="movement-number bg-info">04</div>
+												<div class="movement-icon"><i class="bi bi-tools" style="color:#6f42c1"></i></div>
+												<div class="movement-label"><strong>Prestations</strong></div>
+											</button>
+											<button class="movement-type-item" data-stat="mouvements" data-bs-toggle="pill" data-bs-target="#statsMouvements" type="button" onclick="switchStatsTab('mouvements')">
+												<div class="movement-number bg-secondary">05</div>
+												<div class="movement-icon"><i class="bi bi-diagram-3 text-secondary"></i></div>
+												<div class="movement-label"><strong>Tous</strong></div>
+											</button>
+											<button class="movement-type-item" data-stat="summary" data-bs-toggle="pill" data-bs-target="#statsSummary" type="button" onclick="loadArticleSummary(window.articlesApp.currentArticle?.COD_ART)">
+												<div class="movement-number bg-warning">06</div>
+												<div class="movement-icon"><i class="bi bi-clipboard-data text-warning"></i></div>
+												<div class="movement-label"><strong>Résumé</strong></div>
+											</button>
+										</div>
+									</div>
+
+									<!-- ✅ Contenu des tabs مع scrollbar عرضي -->
+									<div class="tab-content" id="statsTypeTabsContent">
+										<div class="tab-pane fade show active" id="statsAchat">
+											<div class="stats-table-container">
+												<table id="statsAchatTable" class="table table-striped table-sm mb-0" style="width:100%"></table>
+											</div>
+										</div>
+										<div class="tab-pane fade" id="statsConso">
+											<div class="stats-table-container">
+												<table id="statsConsoTable" class="table table-striped table-sm mb-0" style="width:100%"></table>
+											</div>
+										</div>
+										<div class="tab-pane fade" id="statsRetours">
+											<div class="stats-table-container">
+												<table id="statsRetoursTable" class="table table-striped table-sm mb-0" style="width:100%"></table>
+											</div>
+										</div>
+										<div class="tab-pane fade" id="statsPrestations">
+											<div class="stats-table-container">
+												<table id="statsPrestationsTable" class="table table-striped table-sm mb-0" style="width:100%"></table>
+											</div>
+										</div>
+										<div class="tab-pane fade" id="statsMouvements">
+											<div class="stats-table-container">
+												<table id="statsMouvementsTable" class="table table-striped table-sm mb-0" style="width:100%"></table>
+											</div>
+										</div>
+										<div class="tab-pane fade" id="statsSummary">
+											<div class="card shadow-sm border-0">
+												<div class="card-body p-4" id="summaryContent">
+													<p class="text-muted text-center"><i class="bi bi-info-circle me-2"></i>Sélectionnez un article puis cliquez sur "Résumé" pour voir l'analyse.</p>
+												</div>
+											</div>
+										</div>
+									</div>
+
+									<!-- ✅ Évolution Temporelle -->
+									<div class="card mt-4">
+										<div class="card-header">
+											<i class="bi bi-graph-up me-2"></i>Évolution Temporelle
+										</div>
+										<div class="card-body">
+											<canvas id="statsChart" height="300"></canvas>
+										</div>
+									</div>
+                                </div>
+                            </div>
+                            <div id="statsEmpty" class="empty-state" style="display:none;">
+                                <i class="bi bi-bar-chart"></i>
+                                <p>Sélectionnez un article pour voir ses statistiques.</p>
+                            </div>
+                            <div id="statsError" class="alert alert-danger" style="display:none;">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                <span id="statsErrorMessage"></span>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+                <!-- ======================================== -->
+                <!-- ✅ Contenu Statistique Générale -->
+                <!-- ======================================== -->
+                <div class="tab-pane fade" id="generalStatsContent">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header bg-success text-white">
+                            <i class="bi bi-funnel me-2"></i>Filtres Avancés - Statistiques Générales
+                        </div>
+                        <div class="card-body">
+                            <form id="generalStatsFiltersForm" class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label small">Nature Stock</label>
+                                    <select id="genNatStock" class="form-select form-select-sm">
+                                        <option value="">Toutes</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small">Valeur Article</label>
+                                    <select id="genValArt" class="form-select form-select-sm">
+                                        <option value="">Toutes</option>
+                                        <option value="1">1 (100%)</option>
+                                        <option value="2">2 (75%)</option>
+                                        <option value="3">3 (25%)</option>
+                                        <option value="4">4 (0%)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small">Classe de Coût</label>
+                                    <input type="text" id="genClasseCout" class="form-control form-control-sm" placeholder="Ex: 029">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small">Centre de Coût</label>
+                                    <input type="text" id="genCentreCout" class="form-control form-control-sm" placeholder="Ex: PROD">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small">Date Min</label>
+                                    <input type="date" id="genDateMin" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small">Date Max</label>
+                                    <input type="date" id="genDateMax" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-12">
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-success btn-sm" onclick="loadGeneralStats()">
+                                            <i class="bi bi-search"></i> Appliquer les filtres
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetGeneralStatsFilters()">
+                                            <i class="bi bi-arrow-counterclockwise"></i> Réinitialiser
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <div class="card shadow-sm">
+                        <div class="card-header p-0">
+                            <ul class="nav nav-pills card-header-pills" id="generalStatsTabs" role="tablist">
+                                <li class="nav-item">
+                                    <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#genEntrees" type="button" onclick="switchGeneralStatsTab('entrees')">
+                                        <i class="bi bi-arrow-down"></i> Entrées
+                                    </button>
+                                </li>
+                                <li class="nav-item">
+                                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#genSorties" type="button" onclick="switchGeneralStatsTab('sorties')">
+                                        <i class="bi bi-arrow-up"></i> Sorties
+                                    </button>
+                                </li>
+                                <li class="nav-item">
+                                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#genRetours" type="button" onclick="switchGeneralStatsTab('retours')">
+                                        <i class="bi bi-arrow-return-left"></i> Retours
+                                    </button>
+                                </li>
+                                <li class="nav-item">
+                                    <button class="nav-link" data-bs-toggle="pill" data-bs-target="#genPrestations" type="button" onclick="switchGeneralStatsTab('prestations')">
+                                        <i class="bi bi-tools"></i> Prestations
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="card-body">
+                            <div class="tab-content" id="generalStatsTabsContent">
+                                <div class="tab-pane fade show active" id="genEntrees">
+                                    <div id="genEntreesLoading" class="loading-spinner show">
+                                        <div class="spinner-border text-primary" role="status"></div>
+                                        <p class="mt-3">Chargement des entrées...</p>
+                                    </div>
+                                    <div id="genEntreesContent" style="display:none;">
+                                        <div id="genEntreesSummary" class="alert alert-primary d-flex align-items-center mb-3" style="display:none;">
+                                            <i class="bi bi-currency-exchange fs-4 me-2"></i>
+                                            <div>
+                                                <h6 class="mb-0">Valeur Totale des Entrées</h6>
+                                                <p class="mb-0"><strong id="genTotalValeurEntrees">0.000 TND</strong></p>
+                                            </div>
+                                        </div>
+                                        <div class="stats-table-container">
+                                            <table id="genEntreesTable" class="table table-striped table-sm" style="width:100%"></table>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="genSorties">
+                                    <div id="genSortiesLoading" class="loading-spinner show">
+                                        <div class="spinner-border text-primary" role="status"></div>
+                                        <p class="mt-3">Chargement des sorties...</p>
+                                    </div>
+                                    <div id="genSortiesContent" style="display:none;">
+                                        <div id="genSortiesSummary" class="alert alert-warning d-flex align-items-center mb-3" style="display:none;">
+                                            <i class="bi bi-currency-exchange fs-4 me-2"></i>
+                                            <div>
+                                                <h6 class="mb-0">Valeur Totale des Sorties</h6>
+                                                <p class="mb-0"><strong id="genTotalValeurSorties">0.000 TND</strong></p>
+                                            </div>
+                                        </div>
+                                        <div class="stats-table-container">
+                                            <table id="genSortiesTable" class="table table-striped table-sm" style="width:100%"></table>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="genRetours">
+                                    <div id="genRetoursLoading" class="loading-spinner show">
+                                        <div class="spinner-border text-primary" role="status"></div>
+                                        <p class="mt-3">Chargement des retours...</p>
+                                    </div>
+                                    <div id="genRetoursContent" style="display:none;">
+                                        <div class="stats-table-container">
+                                            <table id="genRetoursTable" class="table table-striped table-sm" style="width:100%"></table>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="genPrestations">
+                                    <div id="genPrestationsLoading" class="loading-spinner show">
+                                        <div class="spinner-border text-primary" role="status"></div>
+                                        <p class="mt-3">Chargement des prestations...</p>
+                                    </div>
+                                    <div id="genPrestationsContent" style="display:none;">
+                                        <div class="stats-table-container">
+                                            <table id="genPrestationsTable" class="table table-striped table-sm" style="width:100%"></table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card mt-4">
+                                <div class="card-header">
+                                    <i class="bi bi-graph-up me-2"></i>Évolution Temporelle - Statistiques Générales
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="generalStatsChart" height="300"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ======================================== -->
+                <!-- ✅ Contenu Tableau de Bord -->
+                <!-- ======================================== -->
+                <div class="tab-pane fade" id="dashboardContent">
+                    <div class="text-center py-5">
+                        <i class="bi bi-speedometer2 display-1 text-muted mb-3"></i>
+                        <h4>Tableau de Bord Stock</h4>
+                        <p class="text-muted">Cette section est en cours de développement.<br>Elle affichera les indicateurs clés de performance du stock.</p>
+                        <div class="mt-4">
+                            <span class="badge bg-warning text-dark">Prochainement</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal عرض شجرة العائلة -->
+<div class="modal fade" id="codificationModal" tabindex="-1" aria-labelledby="codificationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="codificationModalLabel">Codification de l'article</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <strong>Article:</strong>
+                    <span id="modal-article-code" class="article-code"></span> -
+                    <span id="modal-article-lib" class="text-muted"></span>
+                </div>
+                <div id="family-tree-container">
+                    <p class="text-muted">Cliquez sur "Codification" pour charger la hiérarchie.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ✅ نافذة البحث للخصائص -->
+<div class="modal fade" id="caractLookupModal" tabindex="-1" aria-labelledby="caractLookupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="caractLookupModalLabel"><i class="bi bi-search"></i> Rechercher une caractéristique</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="caractLookupSearch" class="form-control mb-3"
+                       placeholder="Tapez pour rechercher..." autofocus>
+                <div class="table-responsive" style="max-height:400px; overflow-y:auto;">
+                    <table class="table table-hover table-sm">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>ID</th>
+                                <th>Nom</th>
+                                <th>Unité</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="caractLookupResults">
+                            <tr><td colspan="4" class="text-center text-muted">Recherchez une caractéristique...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="{% static 'vendor/datatables/js/dataTables.min.js' %}"></script>
+<script src="{% static 'vendor/datatables/js/dataTables.bootstrap5.min.js' %}"></script>
+<script src="{% static 'vendor/datatables/js/dataTables.responsive.min.js' %}"></script>
+<script src="{% static 'vendor/datatables/js/responsive.bootstrap5.min.js' %}"></script>
+<script src="{% static 'vendor/chart.js/chart.umd.min.js' %}"></script>
+
+<script>
+window.articlesUrls = {
+    apiData: "{% url 'articles:api_articles_data' %}",
+    apiStatistiques: "{% url 'articles:statistiques_ajax_view' %}",
+    apiNatureStock: "{% url 'articles:api_nature_stock' %}",
+    apiBase: '/articles/api/',
+    apiArticleFamilyByCode: "{% url 'articles:api_article_family_by_code' %}",
+    articleCaracteristiquesWithCod: "{% url 'articles:article_caracteristiques_with_cod' %}",
+    articleSuiviSerial: "{% url 'articles:article_suivi_serial' '000000000A' %}".replace('000000000A', ''),
+    apiCaracteristiques: "{% url 'articles:api_caracteristiques' %}",
+    apiAddArticleCaract: "{% url 'articles:api_add_article_caract' %}",
+    apiDeleteArticleCaract: "{% url 'articles:api_delete_article_caract' %}",
+    apiDeleteArticleImage: "{% url 'articles:api_delete_article_image' %}",
+    exportStatsExcel: "{% url 'articles:export_stats_excel' %}"
+};
+
+function getRelatedStatsUrl(codArt) {
+    return window.articlesUrls.apiBase + codArt + '/related-stats/';
+}
+function getAiAdviceUrl(codArt) {
+    return window.articlesUrls.apiBase + codArt + '/ai-advice/';
+}
+function getBasicInfoUrl(codArt) {
+    return window.articlesUrls.apiBase + codArt + '/';
+}
+function getArticleCaractValuesUrl(codArt) {
+    return window.articlesUrls.apiBase + codArt + '/caract-values/';
+}
+function getArticleFamilyByCodeUrl(codArt) {
+    return window.articlesUrls.apiArticleFamilyByCode + '?cod_art=' + encodeURIComponent(codArt);
+}
+function getArticleCaracteristiquesUrl(codArt) {
+    return window.articlesUrls.articleCaracteristiquesWithCod + '?cod_art=' + encodeURIComponent(codArt);
+}
+function getArticleSuiviSerialUrl(codArt) {
+    return window.articlesUrls.articleSuiviSerial.replace('000000000A', codArt);
+}
+function getUploadArticleImageUrl(codArt) {
+    return window.articlesUrls.apiBase + codArt + '/upload-image/';
+}
+function buildLikeCondition(value, operator) {
+    if (!value) return null;
+    const clean = value.replace(/[%_\[\]]/g, '');
+    switch(operator) {
+        case 'starts': return clean + '%';
+        case 'ends': return '%' + clean;
+        case 'exact': return clean;
+        case 'contains':
+        default: return '%' + clean + '%';
+    }
+}
+</script>
+
+<script src="{% static 'articles/js/articles-table.js' %}"></script>
+<script src="{% static 'articles/js/related-stats.js' %}"></script>
+<script src="{% static 'articles/js/ai-advice.js' %}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ Page Articles chargée');
+    
+    window.articlesApp = {
+        currentArticle: null,
+        dataTable: null,
+        isLoading: false,
+        currentStatsTab: 'achat',
+        statsCharts: {},
+        generalStatsCharts: {}
+    };
+
+    const tabsEl = document.getElementById('articlesTabs');
+    if (tabsEl) {
+        tabsEl.addEventListener('shown.bs.tab', function(event) {
+            const tabId = event.target.dataset.bsTarget;
+            const codArt = window.articlesApp.currentArticle?.COD_ART;
+            
+            if (!codArt) {
+                const contentEl = document.querySelector(tabId + ' .empty-state');
+                if (contentEl) {
+                    document.querySelectorAll(tabId + ' .loading-spinner, ' + tabId + ' #relatedContent, ' + tabId + ' #aiContent, ' + tabId + ' #caractContent, ' + tabId + ' #statsContent').forEach(el => {
+                        if (el) el.style.display = 'none';
+                    });
+                    if (contentEl) contentEl.style.display = 'block';
+                }
+                return;
+            }
+            
+            if (tabId === '#related') {
+                loadRelatedStats(codArt);
+            } else if (tabId === '#ai') {
+                loadAiAdvice(codArt);
+            } else if (tabId === '#caract') {
+                loadArticleCaracteristiques(codArt);
+            } else if (tabId === '#stats') {
+                loadStats(codArt);
+            }
+        });
+    }
+
+    const toggleAdvancedBtn = document.getElementById('toggleAdvancedFilters');
+    if (toggleAdvancedBtn) {
+        toggleAdvancedBtn.addEventListener('click', function() {
+            const panel = document.getElementById('advancedOptions');
+            if (panel) {
+                const isHidden = panel.style.display === 'none' || !panel.style.display;
+                panel.style.display = isHidden ? 'block' : 'none';
+                const icon = this.querySelector('i');
+                if (icon) {
+                    icon.classList.toggle('bi-sliders');
+                    icon.classList.toggle('bi-sliders-vertical');
+                }
+            }
+        });
+    }
+
+    if (typeof initArticlesTable === 'function') {
+        initArticlesTable();
+    }
+
+    if (typeof loadNatureStockOptions === 'function') {
+        loadNatureStockOptions();
+    }
+
+    if (typeof loadGeneralNatureStockOptions === 'function') {
+        loadGeneralNatureStockOptions();
+    }
+
+    const exportBtn = document.getElementById('exportBtn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function() {
+            exportToExcel();
+        });
+    }
+
+    initStatsTypeTabs();
+});
+
+function initStatsTypeTabs() {
+    const tabButtons = document.querySelectorAll('#statsTypeTabs .nav-link');
+    tabButtons.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            const targetId = this.dataset.bsTarget || '';
+            if (targetId === '#statsSummary') {
+                return;
+            }
+            
+            const tabType = targetId.replace('#stats', '').toLowerCase() || 'achat';
+            window.articlesApp.currentStatsTab = tabType;
+            const codArt = window.articlesApp.currentArticle?.COD_ART;
+            if (codArt) {
+                fetchStatsData(codArt, tabType);
+            }
+        });
+    });
+}
+
+function switchStatsTab(tabType) {
+    if (tabType === 'summary' || tabType === 'Summary') {
+        return;
+    }
+    
+    window.articlesApp.currentStatsTab = tabType;
+    const codArt = window.articlesApp.currentArticle?.COD_ART;
+    if (codArt) {
+        fetchStatsData(codArt, tabType);
+    }
+}
+
+function exportToExcel() {
+    const table = document.getElementById('articlesTable');
+    if (!table) {
+        alert('Tableau non trouve');
+        return;
+    }
+    
+    const originalText = document.getElementById('exportBtn').innerHTML;
+    document.getElementById('exportBtn').innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Export...';
+    document.getElementById('exportBtn').disabled = true;
+    
+    try {
+        const wb = XLSX.utils.table_to_book(table, {sheet: "Articles"});
+        const fileName = 'Articles_' + new Date().toISOString().slice(0,10) + '_' + Math.floor(Math.random()*1000) + '.xlsx';
+        XLSX.writeFile(wb, fileName);
+        showToast('Export reussi !', 'success');
+    } catch (error) {
+        console.error('Erreur export:', error);
+        showToast('Erreur lors de l export', 'error');
+    } finally {
+        document.getElementById('exportBtn').innerHTML = originalText;
+        document.getElementById('exportBtn').disabled = false;
+    }
+}
+
+function showToast(message, type) {
+    if (type === undefined) type = 'info';
+    
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '1100';
+        document.body.appendChild(toastContainer);
+    }
+    
+    const toast = document.createElement('div');
+    let bgClass = 'primary';
+    if (type === 'error') bgClass = 'danger';
+    else if (type === 'success') bgClass = 'success';
+    
+    toast.className = 'toast align-items-center text-white bg-' + bgClass + ' border-0 mb-2';
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+    
+    const cleanMessage = message.replace(/['"]/g, '');
+    
+    toast.innerHTML = '<div class="d-flex"><div class="toast-body">' + escapeHtml(cleanMessage) + '</div>' +
+        '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Fermer"></button></div>';
+    
+    toastContainer.appendChild(toast);
+    
+    if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
+        const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
+        bsToast.show();
+        
+        toast.addEventListener('hidden.bs.toast', function() {
+            toast.remove();
+        });
+    }
+}
+
+function loadRelatedStats(codArt) {
+    if (!codArt) return;
+    
+    const loading = document.getElementById('relatedLoading');
+    const content = document.getElementById('relatedContent');
+    const empty = document.getElementById('relatedEmpty');
+    const error = document.getElementById('relatedError');
+    const list = document.getElementById('relatedList');
+    
+    if (loading) loading.classList.add('show');
+    if (content) content.style.display = 'none';
+    if (empty) empty.style.display = 'none';
+    if (error) error.style.display = 'none';
+    
+    const codeEl = document.getElementById('relatedArticleCode');
+    if (codeEl) codeEl.textContent = codArt;
+    
+    const apiUrl = getRelatedStatsUrl(codArt);
+    
+    fetch(apiUrl)
+        .then(response => {
+            if (!response.ok) throw new Error('HTTP ' + response.status + ': ' + response.statusText);
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 'error') throw new Error(data.error || 'Erreur inconnue');
+            
+            const lastUpdateEl = document.getElementById('lastUpdateDate');
+            if (lastUpdateEl && data.related_articles?.[0]?.last_updated) {
+                const date = new Date(data.related_articles[0].last_updated);
+                lastUpdateEl.textContent = date.toLocaleString('fr-FR');
+            } else if (lastUpdateEl) {
+                lastUpdateEl.textContent = 'Non disponible';
+            }
+            
+            renderRelatedArticles(data);
+            
+            if (loading) loading.classList.remove('show');
+            if (content) content.style.display = 'block';
+            if (empty && (!data.related_articles || data.related_articles.length === 0)) {
+                empty.style.display = 'block';
+            }
+        })
+        .catch(err => {
+            console.error('Erreur chargement correlations:', err);
+            if (loading) loading.classList.remove('show');
+            if (error) {
+                error.style.display = 'block';
+                document.getElementById('relatedErrorMessage').textContent = 'Erreur: ' + err.message + '. Veuillez reessayer.';
+            }
+        });
+}
+
+function renderRelatedArticles(data) {
+    const list = document.getElementById('relatedList');
+    if (!list) return;
+    
+    list.innerHTML = '';
+    const articles = data.related_articles || [];
+    
+    if (articles.length === 0) {
+        list.innerHTML = '<div class="text-muted small p-3">Aucune correlation trouvee pour cet article.</div>';
+        return;
+    }
+    
+    articles.forEach(article => {
+        const item = document.createElement('div');
+        item.className = 'related-article-item ' + (article.confidence_level || 'low') + '-confidence';
+        item.onclick = function() {
+            showToast('Article selectionne: ' + article.cod_art, 'info');
+        };
+        
+        let statsHtml = '<span><i class="bi bi-arrow-repeat"></i> ' + (article.co_occurrence || article.support_count || 0) + ' fois</span>' +
+            '<span><i class="bi bi-percent"></i> ' + (article.co_occurrence_rate || article.support_percent || 0) + '%</span>';
+        
+        if (article.sequence_order) {
+            const orderLabels = { 'before': 'Avant', 'after': 'Apres', 'simultaneous': 'Simultane', 'mixed': 'Mixte' };
+            statsHtml += '<span><i class="bi bi-diagram-3"></i> ' + (orderLabels[article.sequence_order] || article.sequence_order) + '</span>';
+        }
+        
+        if (article.avg_time_gap_hours !== undefined && article.avg_time_gap_hours !== null) {
+            statsHtml += '<span><i class="bi bi-clock"></i> ' + article.avg_time_gap_hours + 'h</span>';
+        }
+        
+        item.innerHTML = '<div class="related-article-content">' +
+            '<div class="related-article-code">' + escapeHtml(article.cod_art) + '</div>' +
+            '<div class="related-article-lib">' + escapeHtml(article.lib_art || 'Inconnu') + '</div>' +
+            '<div class="related-article-stats">' + statsHtml + '</div>' +
+            '</div>' +
+            '<span class="confidence badge bg-' + getConfidenceColor(article.confidence_level) + '">' +
+            (article.co_occurrence_rate || article.support_percent || 0) + '%</span>';
+        
+        list.appendChild(item);
+    });
+}
+
+function getConfidenceColor(level) {
+    switch(level) {
+        case 'high': return 'success';
+        case 'medium': return 'warning';
+        default: return 'secondary';
+    }
+}
+
+function loadArticleCaracteristiques(codArt) {
+    if (!codArt) return;
+    
+    const loading = document.getElementById('caractLoading');
+    const content = document.getElementById('caractContent');
+    const empty = document.getElementById('caractEmpty');
+    
+    if (loading) loading.classList.add('show');
+    if (content) content.style.display = 'none';
+    if (empty) empty.style.display = 'none';
+    
+    const codeEl = document.getElementById('caractArticleCode');
+    const libEl = document.getElementById('caractArticleLib');
+    
+    if (codeEl) codeEl.textContent = codArt;
+    if (libEl) libEl.textContent = '';
+    
+    fetch(getBasicInfoUrl(codArt))
+        .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+        .then(info => { if (libEl) libEl.textContent = info.lib_art || ''; })
+        .catch(err => { console.error('Erreur chargement basic info:', err); if (libEl) libEl.textContent = 'Erreur'; });
+    
+    fetch(getArticleCaractValuesUrl(codArt))
+        .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+        .then(values => {
+            renderCaractList(values);
+            if (loading) loading.classList.remove('show');
+            if (content) content.style.display = 'block';
+            if (empty && Object.keys(values).length === 0) empty.style.display = 'block';
+        })
+        .catch(err => {
+            console.error('Erreur chargement caracteristiques:', err);
+            if (loading) loading.innerHTML = '<p class="text-danger small"><i class="bi bi-exclamation-triangle"></i> Erreur de chargement</p>';
+        });
+    
+    loadCaractImages(codArt);
+}
+
+function renderCaractList(values) {
+    const list = document.getElementById('caractList');
+    if (!list) return;
+    
+    list.innerHTML = '';
+    
+    fetch(window.articlesUrls.apiCaracteristiques)
+        .then(r => r.json())
+        .then(allCaracts => {
+            const caractsMap = {};
+            allCaracts.forEach(function(c) { caractsMap[c.id] = c; });
+            
+            if (Object.keys(values).length === 0) {
+                list.innerHTML = '<div class="text-muted small p-3">Aucune caracteristique attribuee a cet article.</div>';
+                return;
+            }
+            
+            for (const [caractId, valeur] of Object.entries(values)) {
+                const caract = caractsMap[parseInt(caractId)];
+                if (!caract) continue;
+                
+                const item = document.createElement('div');
+                item.className = 'caract-list-item';
+                item.innerHTML = '<div class="caract-info">' +
+                    '<div class="caract-name">' + escapeHtml(caract.nom) + '</div>' +
+                    '<div><span class="caract-value">' + escapeHtml(valeur) + '</span>' + (caract.unite ? '<span class="caract-unit">(' + escapeHtml(caract.unite) + ')</span>' : '') + '</div>' +
+                    '</div>' +
+                    '<button class="btn btn-sm btn-outline-danger" onclick="deleteCaractFromArticle(\'' + (window.articlesApp.currentArticle?.COD_ART || '') + '\', ' + caractId + ')" title="Supprimer">' +
+                    '<i class="bi bi-trash"></i></button>';
+                
+                list.appendChild(item);
+            }
+        })
+        .catch(err => {
+            console.error('Erreur chargement liste caracteristiques:', err);
+            list.innerHTML = '<div class="text-danger small p-3">Erreur de chargement</div>';
+        });
+}
+
+function openCaractLookup() {
+    const modalEl = document.getElementById('caractLookupModal');
+    if (!modalEl) return;
+    
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+    
+    const searchInput = document.getElementById('caractLookupSearch');
+    const results = document.getElementById('caractLookupResults');
+    
+    if (searchInput) { searchInput.value = ''; searchInput.focus(); }
+    if (results) results.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Tapez pour rechercher...</td></tr>';
+    
+    if (searchInput) {
+        searchInput.oninput = debounce(function() {
+            const query = searchInput.value.trim();
+            if (!query) { if (results) results.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Tapez pour rechercher...</td></tr>'; return; }
+            
+            if (results) results.innerHTML = '<tr><td colspan="4" class="text-center"><span class="spinner-border spinner-border-sm text-primary me-2"></span>Recherche...</td></tr>';
+            
+            fetch(window.articlesUrls.apiCaracteristiques + '?q=' + encodeURIComponent(query))
+                .then(r => r.json())
+                .then(data => {
+                    if (!results) return;
+                    if (data.length === 0) { results.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Aucun resultat trouve</td></tr>'; return; }
+                    
+                    results.innerHTML = '';
+                    data.forEach(function(c) {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = '<td><small class="text-muted">' + escapeHtml(c.id) + '</small></td><td>' + escapeHtml(c.nom) + '</td><td><small class="text-muted">' + escapeHtml(c.unite || '-') + '</small></td><td><button class="btn btn-sm btn-primary" onclick="selectCaractForArticle(' + c.id + ', \'' + escapeHtml(c.nom) + '\')">Choisir</button></td>';
+                        results.appendChild(tr);
+                    });
+                })
+                .catch(err => { console.error('Erreur recherche caracteristiques:', err); if (results) results.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Erreur de recherche</td></tr>'; });
+        }, 300);
+    }
+    
+    modalEl.addEventListener('hidden.bs.modal', function() { if (searchInput) searchInput.value = ''; }, { once: true });
+}
+
+function selectCaractForArticle(id, nom) {
+    const idInput = document.getElementById('caractSearchId');
+    const nameInput = document.getElementById('caractSearchInput');
+    
+    if (idInput) idInput.value = id;
+    if (nameInput) nameInput.value = nom;
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('caractLookupModal'));
+    if (modal) modal.hide();
+}
+
+function addCaractToArticle() {
+    const codArt = window.articlesApp.currentArticle?.COD_ART;
+    const caractId = document.getElementById('caractSearchId')?.value;
+    const valeur = document.getElementById('caractValueInput')?.value.trim();
+    
+    if (!codArt || !caractId || !valeur) { showToast('Veuillez remplir tous les champs', 'error'); return; }
+    
+    const btn = document.querySelector('#caractContent .btn-success');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Ajout...'; }
+    
+    const apiUrl = window.articlesUrls.apiAddArticleCaract;
+    
+    fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ cod_art: codArt, caract_id: parseInt(caractId), valeur: valeur })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            loadArticleCaracteristiques(codArt);
+            if (document.getElementById('caractSearchId')) document.getElementById('caractSearchId').value = '';
+            if (document.getElementById('caractSearchInput')) document.getElementById('caractSearchInput').value = '';
+            if (document.getElementById('caractValueInput')) document.getElementById('caractValueInput').value = '';
+            showToast('Caracteristique ajoutee avec succes !', 'success');
+        } else { showToast('Erreur : ' + (data.message || 'Echec de l ajout'), 'error'); }
+    })
+    .catch(err => { console.error('Erreur:', err); showToast('Erreur reseau', 'error'); })
+    .finally(() => { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check"></i> Ajouter'; } });
+}
+
+function deleteCaractFromArticle(codArt, caractId) {
+    if (!confirm('Supprimer cette caracteristique ?')) return;
+    
+    fetch(window.articlesUrls.apiDeleteArticleCaract, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ cod_art: codArt, caract_id: caractId })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'ok') { loadArticleCaracteristiques(codArt); showToast('Caracteristique supprimee', 'success'); }
+        else { showToast('Echec de suppression', 'error'); }
+    })
+    .catch(err => { console.error('Erreur:', err); showToast('Erreur reseau', 'error'); });
+}
+
+function loadCaractImages(codArt) {
+    const container = document.getElementById('caractImagesList');
+    if (!container) return;
+    
+    container.innerHTML = '<small class="text-muted"><i class="bi bi-info-circle me-1"></i>Gestion des images via la page dediee</small>';
+}
+
+function uploadCaractImage(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+    
+    const codArt = window.articlesApp.currentArticle?.COD_ART;
+    if (!codArt) { showToast('Veuillez selectionner un article d abord', 'error'); return; }
+    
+    if (!file.type.startsWith('image/')) { showToast('Veuillez selectionner un fichier image', 'error'); input.value = ''; return; }
+    if (file.size > 5 * 1024 * 1024) { showToast('L image ne doit pas depasser 5MB', 'error'); input.value = ''; return; }
+    
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    const uploadUrl = getUploadArticleImageUrl(codArt);
+    const originalBtn = document.querySelector('#caractImagesList + .card-header .btn-outline-primary');
+    if (originalBtn) { originalBtn.disabled = true; originalBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Upload...'; }
+    
+    fetch(uploadUrl, { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCookie('csrftoken') } })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') { loadCaractImages(codArt); showToast('Image telechargee avec succes !', 'success'); }
+            else { showToast('Erreur : ' + (data.message || 'Echec du telechargement'), 'error'); }
+        })
+        .catch(err => { console.error('Erreur upload:', err); showToast('Erreur reseau', 'error'); })
+        .finally(() => { if (originalBtn) { originalBtn.disabled = false; originalBtn.innerHTML = '<i class="bi bi-upload"></i> Ajouter'; } input.value = ''; });
+}
+
+function loadStats(codArt) {
+    if (!codArt) return;
+    
+    const loading = document.getElementById('statsLoading');
+    const content = document.getElementById('statsContent');
+    const empty = document.getElementById('statsEmpty');
+    const error = document.getElementById('statsError');
+    
+    if (loading) loading.classList.add('show');
+    if (content) content.style.display = 'none';
+    if (empty) empty.style.display = 'none';
+    if (error) error.style.display = 'none';
+    
+    const codeEl = document.getElementById('statsArticleCode');
+    const libEl = document.getElementById('statsArticleLib');
+    
+    if (codeEl) codeEl.textContent = codArt;
+    if (libEl) libEl.textContent = '';
+    
+    fetch(getBasicInfoUrl(codArt)).then(r => r.json()).then(info => { if (libEl) libEl.textContent = info.lib_art || ''; });
+    
+    loadStatsNatureStockOptions();
+    
+    const tabType = window.articlesApp.currentStatsTab || 'achat';
+    fetchStatsData(codArt, tabType);
+}
+
+function fetchStatsData(codArt, tabType) {
+    const natStock = document.getElementById('statsNatStock')?.value || '';
+    const valArt = document.getElementById('statsValArt')?.value || '';
+    const dateMin = document.getElementById('statsDateMin')?.value || '';
+    const dateMax = document.getElementById('statsDateMax')?.value || '';
+    
+    const tabAliases = { 'conso': 'consommation', 'ach': 'achat', 'ent': 'entrees', 'sor': 'sorties', 'ret': 'retours', 'pres': 'prestations', 'mouv': 'mouvements' };
+    const normalizedTab = tabAliases[tabType] || tabType;
+    
+    const params = new URLSearchParams({
+        tab: normalizedTab,
+        cod_art: codArt,
+        nat_stock: natStock,
+        val_art: valArt,
+        date_min: dateMin,
+        date_max: dateMax,
+        draw: 1,
+        start: 0,
+        length: 50
+    });
+    
+    const apiUrl = window.articlesUrls.apiStatistiques || '/articles/api/statistiques/';
+    
+    fetch(apiUrl + '?' + params, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + r.statusText);
+        return r.json();
+    })
+    .then(data => {
+        if (data.error) throw new Error(data.error);
+        
+        renderStatsTable(data, tabType);
+        renderStatsChart(tabType, data);
+        
+        const loading = document.getElementById('statsLoading');
+        const content = document.getElementById('statsContent');
+        
+        if (loading) loading.classList.remove('show');
+        if (content) content.style.display = 'block';
+    })
+    .catch(err => {
+        console.error('Erreur chargement stats:', err);
+        
+        const loading = document.getElementById('statsLoading');
+        const error = document.getElementById('statsError');
+        
+        if (loading) loading.classList.remove('show');
+        if (error) {
+            error.style.display = 'block';
+            document.getElementById('statsErrorMessage').textContent = 'Erreur: ' + err.message + '. Veuillez reessayer.';
+        }
+    });
+}
+
+function renderStatsTable(response, tabType) {
+    if (!response || !Array.isArray(response.data)) {
+        console.warn("⚠️ Les donnees sont invalides ou vides", response);
+        return;
+    }
+    
+    const tableIdMap = {
+        'achat': 'statsAchatTable',
+        'consommation': 'statsConsoTable',
+        'conso': 'statsConsoTable',
+        'retours': 'statsRetoursTable',
+        'prestations': 'statsPrestationsTable',
+        'mouvements': 'statsMouvementsTable'
+    };
+    
+    const tableId = tableIdMap[tabType] || 'stats' + tabType.charAt(0).toUpperCase() + tabType.slice(1) + 'Table';
+    const table = document.getElementById(tableId);
+    
+    if (!table) {
+        console.error('❌ Tableau #' + tableId + ' non trouve dans le DOM');
+        return;
+    }
+    
+    if (window['statsTable_' + tabType]) {
+        window['statsTable_' + tabType].destroy();
+    }
+    
+    const cleanedData = response.data.map(function(row) {
+        const valeur = row.PU !== undefined && row.PU !== null ? row.PU :
+                      row.VALEUR !== undefined && row.VALEUR !== null ? row.VALEUR :
+                      row.extra !== undefined && row.extra !== null ? row.extra :
+                      row.MONTANT !== undefined && row.MONTANT !== null ? row.MONTANT :
+                      row.valeur_tot !== undefined && row.valeur_tot !== null ? row.valeur_tot : null;
+        
+        return {
+            type: row.type || '—',
+            date_b: row.date_b ? formatDate(row.date_b) : '—',
+            numero_bon: row.numero_bon || '—',
+            lib_art: row.lib_art || '—',
+            qte_mvt: row.qte_mvt !== undefined && row.qte_mvt !== null ? row.qte_mvt : 0,
+            valeur_unite: valeur,
+            extra: valeur,
+            PU: row.PU !== undefined && row.PU !== null ? row.PU : valeur,
+            VALEUR: row.VALEUR !== undefined && row.VALEUR !== null ? row.VALEUR : valeur,
+            MONTANT: row.MONTANT !== undefined && row.MONTANT !== null ? row.MONTANT : valeur,
+            valeur_tot: row.valeur_tot !== undefined && row.valeur_tot !== null ? row.valeur_tot : valeur,
+            ...row
+        };
+    });
+    
+    const columns = getStatsColumns(tabType);
+    
+    window['statsTable_' + tabType] = $(table).DataTable({
+        data: cleanedData,
+        columns: columns,
+        language: { url: "/static/datatables/i18n/fr-FR.json" },
+        pageLength: 10,
+        responsive: true,
+        order: [[1, 'desc']],
+        destroy: true
+    });
+    
+    updateSummaryValues(response, tabType);
+}
+
+function updateSummaryValues(response, tabType) {
+    const summaries = {
+        'entrees': { id: 'totalValeurEntrees', key: 'total_valeur', container: 'entreesSummary' },
+        'sorties': { id: 'totalValeurSorties', key: 'total_valeur_sorties', container: 'sortiesSummary' }
+    };
+    
+    const config = summaries[tabType];
+    if (config && response[config.key] !== undefined) {
+        const totalEl = document.getElementById(config.id);
+        const container = document.getElementById(config.container);
+        
+        if (totalEl) {
+            totalEl.textContent = parseFloat(response[config.key]).toFixed(3) + ' TND';
+        }
+        if (container) {
+            container.style.display = 'flex';
+        }
+    }
+}
+
+function getStatsColumns(tabType) {
+    const baseCols = [
+        { data: 'type', title: 'Type', className: 'text-nowrap' },
+        { data: 'date_b', title: 'Date', render: function(d) { return d ? new Date(d).toLocaleDateString('fr-FR') : '-'; } },
+        { data: 'numero_bon', title: 'N° Bon' },
+        { data: 'qte_mvt', title: 'Quantite', className: 'text-end', render: function(d) { return d !== undefined && d !== null ? parseFloat(d).toFixed(2) : '0.00'; } },
+        { data: 'lib_um', title: 'U.Mesure' },
+        { data: 'class_cout', title: 'CC' },
+        // ✅ عمود Stock Reconstitué
+        { 
+            data: 'stock_reconstitue', 
+            title: 'Stock Reconst.', 
+            className: 'text-end fw-bold',
+            render: function(d, type, row) {
+                if (d === undefined || d === null) return '<span class="text-muted">—</span>';
+                const val = parseFloat(d);
+                let color = '#0d6efd';
+                if (val < 0) color = '#dc3545';
+                else if (val === 0) color = '#6c757d';
+                return '<span style="color: ' + color + '; font-weight: 700;">' + val.toFixed(2) + '</span>';
+            }
+        },
+    ];
+    
+    switch(tabType) {
+        case 'achat':
+            return baseCols.concat([
+                { data: 'lib_cl_c', title: 'Classe Cout', className: 'text-center' },
+                { data: 'centr_cout', title: 'Ctr Cout', className: 'text-nowrap' },
+                { data: 'lib_centre', title: 'Centre Cout', className: 'text-nowrap' },
+                { data: 'libelle_nature', title: 'Nature Stock', className: 'text-center' },
+                { data: 'PU', title: 'P.U (TND)', className: 'text-end', render: function(d) {
+                    return d !== undefined && d !== null ? parseFloat(d).toFixed(3) : '0.000';
+                }},
+                { data: 'doc_ref', title: 'N° BC' }
+            ]);
+        case 'consommation':
+        case 'conso':
+            return baseCols.concat([
+                { data: 'lib_cl_c', title: 'Classe Cout', className: 'text-nowrap' },
+                { data: 'libelle_nature', title: 'Nature Stock', className: 'text-nowrap' },
+                { data: 'centr_cout', title: 'Ctr Cout', className: 'text-nowrap' },
+                { data: 'lib_centre', title: 'Centre Cout', className: 'text-nowrap' },
+                { data: 'VALEUR', title: 'Valeur (%)', className: 'text-center' }
+            ]);
+        case 'retours':
+            return baseCols.concat([
+                { data: 'lib_cl_c', title: 'Classe Cout', className: 'text-center' },
+                { data: 'libelle_nature', title: 'Nature Stock', className: 'text-nowrap' },
+                { data: 'centr_cout', title: 'Ctr Cout', className: 'text-nowrap' },
+                { data: 'lib_centre', title: 'Centre Cout', className: 'text-nowrap' },
+                { data: 'ref_doc', title: 'Ref. Doc Tiers', className: 'text-nowrap' },
+                { data: 'pu', title: 'PMP (TND) (Estimation)', className: 'text-end', render: function(d) {
+                    return d !== undefined && d !== null ? parseFloat(d).toFixed(3) : '0.000';
+                }},
+                { data: 'valeur', title: 'Valeur (TND)', className: 'text-end', render: function(d) {
+                    return d !== undefined && d !== null ? parseFloat(d).toFixed(3) : '0.000';
+                }}
+            ]);
+        case 'prestations':
+            return baseCols.concat([
+                { data: 'lib_cl_c', title: 'Classe Cout', className: 'text-center' },
+                { data: 'libelle_nature', title: 'Nature Stock', className: 'text-center' },
+                { data: 'lib_centre', title: 'Centre Cout', className: 'text-center' },
+                { data: 'ref_doc', title: 'Ref. Doc Tiers', className: 'text-nowrap' },
+                { data: 'pu', title: 'PMP (TND)', className: 'text-end', render: function(d) {
+                    return d !== undefined && d !== null ? parseFloat(d).toFixed(3) : '0.000';
+                }},
+                { data: 'valeur', title: 'Valeur (TND)', className: 'text-end', render: function(d) {
+                    return d !== undefined && d !== null ? parseFloat(d).toFixed(3) : '0.000';
+                }}
+            ]);
+        case 'mouvements':
+            return [
+                { data: 'type', title: 'Type', className: 'text-nowrap' },
+                { data: 'date_b', title: 'Date', render: function(d) { return d ? new Date(d).toLocaleDateString('fr-FR') : '-'; } },
+                { data: 'numero_bon', title: 'N° Bon' },
+                { data: 'lib_art', title: 'Libelle' },
+                { data: 'qte_mvt', title: 'Quantite', className: 'text-end', render: function(d) { return d !== undefined && d !== null ? parseFloat(d).toFixed(2) : '0.00'; } },
+                { data: 'libelle_nature', title: 'Nature Stock', className: 'text-center' },
+                { data: 'lib_cl_c', title: 'Classe Cout', className: 'text-center' },
+                { data: 'lib_centre', title: 'Centre Cout', className: 'text-center' },
+                { data: 'sens', title: 'Sens', className: 'text-center' },
+                // ✅ عمود Stock Reconstitué لحالة mouvements
+                { 
+                    data: 'stock_reconstitue', 
+                    title: 'Stock Reconst.', 
+                    className: 'text-end fw-bold',
+                    render: function(d, type, row) {
+                        if (d === undefined || d === null) return '<span class="text-muted">—</span>';
+                        const val = parseFloat(d);
+                        let color = '#0d6efd';
+                        if (val < 0) color = '#dc3545';
+                        else if (val === 0) color = '#6c757d';
+                        return '<span style="color: ' + color + '; font-weight: 700;">' + val.toFixed(2) + '</span>';
+                    }
+                }
+            ];
+        default:
+            return baseCols;
+    }
+}
+
+function renderStatsChart(tabType, data) {
+    const canvas = document.getElementById('statsChart');
+    if (!canvas) { console.warn('⚠️ Canvas statsChart non trouve'); return; }
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { console.error('❌ Echec dobtenir le contexte de dessin'); return; }
+    if (typeof Chart === 'undefined') { console.error('❌ Bibliotheque Chart.js non chargee!'); canvas.parentElement.innerHTML = '<p class="text-danger text-center mb-0">Erreur: Chart.js non charge</p>'; return; }
+    if (window.articlesApp.statsCharts && window.articlesApp.statsCharts[tabType]) {
+        try {
+            window.articlesApp.statsCharts[tabType].destroy();
+            delete window.articlesApp.statsCharts[tabType];
+        } catch (e) { console.warn('⚠️ Erreur lors de la destruction du graphique:', e); }
+    }
+    if (Chart.getChart(canvas)) {
+        try { Chart.getChart(canvas).destroy(); } catch (e) { /* تجاهل */ }
+    }
+    
+    const months = data.months || [];
+    const quantities = data.quantities || [];
+    const datasets = data.datasets || [];
+    
+    // ✅ بيانات تطور المخزون
+    const stockMonths = data.stock_months || [];
+    const stockQuantities = data.stock_quantities || [];
+    
+    if (!months.length) { canvas.parentElement.innerHTML = '<p class="text-muted text-center mb-0">Aucune donnee pour cette periode</p>'; return; }
+    
+    let chartDatasets = [];
+    
+    if (datasets.length > 0) {
+        chartDatasets = datasets.map(function(ds) {
+            return Object.assign({}, ds, { yAxisID: 'y' });
+        });
+    } else {
+        const labels = {
+            'achat': 'Quantite Achetee',
+            'consommation': 'Quantite Consommee',
+            'conso': 'Quantite Consommee',
+            'retours': 'Quantite Retournee',
+            'prestations': 'Quantite Prestee',
+            'mouvements': 'Evolution des Mouvements'
+        };
+        const colors = {
+            'achat': { border: '#0d6efd', bg: 'rgba(13, 110, 253, 0.2)' },
+            'consommation': { border: '#dc3545', bg: 'rgba(220, 53, 69, 0.2)' },
+            'conso': { border: '#dc3545', bg: 'rgba(220, 53, 69, 0.2)' },
+            'retours': { border: '#198754', bg: 'rgba(25, 135, 84, 0.2)' },
+            'prestations': { border: '#6f42c1', bg: 'rgba(111, 66, 193, 0.2)' },
+            'mouvements': { border: '#6f42c1', bg: 'rgba(111, 66, 193, 0.2)' }
+        };
+        const color = colors[tabType] || colors['consommation'];
+        chartDatasets.push({
+            label: labels[tabType] || 'Valeur',
+            data: quantities,
+            borderColor: color.border,
+            backgroundColor: color.bg,
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointBackgroundColor: color.border,
+            yAxisID: 'y'
+        });
+    }
+    
+    // ✅ خط المخزون: برتقالي متقطع بشكل مثلثات مع تعبئة بنمط *
+    if (stockMonths.length > 0 && stockQuantities.length > 0) {
+        // إنشاء pattern بنمط *
+        const patternCanvas = document.createElement('canvas');
+        patternCanvas.width = 20;
+        patternCanvas.height = 20;
+        const patternCtx = patternCanvas.getContext('2d');
+        patternCtx.fillStyle = 'rgba(253, 126, 20, 0.15)';
+        patternCtx.fillRect(0, 0, 20, 20);
+        patternCtx.fillStyle = '#fd7e14';
+        patternCtx.font = '14px Arial';
+        patternCtx.textAlign = 'center';
+        patternCtx.textBaseline = 'middle';
+        patternCtx.fillText('*', 10, 10);
+        
+        const patternFill = ctx.createPattern(patternCanvas, 'repeat');
+        
+        chartDatasets.push({
+            label: '📦 Stock Reconstitué',
+            data: stockQuantities,
+            borderColor: '#fd7e14',
+            backgroundColor: patternFill,
+            borderWidth: 3,
+            borderDash: [10, 5],
+            fill: true,
+            tension: 0.3,
+            pointBackgroundColor: '#fd7e14',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            pointRadius: 6,
+            pointHoverRadius: 9,
+            pointStyle: 'triangle',
+            yAxisID: 'y'
+        });
+    }
+    
+    try {
+        const newChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: chartDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { 
+                    legend: { position: 'top' }, 
+                    tooltip: { mode: 'index', intersect: false } 
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        title: { display: true, text: 'Quantité / Stock' } 
+                    },
+                    x: { 
+                        title: { display: true, text: 'Periode' } 
+                    }
+                }
+            }
+        });
+        window.articlesApp.statsCharts[tabType] = newChart;
+        console.log('✅ Chart.js: graphique cree avec succes');
+    } catch (e) {
+        console.error(' Erreur lors de la creation du graphique:', e);
+        canvas.parentElement.innerHTML = '<p class="text-danger text-center mb-0">Erreur d affichage du graphique</p>';
+    }
+}
+
+function loadStatsNatureStockOptions() {
+    const select = document.getElementById('statsNatStock');
+    if (!select || select.options.length > 1) return;
+    
+    fetch(window.articlesUrls.apiNatureStock)
+        .then(r => r.json())
+        .then(data => {
+            data.forEach(function(item) {
+                const option = document.createElement('option');
+                option.value = item.code_nature;
+                option.textContent = item.code_nature + ' - ' + item.libelle_nature;
+                select.appendChild(option);
+            });
+        })
+        .catch(err => console.error('Erreur chargement Nature Stock:', err));
+}
+
+function resetStatsFilters() {
+    document.getElementById('statsNatStock').value = '';
+    document.getElementById('statsValArt').value = '';
+    document.getElementById('statsClasseCout').value = '';
+    document.getElementById('statsCentreCout').value = '';
+    document.getElementById('statsDateMin').value = '';
+    document.getElementById('statsDateMax').value = '';
+    
+    const codArt = window.articlesApp.currentArticle?.COD_ART;
+    if (codArt) loadStats(codArt);
+}
+
+function exportStatsToExcel() {
+    const codArt = window.articlesApp.currentArticle?.COD_ART;
+    if (!codArt) { showToast('Veuillez selectionner un article d abord', 'warning'); return; }
+    
+    const tabType = window.articlesApp.currentStatsTab || 'achat';
+    const natStock = document.getElementById('statsNatStock')?.value || '';
+    const valArt = document.getElementById('statsValArt')?.value || '';
+    const dateMin = document.getElementById('statsDateMin')?.value || '';
+    const dateMax = document.getElementById('statsDateMax')?.value || '';
+    
+    const originalBtn = document.querySelector('#statsContent .btn-success');
+    if (originalBtn) { originalBtn.disabled = true; originalBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Export...'; }
+    
+    fetch(window.articlesUrls.exportStatsExcel || '/articles/api/export-excel/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+        body: JSON.stringify({ tab: tabType, cod_art: codArt, nat_stock: natStock, val_art: valArt, date_min: dateMin, date_max: dateMax })
+    })
+    .then(r => { if (!r.ok) throw new Error('Erreur d export'); return r.blob(); })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'Statistiques_' + codArt + '_' + tabType + '_' + new Date().toISOString().slice(0,10) + '.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        showToast('Export reussi !', 'success');
+    })
+    .catch(err => { console.error('Erreur export:', err); showToast('Erreur lors de l export', 'error'); })
+    .finally(() => { if (originalBtn) { originalBtn.disabled = false; originalBtn.innerHTML = '<i class="bi bi-file-earmark-excel"></i> Export Excel'; } });
+}
+
+let generalStatsCurrentTab = 'entrees';
+let generalStatsCharts = {};
+
+function loadGeneralStats() {
+    const tab = generalStatsCurrentTab;
+    const natStock = document.getElementById('genNatStock')?.value || '';
+    const valArt = document.getElementById('genValArt')?.value || '';
+    const classeCout = document.getElementById('genClasseCout')?.value || '';
+    const centreCout = document.getElementById('genCentreCout')?.value || '';
+    const dateMin = document.getElementById('genDateMin')?.value || '';
+    const dateMax = document.getElementById('genDateMax')?.value || '';
+    
+    const loadingEl = document.getElementById('gen' + tab.charAt(0).toUpperCase() + tab.slice(1) + 'Loading');
+    const contentEl = document.getElementById('gen' + tab.charAt(0).toUpperCase() + tab.slice(1) + 'Content');
+    
+    if (loadingEl) loadingEl.classList.add('show');
+    if (contentEl) contentEl.style.display = 'none';
+    
+    const params = new URLSearchParams({
+        tab_type: 'general',
+        tab: tab,
+        nat_stock: natStock,
+        val_art: valArt,
+        classe_cout: classeCout,
+        centr_cout: centreCout,
+        date_min: dateMin,
+        date_max: dateMax,
+        draw: 1,
+        start: 0,
+        length: 50
+    });
+    
+    const apiUrl = window.articlesUrls.apiStatistiques || '/articles/api/statistiques/';
+    
+    fetch(apiUrl + '?' + params, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + r.statusText);
+        return r.json();
+    })
+    .then(data => {
+        if (data.error) throw new Error(data.error);
+        
+        renderGeneralStatsTable(data, tab);
+        renderGeneralStatsChart(tab, data);
+        
+        if (loadingEl) loadingEl.classList.remove('show');
+        if (contentEl) contentEl.style.display = 'block';
+    })
+    .catch(err => {
+        console.error('Erreur chargement stats generales:', err);
+        if (loadingEl) loadingEl.classList.remove('show');
+        showToast('Erreur: ' + err.message, 'error');
+    });
+}
+
+function switchGeneralStatsTab(tabType) {
+    generalStatsCurrentTab = tabType;
+    loadGeneralStats();
+}
+
+function resetGeneralStatsFilters() {
+    document.getElementById('genNatStock').value = '';
+    document.getElementById('genValArt').value = '';
+    document.getElementById('genClasseCout').value = '';
+    document.getElementById('genCentreCout').value = '';
+    document.getElementById('genDateMin').value = '';
+    document.getElementById('genDateMax').value = '';
+    loadGeneralStats();
+}
+
+function renderGeneralStatsTable(response, tabType) {
+    if (!response || !Array.isArray(response.data)) {
+        console.warn("⚠️ Les donnees sont invalides ou vides", response);
+        return;
+    }
+    
+    const tableIdMap = {
+        'entrees': 'genEntreesTable',
+        'sorties': 'genSortiesTable',
+        'retours': 'genRetoursTable',
+        'prestations': 'genPrestationsTable'
+    };
+    
+    const tableId = tableIdMap[tabType];
+    const table = document.getElementById(tableId);
+    
+    if (!table) {
+        console.error('❌ Tableau #' + tableId + ' non trouve dans le DOM');
+        return;
+    }
+    
+    if (window['genStatsTable_' + tabType]) {
+        window['genStatsTable_' + tabType].destroy();
+    }
+    
+    const cleanedData = response.data.map(function(row) {
+        return {
+            type: row.type || '—',
+            date_b: row.date_b ? formatDate(row.date_b) : '—',
+            numero_bon: row.numero_bon || '—',
+            lib_art: row.lib_art || '—',
+            qte_mvt: row.qte_mvt !== undefined && row.qte_mvt !== null ? parseFloat(row.qte_mvt).toFixed(2) : '0.00',
+            libelle_nature: row.libelle_nature || '—',
+            lib_cl_c: row.lib_cl_c || '—',
+            lib_centre: row.lib_centre || '—',
+            unite: row.unite || '—',
+            valeur_tot: row.valeur_tot !== undefined && row.valeur_tot !== null ? parseFloat(row.valeur_tot).toFixed(3) : '0.000',
+            extra: row.extra !== undefined && row.extra !== null ? parseFloat(row.extra).toFixed(3) : '0.000',
+            ...row
+        };
+    });
+    
+    const columns = getGeneralStatsColumns(tabType);
+    
+    window['genStatsTable_' + tabType] = $(table).DataTable({
+        data: cleanedData,
+        columns: columns,
+        language: { url: "/static/datatables/i18n/fr-FR.json" },
+        pageLength: 10,
+        responsive: true,
+        order: [[1, 'desc']],
+        destroy: true
+    });
+    
+    updateGeneralSummaryValues(response, tabType);
+}
+
+function getGeneralStatsColumns(tabType) {
+    const baseCols = [
+        { data: 'type', title: 'Type', className: 'text-nowrap' },
+        { data: 'date_b', title: 'Date', render: function(d) { return d ? new Date(d).toLocaleDateString('fr-FR') : '-'; } },
+        { data: 'numero_bon', title: 'N° Bon' },
+        { data: 'lib_art', title: 'Libelle' },
+        { data: 'qte_mvt', title: 'Quantite', className: 'text-end' },
+        { data: 'libelle_nature', title: 'Nature Stock', className: 'text-center' },
+        { data: 'lib_cl_c', title: 'Classe Cout', className: 'text-center' },
+        { data: 'lib_centre', title: 'Centre Cout', className: 'text-center' },
+    ];
+    
+    switch(tabType) {
+        case 'entrees':
+            return baseCols.concat([
+                { data: 'valeur_tot', title: 'Valeur (TND)', className: 'text-end fw-bold', render: function(d) {
+                    return d !== undefined && d !== null ? parseFloat(d).toFixed(3) : '0.000';
+                }},
+                { data: 'doc_ref', title: 'N° BC' }
+            ]);
+        case 'sorties':
+            return baseCols.concat([
+                { data: 'unite', title: 'U.Mesure', className: 'text-center' },
+                { data: 'extra', title: 'Valeur Stock (TND)', className: 'text-end fw-bold', render: function(d) {
+                    return d !== undefined && d !== null ? parseFloat(d).toFixed(3) : '0.000';
+                }}
+            ]);
+        case 'retours':
+        case 'prestations':
+            return baseCols.concat([
+                { data: 'unite', title: 'U.Mesure', className: 'text-center' }
+            ]);
+        default:
+            return baseCols;
+    }
+}
+
+function updateGeneralSummaryValues(response, tabType) {
+    const summaries = {
+        'entrees': { id: 'genTotalValeurEntrees', key: 'total_valeur', container: 'genEntreesSummary' },
+        'sorties': { id: 'genTotalValeurSorties', key: 'total_valeur_sorties', container: 'genSortiesSummary' }
+    };
+    
+    const config = summaries[tabType];
+    if (config && response[config.key] !== undefined) {
+        const totalEl = document.getElementById(config.id);
+        const container = document.getElementById(config.container);
+        
+        if (totalEl) {
+            totalEl.textContent = parseFloat(response[config.key]).toFixed(3) + ' TND';
+        }
+        if (container) {
+            container.style.display = 'flex';
+        }
+    }
+}
+
+function renderGeneralStatsChart(tabType, data) {
+    const canvas = document.getElementById('generalStatsChart');
+    if (!canvas) { console.warn('⚠️ Canvas generalStatsChart non trouve'); return; }
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { console.error('❌ Echec dobtenir le contexte de dessin'); return; }
+    
+    if (typeof Chart === 'undefined') { console.error('❌ Bibliotheque Chart.js non chargee!'); return; }
+    
+    if (window.articlesApp.generalStatsCharts && window.articlesApp.generalStatsCharts[tabType]) {
+        try {
+            window.articlesApp.generalStatsCharts[tabType].destroy();
+            delete window.articlesApp.generalStatsCharts[tabType];
+        } catch (e) { console.warn('⚠️ Erreur destruction graphique:', e); }
+    }
+    
+    if (Chart.getChart(canvas)) {
+        try { Chart.getChart(canvas).destroy(); } catch (e) { /* تجاهل */ }
+    }
+    
+    const months = data.months || [];
+    const quantities = data.quantities || [];
+    
+    if (!months.length) { canvas.parentElement.innerHTML = '<p class="text-muted text-center mb-0">Aucune donnee pour cette periode</p>'; return; }
+    
+    const labels = {
+        'entrees': 'Valeur des Entrees (TND)',
+        'sorties': 'Valeur des Sorties (TND)',
+        'retours': 'Quantite Retournee',
+        'prestations': 'Quantite Prestee'
+    };
+    
+    const colors = {
+        'entrees': { border: '#198754', bg: 'rgba(25, 135, 84, 0.2)' },
+        'sorties': { border: '#fd7e14', bg: 'rgba(253, 126, 20, 0.2)' },
+        'retours': { border: '#6f42c1', bg: 'rgba(111, 66, 193, 0.2)' },
+        'prestations': { border: '#6f42c1', bg: 'rgba(111, 66, 193, 0.2)' }
+    };
+    
+    const color = colors[tabType] || colors['entrees'];
+    
+    try {
+        window.articlesApp.generalStatsCharts[tabType] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: labels[tabType] || 'Valeur',
+                    data: quantities,
+                    borderColor: color.border,
+                    backgroundColor: color.bg,
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointBackgroundColor: color.border
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false } },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: (tabType === 'entrees' || tabType === 'sorties') ? 'Valeur (TND)' : 'Quantite' } },
+                    x: { title: { display: true, text: 'Periode' } }
+                }
+            }
+        });
+        
+        console.log('✅ Chart.js: graphique general cree avec succes');
+    } catch (e) {
+        console.error('❌ Erreur creation graphique general:', e);
+    }
+}
+
+function loadGeneralNatureStockOptions() {
+    const select = document.getElementById('genNatStock');
+    if (!select || select.options.length > 1) return;
+    
+    fetch(window.articlesUrls.apiNatureStock)
+        .then(r => r.json())
+        .then(data => {
+            data.forEach(function(item) {
+                const option = document.createElement('option');
+                option.value = item.code_nature;
+                option.textContent = item.code_nature + ' - ' + item.libelle_nature;
+                select.appendChild(option);
+            });
+        })
+        .catch(err => console.error('Erreur chargement Nature Stock:', err));
+}
+
+function escapeHtml(text) {
+    if (typeof text !== 'string') return text;
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '-';
+        return date.toLocaleDateString('fr-FR', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    } catch(e) {
+        return '-';
+    }
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction() {
+        const args = arguments;
+        const later = function() {
+            clearTimeout(timeout);
+            func.apply(null, args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function loadNatureStockOptions() {
+    const select = document.getElementById('natStockSelect');
+    if (!select || select.options.length > 1) return;
+    
+    fetch(window.articlesUrls.apiNatureStock)
+        .then(r => r.json())
+        .then(data => {
+            data.forEach(function(item) {
+                const option = document.createElement('option');
+                option.value = item.code_nature;
+                option.textContent = item.code_nature + ' - ' + item.libelle_nature;
+                select.appendChild(option);
+            });
+        })
+        .catch(err => console.error('Erreur chargement Nature Stock:', err));
+}
+
+function loadArticleSummary(codArt) {
+    const container = document.getElementById('summaryContent');
+    
+    if (!codArt) {
+        codArt = window.articlesApp.currentArticle?.COD_ART;
+    }
+    
+    if (!codArt) {
+        container.innerHTML = '<p class="text-warning text-center"><i class="bi bi-exclamation-triangle me-2"></i>Veuillez sélectionner un article d\'abord.</p>';
+        return;
+    }
+    
+    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary mb-2"></div><p class="text-muted">Chargement du résumé...</p></div>';
+    
+    const dateMin = document.getElementById('statsDateMin')?.value || '';
+    const dateMax = document.getElementById('statsDateMax')?.value || '';
+    const natStockEl = document.getElementById('statsNatStock');
+    const natStock = (natStockEl && natStockEl.value) ? natStockEl.value : (window.articlesApp.currentArticle?.NAT_STOCK || '');
+    const valArtEl = document.getElementById('statsValArt');
+    const valArt = (valArtEl && valArtEl.value) ? valArtEl.value : (window.articlesApp.currentArticle?.VAL_ART || '');
+    const classeCout = document.getElementById('statsClasseCout')?.value || '';
+    const centreCout = document.getElementById('statsCentreCout')?.value || '';
+    
+    const params = new URLSearchParams({
+        date_min: dateMin, 
+        date_max: dateMax, 
+        nat_stock: natStock,
+        val_art: valArt, 
+        classe_cout: classeCout, 
+        centre_cout: centreCout
+    });
+    
+    const apiUrl = window.articlesUrls.apiBase + codArt + '/summary/?' + params.toString();
+    
+    fetch(apiUrl)
+        .then(function(r) {
+            if (!r.ok) throw new Error('Erreur serveur: ' + r.status);
+            return r.json();
+        })
+        .then(function(data) {
+            if (data.error) {
+                container.innerHTML = '<p class="text-danger text-center"><i class="bi bi-exclamation-circle me-2"></i>' + data.error + '</p>';
+                return;
+            }
+            
+            const columns = data.columns || [];
+            const totalDynamicColumns = columns.length;
+            // ✅ تحديث: 4 أعمدة ثابتة + أعمدة ديناميكية + 6 أعمدة (Entrées, Sorties, INV, Stock Avant, Écart, Stock Net)
+            const totalColumns = 4 + totalDynamicColumns + 6;
+            
+            let grandTotalHtml = '';
+            if (data.grand_total) {
+                const hasData = data.data && data.data.length > 0;
+                
+                let stockDistributionText = '';
+                if (data.grand_total.stock_distribution) {
+                    const dist = data.grand_total.stock_distribution;
+                    const parts = [];
+                    for (const natCode in dist) {
+                        if (dist.hasOwnProperty(natCode)) {
+                            const qty = dist[natCode];
+                            parts.push('<strong>Nat ' + natCode + '</strong>: ' + parseFloat(qty).toLocaleString('fr-FR', {minimumFractionDigits: 2}));
+                        }
+                    }
+                    if (parts.length > 0) {
+                        stockDistributionText = '<div class="mt-2 small text-muted">Répartition: ' + parts.join(' | ') + '</div>';
+                    }
+                }
+                
+                // ✅ إضافة معلومات Écart في الإجماليات
+                let ecartSummaryHtml = '';
+                if (data.grand_total.total_inv_count > 0) {
+                    ecartSummaryHtml = '<div class="row g-2 mt-2">' +
+                        '<div class="col-md-4"><small class="text-muted">Inventaires:</small> <strong>' + data.grand_total.total_inv_count + '</strong></div>' +
+                        '<div class="col-md-4"><small class="text-muted">Surplus:</small> <strong class="text-success">+' + (data.grand_total.total_ecart_surplus || 0).toFixed(2) + '</strong></div>' +
+                        '<div class="col-md-4"><small class="text-muted">Manquant:</small> <strong class="text-danger">-' + (data.grand_total.total_ecart_manquant || 0).toFixed(2) + '</strong></div>' +
+                    '</div>';
+                }
+                
+                grandTotalHtml = '<div class="alert alert-light mb-4 border-start border-4 border-primary shadow-sm">' +
+                    '<div class="d-flex justify-content-between align-items-center mb-3">' +
+                        '<span class="fw-bold text-primary"><i class="bi bi-table me-2"></i>' + data.cod_art + ' - ' + data.lib_art + '</span>' +
+                        '<button class="btn btn-primary btn-sm" onclick="loadArticleSummary(\'' + data.cod_art + '\')"><i class="bi bi-arrow-clockwise me-1"></i> Actualiser</button>' +
+                    '</div>' +
+                    (hasData ? '<h6 class="text-uppercase text-muted small fw-bold mb-2">TOTAL GLOBAL (Toutes classes et valeurs confondues)</h6>' +
+                    '<div class="row g-3 text-center">' +
+                        '<div class="col-md-4"><div class="p-3 bg-success bg-opacity-10 rounded border border-success total-card"><small class="text-muted text-uppercase fw-bold">Total Entrées</small><h3 class="mb-0 text-success fw-bold">' + parseFloat(data.grand_total.total_entrees || 0).toLocaleString('fr-FR', {minimumFractionDigits: 2}) + '</h3></div></div>' +
+                        '<div class="col-md-4"><div class="p-3 bg-danger bg-opacity-10 rounded border border-danger total-card"><small class="text-muted text-uppercase fw-bold">Total Sorties</small><h3 class="mb-0 text-danger fw-bold">' + parseFloat(data.grand_total.total_sorties || 0).toLocaleString('fr-FR', {minimumFractionDigits: 2}) + '</h3></div></div>' +
+                        '<div class="col-md-4"><div class="p-3 bg-primary bg-opacity-10 rounded border border-primary total-card"><small class="text-muted text-uppercase fw-bold">Stock Réel (STOCK)</small><h3 class="mb-0 text-primary fw-bold">' + parseFloat(data.grand_total.stock_net || 0).toLocaleString('fr-FR', {minimumFractionDigits: 2}) + '</h3>' + stockDistributionText + '</div></div>' +
+                    '</div>' + ecartSummaryHtml : '<p class="text-muted text-center mb-0">Aucune donnée pour ces critères.</p>') +
+                '</div>';
+            }
+            
+            let html = grandTotalHtml;
+            
+            html += '<div class="table-responsive" style="max-height: 600px; overflow-y: auto;">';
+            html += '<table id="summaryTable" class="table table-sm table-bordered table-hover align-middle mb-0" style="font-size: 0.85rem; min-width: 1800px;">';
+            html += '<thead class="table-dark sticky-top">';
+            html += '<tr>';
+            html += '<th rowspan="2" class="align-middle bg-dark text-white">Centre de Coût</th>';
+            html += '<th rowspan="2" class="align-middle bg-dark text-white">Libellé</th>';
+            html += '<th rowspan="2" class="align-middle bg-dark text-white">Centre</th>';
+            html += '<th rowspan="2" class="align-middle bg-dark text-white">Val. Art.</th>';
+            
+            for (let i = 0; i < columns.length; i++) {
+                html += '<th class="text-center bg-dark text-white">' + escapeHtml(columns[i]) + '</th>';
+            }
+            // ✅ تحديث: colspan من 4 إلى 6
+            html += '<th colspan="6" class="text-center bg-dark text-white">Totaux & Inventaire</th>';
+            html += '</tr><tr>';
+            
+            for (let i = 0; i < columns.length; i++) {
+                html += '<th class="text-center bg-secondary text-white" style="font-size: 0.75rem;">' + escapeHtml(columns[i]) + '</th>';
+            }
+            html += '<th class="text-end text-success bg-dark text-white">Entrées</th>';
+            html += '<th class="text-end text-danger bg-dark text-white">Sorties</th>';
+            html += '<th class="text-end text-warning bg-dark text-white">INV</th>';
+            // ✅ إضافة أعمدة جديدة
+            html += '<th class="text-end bg-info bg-dark text-white">Stock Avant</th>';
+            html += '<th class="text-end bg-dark text-white">Écart</th>';
+            html += '<th class="text-end fw-bold bg-dark text-white">Stock Net</th>';
+            html += '</tr></thead><tbody>';
+            
+            if (!data.data || data.data.length === 0) {
+                html += '<tr><td colspan="' + totalColumns + '" class="text-center text-muted py-3">Aucune donnée de mouvement trouvée pour ces critères de filtre.</td></tr>';
+            } else {
+                for (let i = 0; i < data.data.length; i++) {
+                    const row = data.data[i];
+                    const isInvRow = row.is_inv_row || false;
+                    const rowClass = isInvRow ? 'table-warning' : '';
+                    const dateDisplay = isInvRow ? '<small class="text-muted">(' + row.date + ')</small>' : '';
+                    
+                    html += '<tr class="' + rowClass + '">';
+                    html += '<td><code class="bg-light px-1 rounded">' + (row.class_cout || '—') + '</code> ' + dateDisplay + '</td>';
+                    html += '<td>' + (row.lib_cl_c || '—') + '</td>';
+                    html += '<td><small>' + (row.lib_centre || '—') + '</small></td>';
+                    html += '<td><span class="badge bg-info text-dark">' + (row.lib_val_art || '—') + '</span></td>';
+                    
+                    for (let j = 0; j < columns.length; j++) {
+                        const natKey = 'nature_' + columns[j];
+                        const natVal = row[natKey] !== undefined ? row[natKey] : '0';
+                        html += '<td class="text-center">' + natVal + '</td>';
+                    }
+                    
+                    html += '<td class="text-end text-success fw-bold">' + (row.total_entrees || 0) + '</td>';
+                    html += '<td class="text-end text-danger fw-bold">' + (row.total_sorties || 0) + '</td>';
+                    html += '<td class="text-end text-warning fw-bold">' + (isInvRow ? row.inv_qty : '—') + '</td>';
+                    
+                    // ✅ إضافة عمود Stock Avant
+                    if (isInvRow) {
+                        html += '<td class="text-end bg-info bg-opacity-10">' + (row.stock_avant_inv !== undefined ? parseFloat(row.stock_avant_inv).toFixed(2) : '0.00') + '</td>';
+                    } else {
+                        html += '<td class="text-end">—</td>';
+                    }
+                    
+                    // ✅ إضافة عمود Écart مع أيقونة ولون
+                    if (isInvRow) {
+                        const ecart = parseFloat(row.ecart_inv || 0);
+                        const ecartType = row.ecart_type || 'exact';
+                        let ecartColor, ecartIcon, ecartLabel;
+                        
+                        if (ecartType === 'surplus' || ecart > 0) {
+                            ecartColor = '#198754';
+                            ecartIcon = 'bi-arrow-up-circle-fill';
+                            ecartLabel = '+' + ecart.toFixed(2);
+                        } else if (ecartType === 'manquant' || ecart < 0) {
+                            ecartColor = '#dc3545';
+                            ecartIcon = 'bi-arrow-down-circle-fill';
+                            ecartLabel = ecart.toFixed(2);
+                        } else {
+                            ecartColor = '#6c757d';
+                            ecartIcon = 'bi-check-circle-fill';
+                            ecartLabel = ecart.toFixed(2);
+                        }
+                        
+                        html += '<td class="text-end"><span style="color: ' + ecartColor + '; font-weight: 600;"><i class="bi ' + ecartIcon + ' me-1"></i>' + ecartLabel + '</span></td>';
+                    } else {
+                        html += '<td class="text-end">—</td>';
+                    }
+                    
+                    // ✅ عمود Stock Net
+                    const stockColor = row.stock_net > 0 ? '#0d6efd' : (row.stock_net < 0 ? '#dc3545' : '#6c757d');
+                    html += '<td class="text-end fw-bold" style="color: ' + stockColor + ';">' + (row.stock_net || 0) + '</td>';
+                    html += '</tr>';
+                }
+            }
+            
+            html += '</tbody>';
+            html += '<tfoot class="table-light fw-bold sticky-bottom">';
+            html += '<tr>';
+            // ✅ تحديث: colspan من 4 إلى 6
+            html += '<td colspan="' + (4 + totalDynamicColumns) + '" class="text-end bg-light">TOTAL GLOBAL</td>';
+            html += '<td class="text-end text-success bg-light">' + (data.grand_total?.total_entrees || 0) + '</td>';
+            html += '<td class="text-end text-danger bg-light">' + (data.grand_total?.total_sorties || 0) + '</td>';
+            html += '<td class="text-end text-warning bg-light">—</td>';
+            // ✅ إضافة خلايا فارغة للأعمدة الجديدة
+            html += '<td class="text-end bg-light">—</td>';
+            html += '<td class="text-end bg-light">—</td>';
+            html += '<td class="text-end bg-light">' + (data.grand_total?.stock_net || 0) + '</td>';
+            html += '</tr></tfoot></table></div>';
+            
+            container.innerHTML = html;
+            
+            // ✅ لا نستخدم DataTables على جدول Résumé لأنه يحتوي على rowspan/colspan
+            console.log('✅ Tableau Résumé affiché sans DataTables (structure complexe détectée)');
+        })
+        .catch(function(err) {
+            console.error('❌ Erreur chargement résumé:', err);
+            container.innerHTML = '<div class="alert alert-danger"><i class="bi bi-wifi-off me-2"></i><strong>Erreur de chargement:</strong> ' + err.message + '</div>';
+        });
+}
+    // ==========================================
+    // ✅ إضافة جديدة: منطق زر تصدير النتائج المفلترة
+    // ==========================================
+    const exportFilteredBtn = document.getElementById('btnExportFilteredExcel');
+    if (exportFilteredBtn) {
+        exportFilteredBtn.addEventListener('click', function() {
+            // 1. جمع قيم الفلاتر من نموذج البحث المتقدم
+            const form = document.getElementById('advancedFiltersForm');
+            const formData = new FormData(form);
+            const params = new URLSearchParams();
+
+            formData.forEach((value, key) => {
+                if (value && value.trim() !== '') {
+                    params.append(key, value.trim());
+                }
+            });
+
+            // 2. إضافة قيمة البحث العام من DataTables إذا كانت موجودة
+            const searchInput = document.querySelector('.dataTables_filter input');
+            if (searchInput && searchInput.value.trim() !== '') {
+                params.append('search[value]', searchInput.value.trim());
+            }
+
+            // 3. بناء رابط التصدير
+            const exportUrl = "{% url 'articles:export_articles_excel' %}?" + params.toString();
+
+            // 4. تأثير تحميل على الزر
+            const originalText = exportFilteredBtn.innerHTML;
+            exportFilteredBtn.disabled = true;
+            exportFilteredBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Export en cours...';
+
+            // 5. فتح الرابط في نافذة جديدة (سيبدأ التحميل تلقائياً)
+            window.open(exportUrl, '_blank');
+
+            // 6. إعادة الزر لحالته الطبيعية
+            setTimeout(() => {
+                exportFilteredBtn.disabled = false;
+                exportFilteredBtn.innerHTML = originalText;
+                showToast('Export des données filtrées réussi !', 'success');
+            }, 2000);
+        });
+    }
+</script>
+{% endblock %}

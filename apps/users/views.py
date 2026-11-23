@@ -41,7 +41,7 @@ def user_list_view(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    return render(request, 'users/user_list.html', {
+    return render(request, 'core/users.html', {
         'page_obj': page_obj,
         'query': query,
         'perm': perm,
@@ -74,7 +74,7 @@ def user_create_view(request):
             validate_password(password)
         except ValidationError as e:
             messages.error(request, f"Mdp non sécurisé : {' '.join(e.messages)}")
-            return render(request, 'users/user_form.html')
+            return render(request, 'core/user_form.html')
         
         user = CustomUser.objects.create_user(
             username=username,
@@ -90,7 +90,7 @@ def user_create_view(request):
         messages.success(request, f"Utilisateur {username} créé.")
         return redirect('users:user_list')
     
-    return render(request, 'users/user_form.html')
+    return render(request, 'core/user_form.html')
 
 
 @login_required
@@ -119,7 +119,7 @@ def user_edit_view(request, user_id):
         messages.success(request, f"Utilisateur {user.username} mis à jour.")
         return redirect('users:user_list')
     
-    return render(request, 'users/user_form.html', {'edit_user': user})
+    return render(request, 'core/user_form.html', {'edit_user': user})
 
 
 @login_required
@@ -141,7 +141,7 @@ def user_delete_view(request, user_id):
         messages.success(request, f"Utilisateur {username} supprimé.")
         return redirect('users:user_list')
     
-    return render(request, 'users/user_confirm_delete.html', {'user': user})
+    return render(request, 'core/user_confirm_delete.html', {'user': user})
 
 
 # ===========================
@@ -168,7 +168,7 @@ def permission_management_view(request):
         selected_user = get_object_or_404(CustomUser, id=selected_user_id)
         permissions = PermissionMatrix.objects.filter(user=selected_user).select_related('page')
     
-    return render(request, 'users/permissions.html', {
+    return render(request, 'core/permissions.html', {
         'users': users,
         'selected_user': selected_user,
         'permissions': permissions,

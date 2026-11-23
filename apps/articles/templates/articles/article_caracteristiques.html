@@ -1,0 +1,512 @@
+{% extends "base.html" %}
+{% load static %}
+{% load extra_filters %} <!-- يجب أن يكون أولًا أو ثانيًا -->
+
+{% block content %}
+<div class="p-4">
+    <h2><i class="bi bi-tags"></i> Gestion des Caractéristiques Techniques</h2>
+
+    <!-- نموذج اختيار السلعة -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form id="selectArticleForm" class="row g-3">
+                <div class="col-md-8">
+                    <label class="form-label">Sélectionner un article</label>
+                    <input type="text" id="articleInput" class="form-control"
+                           value="{% if selected_cod_art %}{{ selected_cod_art }} - {{ libelle }}{% endif %}"
+                           placeholder="Rechercher par code ou libellé"
+                           readonly>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="button" class="btn btn-outline-secondary w-100"
+                            onclick="openLookupPanel('article')">
+                        <i class="bi bi-search"></i> Choisir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if selected_cod_art %}
+    <div id="contentForSelectedArticle">
+
+        <!-- إضافة خاصية جديدة -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h5><i class="bi bi-plus-circle"></i> Attribuer une caractéristique</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Caractéristique</label>
+                        <input type="text" id="caractInput" class="form-control"
+                               placeholder="Rechercher une caractéristique"
+                               readonly>
+                        <input type="hidden" id="caractId">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Valeur</label>
+                        <input type="text" id="caractValue" class="form-control" placeholder="Entrez la valeur">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-outline-primary w-100"
+                                onclick="openLookupPanel('caract')">
+                            <i class="bi bi-search"></i> Choisir
+                        </button>
+                    </div>
+                    <div class="col-12 mt-2">
+                        <button class="btn btn-success" onclick="addCaractistique()">
+                            Ajouter
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- جدول الخصائص المسندة -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h5><i class="bi bi-list-check"></i> Caractéristiques attribuées à <code>{{ selected_cod_art }}</code></h5>
+
+                <div class="table-responsive mt-3">
+                    <table class="table table-hover align-middle" id="caractTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 5%">#</th>
+                                <th style="width: 35%">Caractéristique</th>
+                                <th style="width: 30%">Valeur</th>
+                                <th style="width: 15%">Unité</th>
+                                <th style="width: 15%">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in tree_items %}
+                                {% if item.node.id|stringformat:"s" in assigned_values %}
+                                    <tr data-caract="{{ item.node.id }}" data-level="{{ item.level }}">
+                                        <td>{{ forloop.counter }}</td>
+                                        <td style="padding-left: {{ item.level|add:1 }}em;">
+                                            <span style="opacity:0.7">{% for i in item.level|get_range %}↳ {% endfor %}</span>
+                                            {{ item.node.nom }}
+                                        </td>
+                                        <td><strong>{{ assigned_values|get_item:item.node.id|stringformat:"s" }}</strong></td>
+                                        <td>{% if item.node.unite %}<code>{{ item.node.unite }}</code>{% else %}-{% endif %}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-danger" 
+													data-cod-art="{{ selected_cod_art }}" 
+													data-caract-id="{{ item.node.id }}">
+												<i class="bi bi-trash"></i>
+											</button>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">
+                                        Aucune caractéristique attribuée à cet article.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <small class="text-muted">
+                    <i class="bi bi-info-circle"></i> Les éléments sont affichés selon la structure hiérarchique.
+                </small>
+            </div>
+        </div>
+
+        <!-- إدارة الصور -->
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5><i class="bi bi-images"></i> Images de l'article</h5>
+                <form id="uploadImageForm" enctype="multipart/form-data" class="mb-3">
+                    {% csrf_token %}
+                    <input type="file" name="image" accept="image/*" class="form-control mb-2" required>
+                    <button type="submit" class="btn btn-primary">Uploader Image</button>
+                </form>
+
+                <div class="row" id="imagesContainer">
+                    {% for img in images %}
+                    <div class="col-md-3 col-sm-4 mb-3 position-relative">
+                        <img src="{{ img.image.url }}" class="img-thumbnail w-100" style="height:150px; object-fit:cover;">
+                        <button class="btn btn-danger btn-sm position-absolute top-0 end-0"
+                                onclick="deleteImage({{ img.id }})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted">Aucune image pour cet article.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Veuillez sélectionner un article pour gérer ses caractéristiques.
+    </div>
+    {% endif %}
+</div>
+
+<!-- نافذة بحث -->
+<div class="modal fade" id="lookupModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="lookupTitle">Choisir un élément</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="lookupSearch" class="form-control mb-3" placeholder="Rechercher...">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID / Code</th>
+                                <th>Nom / Libellé</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lookupResults">
+                            <tr><td colspan="3">Recherchez un élément...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// متغيرات عالمية
+let selectedCodArt = "{{ selected_cod_art }}";
+let lookupType = "";
+
+// === أدوات مساعدة ===
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// === CSRF Token ===
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+const csrftoken = getCookie('csrftoken');
+
+// === فتح نافذة البحث ===
+function openLookupPanel(type) {
+    lookupType = type;
+    const title = type === 'article' ? "Choisir un article" : "Choisir une caractéristique";
+    document.getElementById('lookupTitle').textContent = title;
+    document.getElementById('lookupSearch').value = '';
+    document.getElementById('lookupResults').innerHTML = '<tr><td colspan="3">Recherche en cours...</td></tr>';
+    
+    const modal = new bootstrap.Modal(document.getElementById('lookupModal'));
+    modal.show();
+
+    document.getElementById('lookupSearch').oninput = debounce(() => {
+        const query = document.getElementById('lookupSearch').value.trim();
+        if (!query) {
+            document.getElementById('lookupResults').innerHTML = '<tr><td colspan="3">Entrez un terme de recherche.</td></tr>';
+            return;
+        }
+
+        if (type === 'article') {
+            searchArticles(query);
+        } else {
+            searchCaracteristiques(query);
+        }
+    }, 300);
+}
+
+// === بحث السلع ===
+function searchArticles(query) {
+    fetch(`{% url 'articles:api_articles' %}?q=${encodeURIComponent(query)}`)
+        .then(r => r.json())
+        .then(data => {
+            const tbody = document.getElementById('lookupResults');
+            tbody.innerHTML = '';
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3">Aucun article trouvé.</td></tr>';
+                return;
+            }
+            data.forEach(art => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${art.id}</td>
+                    <td>${escapeHtml(art.nom)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" 
+                                onclick="selectArticle('${art.id}', '${escapeHtml(art.nom)}')">
+                            Choisir
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        })
+        .catch(err => {
+            console.error("Erreur de recherche des articles:", err);
+            document.getElementById('lookupResults').innerHTML = '<tr><td colspan="3">Erreur de chargement.</td></tr>';
+        });
+}
+
+// === بحث الخصائص ===
+function searchCaracteristiques(query) {
+    fetch(`{% url 'articles:api_caracteristiques' %}?q=${encodeURIComponent(query)}`)
+        .then(r => r.json())
+        .then(data => {
+            const tbody = document.getElementById('lookupResults');
+            tbody.innerHTML = '';
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3">Aucune caractéristique trouvée.</td></tr>';
+                return;
+            }
+            data.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${c.id}</td>
+                    <td>${escapeHtml(c.nom)} ${c.unite ? '('+escapeHtml(c.unite)+')' : ''}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" 
+                                onclick="selectCaract(${c.id}, '${escapeHtml(c.nom)}')">
+                            Choisir
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        })
+        .catch(err => {
+            console.error("Erreur de recherche des caractéristiques:", err);
+            document.getElementById('lookupResults').innerHTML = '<tr><td colspan="3">Erreur de chargement.</td></tr>';
+        });
+}
+
+// === اختيار السلعة ===
+function selectArticle(cod, nom) {
+    selectedCodArt = cod;
+    document.getElementById('articleInput').value = `${cod} - ${nom}`;
+    const modal = bootstrap.Modal.getInstance(document.getElementById('lookupModal'));
+    modal.hide();
+    updatePageContent(cod);
+}
+
+// === اختيار الخاصية ===
+function selectCaract(id, nom) {
+    document.getElementById('caractId').value = id;
+    document.getElementById('caractInput').value = nom;
+    bootstrap.Modal.getInstance(document.getElementById('lookupModal')).hide();
+}
+
+// === تحديث محتوى الصف بعد اختيار سلعة ===
+function updatePageContent(codArt) {
+    fetch(`/articles/article-caracteristiques/${encodeURIComponent(codArt)}/`)
+        .then(r => r.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newContent = doc.querySelector('#contentForSelectedArticle');
+            if (newContent) {
+                document.getElementById('contentForSelectedArticle').replaceWith(newContent);
+            }
+        })
+        .catch(err => {
+            console.error("Erreur lors du chargيل الديناميكي:", err);
+            location.reload(); // fallback
+        });
+}
+
+// === إضافة خاصية جديدة مع تحديث الجدول فورًا ===
+function addCaractistique() {
+    const caractId = document.getElementById('caractId').value;
+    const valeur = document.getElementById('caractValue').value.trim();
+
+    if (!selectedCodArt || !caractId || !valeur) {
+        alert("Veuillez sélectionner un article, une caractéristique et entrer une valeur.");
+        return;
+    }
+
+    fetch('{% url "articles:api_add_article_caract" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({
+            cod_art: selectedCodArt,
+            caract_id: caractId,
+            valeur: valeur
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            // ✅ إنشاء صف جديد وإضافته إلى الجدول
+            const tableBody = document.querySelector('#caractTable tbody');
+            const caractNom = document.getElementById('caractInput').value;
+
+            const newRow = document.createElement('tr');
+            newRow.setAttribute('data-caract', data.caract_id);
+            newRow.innerHTML = `
+				<td>#</td>
+				<td>${escapeHtml(caractNom)}</td>
+				<td><strong>${escapeHtml(data.valeur)}</strong></td>
+				<td>-</td>
+				<td>
+					<button class="btn btn-sm btn-danger"
+							data-cod-art="${data.cod_art}"
+							data-caract-id="${data.caract_id}">
+						<i class="bi bi-trash"></i>
+					</button>
+				</td>
+			`;
+
+            // إضافة الصف الجديد
+            tableBody.appendChild(newRow);
+
+            // تنظيف الحقول
+            document.getElementById('caractId').value = '';
+            document.getElementById('caractInput').value = '';
+            document.getElementById('caractValue').value = '';
+
+            alert('Caractéristique ajoutée avec succès !');
+        } else {
+            alert('Erreur : ' + (data.message || 'Échec de l\'ajout.'));
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Une erreur réseau est survenue.');
+    });
+}
+
+// === حذف خاصية مع إزالة السطر من الجدول ===
+document.addEventListener('click', function(e) {
+    const button = e.target.closest('.btn-danger[data-cod-art][data-caract-id]');
+    if (!button) return;
+
+    const codArt = button.getAttribute('data-cod-art');
+    const caractId = parseInt(button.getAttribute('data-caract-id'));
+
+    if (!confirm('Supprimer cette caractéristique ?')) return;
+
+    fetch('{% url "articles:api_delete_article_caract" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({ cod_art: codArt, caract_id: caractId })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            button.closest('tr').remove();
+            alert('Caractéristique supprimée.');
+        } else {
+            alert('Échec de suppression : ' + (data.message || 'Erreur inconnue'));
+        }
+    })
+    .catch(err => {
+        console.error('Erreur:', err);
+        alert('Erreur réseau.');
+    });
+});
+
+// === رفع صورة ===
+document.getElementById('uploadImageForm').onsubmit = function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+
+    fetch(`/articles/api/${encodeURIComponent(selectedCodArt)}/upload-image/`, {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-CSRFToken': csrftoken }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'ok' && data.url) {
+            // ✅ التصحيح: استخدم data.url مباشرة بدون window.location.origin
+            const imgDiv = `
+                <div class="col-md-3 col-sm-4 mb-3 position-relative">
+                    <img src="${data.url}" 
+                         class="img-thumbnail w-100" 
+                         style="height:150px; object-fit:cover;"
+                         alt="Image article">
+                    <button class="btn btn-danger btn-sm position-absolute top-0 end-0"
+                            data-image-id="${data.id}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>`;
+            
+            // إدراج الصورة في بداية الحاوية
+            document.getElementById('imagesContainer').insertAdjacentHTML('afterbegin', imgDiv);
+            
+            // تنظيف النموذج
+            this.reset();
+            alert("Image téléchargée avec succès !");
+        } else {
+            alert("Erreur : " + (data.message || "Échec du téléchargement"));
+        }
+    })
+    .catch(err => {
+        console.error("Erreur upload:", err);
+        alert("Erreur réseau. Vérifiez la console.");
+    });
+};
+
+// === حذف صورة ===
+function deleteImage(imageId) {
+    if (!confirm('Supprimer cette image ?')) return;
+
+    fetch('{% url "articles:api_delete_article_image" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({ image_id: imageId })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.status === 'ok') {
+            document.querySelector(`[onclick="deleteImage(${imageId})"]`).closest('[class*="col-"]').remove();
+            alert("Image supprimée.");
+        } else {
+            alert("Échec de suppression.");
+        }
+    });
+}
+</script>
+{% endblock %}
